@@ -4997,6 +4997,7 @@ var GHSync = (function() {
   var _pushTimer   = null;
   var _busy        = false;
   var _origSetItem = null;
+  var _startupLock = true; // Kein Auto-Push in den ersten 15 Sekunden
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -5152,7 +5153,7 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync) return;
+    if (!_active() || !_cfg().autoSync || _startupLock) return;
     clearTimeout(_pushTimer);
     _pushTimer = setTimeout(function() { push(true); }, 6000);
   }
@@ -5183,28 +5184,25 @@ var GHSync = (function() {
 
   function init() {
     ghsRenderUI();
+    // Startup-Lock nach 15 Sekunden aufheben
+    setTimeout(function() { _startupLock = false; }, 15000);
     if (_active()) {
-      // Beim Start: Pull (silent, kein Reload — nur wenn Remote neuer)
+      // Beim Start prüfen ob Remote neuer ist
       setTimeout(function() {
-        var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-        _api('GET', path).then(function(file) {
-          if (!file || !file.content) return;
-          // Remote-Zeitstempel vergleichen
-          var lastSync = _cfg().lastSync;
-          if (!lastSync) { pull(true).then(function(){ location.reload(); }); return; }
-          // Commit-Datum via API
-          return _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
-            .then(function(commits) {
-              if (!commits || !commits[0]) return;
-              var remoteDate = new Date(commits[0].commit.committer.date);
-              var localDate  = new Date(lastSync);
-              if (remoteDate > localDate) {
-                toast('Neuere Daten auf GitHub gefunden — wird geladen…');
-                setTimeout(function(){ pull(false); }, 800);
-              }
-            });
-        }).catch(function(){});
-      }, 1500);
+        var localLastSync = _cfg().lastSync;
+        _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
+          .then(function(commits) {
+            if (!commits || !commits[0]) { _startupLock = false; return; }
+            var remoteDate = new Date(commits[0].commit.committer.date);
+            var localDate  = localLastSync ? new Date(localLastSync) : new Date(0);
+            if (remoteDate > localDate) {
+              toast('Neuere Daten auf GitHub — wird geladen…');
+              setTimeout(function(){ pull(false); }, 500);
+            } else {
+              _startupLock = false; // Kein Pull nötig — Push freigeben
+            }
+          }).catch(function(){ _startupLock = false; });
+      }, 2000);
     }
   }
 
