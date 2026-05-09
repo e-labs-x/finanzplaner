@@ -4994,7 +4994,7 @@ var GHSync = (function() {
   var _busy = false;
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
-  function _cfg()   { var s = FP.Store.get().settings.githubSync; return s || {}; }
+  function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
   function _owner() { return _cfg().owner; }
   function _active(){ return _cfg().enabled && !!_token() && !!_owner(); }
 
@@ -5025,7 +5025,7 @@ var GHSync = (function() {
       return r.json();
     }).then(function(user) {
       localStorage.setItem(TOKEN_KEY, token);
-      FP.Store.setGithubSync({ enabled: true, owner: user.login, lastSync: null });
+      FP.Store.Settings.setGithubSync({ enabled: true, owner: user.login, lastSync: null });
       ghsRenderUI();
       return _ensureRepo(user.login);
     }).then(function() {
@@ -5064,7 +5064,7 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       var now = new Date().toISOString();
-      FP.Store.setGithubSync({ lastSync: now });
+      FP.Store.Settings.setGithubSync({ lastSync: now });
       ghsRenderUI();
       if (!silent) toast('↑ Sync abgeschlossen');
       _maybeDailyBackup(backup, content);
@@ -5091,7 +5091,7 @@ var GHSync = (function() {
     }).then(function() {
       _busy = false;
       _setBusy(false);
-      FP.Store.setGithubSync({ lastSync: new Date().toISOString() });
+      FP.Store.Settings.setGithubSync({ lastSync: new Date().toISOString() });
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
     }).catch(function(err) {
       _busy = false;
@@ -5144,7 +5144,7 @@ var GHSync = (function() {
 
   function disconnect() {
     localStorage.removeItem(TOKEN_KEY);
-    FP.Store.setGithubSync({ enabled: false, owner: null, lastSync: null });
+    FP.Store.Settings.setGithubSync({ enabled: false, owner: null, lastSync: null });
     ghsRenderUI();
     toast('GitHub-Verbindung getrennt');
   }
@@ -5188,7 +5188,7 @@ var GHSync = (function() {
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
 function ghsRenderUI() {
-  var cfg = FP.Store.get().settings.githubSync || {};
+  var cfg = FP.Store.Settings.get().githubSync || {};
   var token = localStorage.getItem('fp_gh_token');
   var connected = cfg.enabled && !!token && !!cfg.owner;
   var setup = document.getElementById('st-gh-setup');
@@ -5234,7 +5234,7 @@ function ghsDisconnect() {
 }
 
 function ghsToggleAuto(val) {
-  FP.Store.setGithubSync({ autoSync: val });
+  FP.Store.Settings.setGithubSync({ autoSync: val });
   toast(val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
 }
 
