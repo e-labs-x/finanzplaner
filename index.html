@@ -4990,11 +4990,13 @@ let amt = '', hasDec = false, decPos = 0;
 
 // ── GitHub Sync ──────────────────────────────────────────────────────────────
 var GHSync = (function() {
-  var TOKEN_KEY = 'fp_gh_token';
-  var REPO      = 'finanzplaner-data';
-  var SYNC_FILE = 'sync.fpbackup';
-  var _pushTimer = null;
-  var _busy = false;
+  var TOKEN_KEY    = 'fp_gh_token';
+  var REPO         = 'finanzplaner-data';
+  var SYNC_FILE    = 'sync.fpbackup';
+  var LS_KEY_STORE = 'finanzplaner_v3';
+  var _pushTimer   = null;
+  var _busy        = false;
+  var _origSetItem = null;
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -5094,7 +5096,17 @@ var GHSync = (function() {
     }).then(function() {
       _busy = false;
       _setBusy(false);
-      FP.Store.Settings.setGithubSync({ lastSync: new Date().toISOString() });
+      // lastSync direkt in localStorage schreiben ohne _state zu überschreiben
+      try {
+        var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
+        if (!s.settings) s.settings = {};
+        if (!s.settings.githubSync) s.settings.githubSync = {};
+        s.settings.githubSync.lastSync = new Date().toISOString();
+        s.settings.githubSync.enabled  = true;
+        s.settings.githubSync.owner    = _owner();
+        s.settings.githubSync.autoSync = _cfg().autoSync !== false;
+        _origSetItem(LS_KEY_STORE, JSON.stringify(s));
+      } catch(e) {}
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
     }).catch(function(err) {
       _busy = false;
@@ -5146,10 +5158,10 @@ var GHSync = (function() {
   }
 
   function installStorageHook() {
-    var _orig = localStorage.setItem.bind(localStorage);
+    _origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
-      _orig(key, value);
-      if (key === 'finanzplaner_v3') schedulePush();
+      _origSetItem(key, value);
+      if (key === LS_KEY_STORE) schedulePush();
     };
   }
 
