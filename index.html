@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
-<title>Finanzplaner v10.0</title>
+<title>Finanzplaner v11.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
 <style>
@@ -896,6 +896,21 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .st-backup-row:last-child{border-bottom:none}
 .st-backup-lbl{flex:1;font-size:12px;color:var(--tx2)}
 .st-danger-zone{background:var(--red-lt);border:1px solid var(--red);border-radius:14px;padding:16px}
+.ghs-token-input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--brd);border-radius:var(--r-sm);background:var(--surf2);color:var(--tx);font-size:13px;font-family:var(--mono);margin:8px 0 10px;outline:none}
+.ghs-token-input:focus{border-color:var(--blue)}
+.ghs-hint{font-size:11px;color:var(--tx3);line-height:1.5;margin-bottom:10px}
+.ghs-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tx3);margin-right:5px;vertical-align:middle}
+.ghs-status-dot.ok{background:var(--green)}
+.ghs-status-dot.busy{background:var(--amber)}
+.ghs-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd)}
+.ghs-toggle-row:last-child{border-bottom:none}
+.ghs-toggle-lbl{font-size:13px;color:var(--tx)}
+.ghs-switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.ghs-switch input{opacity:0;width:0;height:0}
+.ghs-switch-slider{position:absolute;inset:0;background:var(--brd);border-radius:22px;transition:.2s;cursor:pointer}
+.ghs-switch-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.ghs-switch input:checked+.ghs-switch-slider{background:var(--blue)}
+.ghs-switch input:checked+.ghs-switch-slider:before{transform:translateX(18px)}
 .st-danger-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .st-danger-sub{font-size:12px;color:var(--tx2);margin-bottom:12px}
 
@@ -1289,7 +1304,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v10.0</div>
+      <div class="sb-ver">v11.0</div>
     </div>
   </div>
   <div class="sb-scroll">
@@ -1999,6 +2014,39 @@ canvas#avc{display:block;width:100%;cursor:pointer}
             </div>
           </div>
 
+          <!-- GitHub Sync -->
+          <div class="st-card" id="st-gh-card">
+            <div class="st-card-hdr">
+              <span class="st-card-title">Sync</span>
+              <span id="st-gh-badge" style="font-size:11px;color:var(--tx3)">Nicht verbunden</span>
+            </div>
+            <!-- Setup-Bereich (nicht verbunden) -->
+            <div id="st-gh-setup" style="padding:0 16px 14px">
+              <p class="ghs-hint">Verbinde die App mit GitHub um Daten automatisch auf allen Geräten (PC, iPhone, iPad) zu synchronisieren. Tägliche Backups werden automatisch angelegt.</p>
+              <p class="ghs-hint">Token erstellen: <b>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token</b> — nur den Haken bei <b>repo</b> setzen.</p>
+              <input type="password" id="st-gh-token-input" class="ghs-token-input" placeholder="ghp_…">
+              <button class="st-btn primary" onclick="ghsConnect()" style="width:100%">Mit GitHub verbinden</button>
+            </div>
+            <!-- Verbunden-Bereich -->
+            <div id="st-gh-connected" style="display:none;padding:0 16px 14px">
+              <div class="ghs-toggle-row">
+                <span class="ghs-toggle-lbl"><span class="ghs-status-dot ok" id="st-gh-dot"></span><span id="st-gh-status-lbl">Verbunden</span></span>
+                <button class="st-btn primary" id="st-gh-sync-btn" onclick="ghsManualSync()">↕ Jetzt sync</button>
+              </div>
+              <div class="ghs-toggle-row">
+                <span class="ghs-toggle-lbl">Automatischer Sync</span>
+                <label class="ghs-switch">
+                  <input type="checkbox" id="st-gh-auto" onchange="ghsToggleAuto(this.checked)" checked>
+                  <span class="ghs-switch-slider"></span>
+                </label>
+              </div>
+              <div class="ghs-toggle-row">
+                <span class="ghs-toggle-lbl" style="color:var(--tx2)">Verbindung trennen</span>
+                <button class="st-btn danger" onclick="ghsDisconnect()">Trennen</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Backup -->
           <div class="st-card">
             <div class="st-card-hdr"><span class="st-card-title">Backup</span></div>
@@ -2403,7 +2451,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 // KONSTANTEN
 // ═══════════════════════════════════════════════════════════════
 
-const FP_VERSION = '10.0.0';
+const FP_VERSION = '11.0.0';
 const STORE_VERSION    = 1;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
@@ -2792,6 +2840,12 @@ function createDefaultStore() {
         remotePath: '/Finanzplaner/Backups/',
         clientId:   null,
         tenantId:   'common',
+      },
+      githubSync: {
+        enabled:   false,
+        autoSync:  true,
+        owner:     null,
+        lastSync:  null,
       },
     },
 
@@ -3654,6 +3708,12 @@ const Store = (() => {
 
     setOneDrive(config) {
       Object.assign(_state.settings.oneDrive, config);
+      _save();
+    },
+
+    setGithubSync(config) {
+      if (!_state.settings.githubSync) _state.settings.githubSync = {};
+      Object.assign(_state.settings.githubSync, config);
       _save();
     },
 
@@ -4925,6 +4985,259 @@ const SECS   = [ { k:'fixkosten', lbl:'Notwendig' }, { k:'freizeit', lbl:'Freize
 let selCat = null, secState = {};
 let amt = '', hasDec = false, decPos = 0;
 
+// ── GitHub Sync ──────────────────────────────────────────────────────────────
+var GHSync = (function() {
+  var TOKEN_KEY = 'fp_gh_token';
+  var REPO      = 'finanzplaner-data';
+  var SYNC_FILE = 'sync.fpbackup';
+  var _pushTimer = null;
+  var _busy = false;
+
+  function _token() { return localStorage.getItem(TOKEN_KEY); }
+  function _cfg()   { var s = FP.Store.get().settings.githubSync; return s || {}; }
+  function _owner() { return _cfg().owner; }
+  function _active(){ return _cfg().enabled && !!_token() && !!_owner(); }
+
+  function _api(method, path, body) {
+    var opts = { method: method, headers: {
+      'Authorization': 'token ' + _token(),
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    }};
+    if (body) opts.body = JSON.stringify(body);
+    return fetch('https://api.github.com' + path, opts).then(function(r) {
+      if (r.status === 404) { var e = new Error('Not Found'); e.status = 404; throw e; }
+      if (!r.ok) return r.json().then(function(e2) { throw new Error(e2.message || r.status); });
+      return r.status === 204 ? null : r.json();
+    });
+  }
+
+  function _enc(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function _dec(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g,'')))); }
+
+  // Verbinden: Token prüfen, Owner ermitteln, erstes Push
+  function connect(token) {
+    return fetch('https://api.github.com/user', { headers: {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github.v3+json'
+    }}).then(function(r) {
+      if (!r.ok) throw new Error('Token ungültig oder fehlende Berechtigung');
+      return r.json();
+    }).then(function(user) {
+      localStorage.setItem(TOKEN_KEY, token);
+      FP.Store.setGithubSync({ enabled: true, owner: user.login, lastSync: null });
+      ghsRenderUI();
+      return _ensureRepo(user.login);
+    }).then(function() {
+      return _checkRemoteAndDecide(true);
+    });
+  }
+
+  // Sicherstellen dass Repo existiert und initialisiert ist
+  function _ensureRepo(owner) {
+    return _api('GET', '/repos/' + owner + '/' + REPO + '/contents/').catch(function(e) {
+      if (e.status === 404) {
+        return _api('PUT', '/repos/' + owner + '/' + REPO + '/contents/README.md', {
+          message: 'Init Finanzplaner Sync',
+          content: _enc('# Finanzplaner Sync\nAutomatisch synchronisierte Daten.')
+        });
+      }
+    });
+  }
+
+  // Push: lokale Daten hochladen
+  function push(silent) {
+    if (!_active() || _busy) return Promise.resolve();
+    _busy = true;
+    _setBusy(true);
+    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+    var backup = FP.BackupManager.create('Auto-Sync');
+    var content = _enc(JSON.stringify(backup));
+    return _api('GET', path).catch(function(e) {
+      if (e.status === 404) return null;
+      throw e;
+    }).then(function(existing) {
+      var body = { message: 'Sync ' + new Date().toISOString().slice(0,16), content: content };
+      if (existing && existing.sha) body.sha = existing.sha;
+      return _api('PUT', path, body);
+    }).then(function() {
+      _busy = false;
+      _setBusy(false);
+      var now = new Date().toISOString();
+      FP.Store.setGithubSync({ lastSync: now });
+      ghsRenderUI();
+      if (!silent) toast('↑ Sync abgeschlossen');
+      _maybeDailyBackup(backup, content);
+    }).catch(function(err) {
+      _busy = false;
+      _setBusy(false);
+      if (!silent) toast('Sync-Fehler: ' + err.message);
+      console.error('[GHSync] push:', err);
+    });
+  }
+
+  // Pull: Remote-Daten laden und anwenden
+  function pull(silent) {
+    if (!_active() || _busy) return Promise.resolve();
+    _busy = true;
+    _setBusy(true);
+    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+    return _api('GET', path).then(function(file) {
+      if (!file || !file.content) throw new Error('Keine Sync-Datei gefunden');
+      var jsonStr = _dec(file.content);
+      var blob = new Blob([jsonStr], { type: 'application/json' });
+      var f = new File([blob], 'sync.fpbackup');
+      return FP.BackupManager.import(f);
+    }).then(function() {
+      _busy = false;
+      _setBusy(false);
+      FP.Store.setGithubSync({ lastSync: new Date().toISOString() });
+      if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
+    }).catch(function(err) {
+      _busy = false;
+      _setBusy(false);
+      if (err.status === 404) { push(silent); return; }
+      if (!silent) toast('Sync-Fehler: ' + err.message);
+      console.error('[GHSync] pull:', err);
+    });
+  }
+
+  // Entscheiden ob push oder pull sinnvoller ist
+  function _checkRemoteAndDecide(isFirstConnect) {
+    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+    return _api('GET', path).then(function(file) {
+      if (!file || !file.content) { return push(false); }
+      if (isFirstConnect) {
+        // Beim ersten Verbinden: wenn Remote Daten hat, fragen
+        var jsonStr = _dec(file.content);
+        var remote = JSON.parse(jsonStr);
+        var remoteCount = (remote.store && remote.store.transactions) ? remote.store.transactions.length : 0;
+        var localCount = FP.Store.get().transactions.length;
+        if (remoteCount > 0 && localCount > 0 && remoteCount !== localCount) {
+          var msg = 'GitHub hat ' + remoteCount + ' Transaktionen, lokal sind ' + localCount + '.\nWelche Daten sollen verwendet werden?\n\nOK = GitHub laden\nAbbrechen = Lokale Daten hochladen';
+          if (confirm(msg)) { return pull(false); }
+        }
+        return push(false);
+      } else {
+        return pull(false);
+      }
+    }).catch(function() { return push(false); });
+  }
+
+  // Tägliches Backup erstellen (einmal pro Tag)
+  function _maybeDailyBackup(backup, content) {
+    var today = new Date().toISOString().slice(0,10);
+    var path = '/repos/' + _owner() + '/' + REPO + '/contents/backups/' + today + '.fpbackup';
+    _api('GET', path).catch(function(e) {
+      if (e.status === 404) {
+        _api('PUT', path, { message: 'Backup ' + today, content: content }).catch(function(){});
+      }
+    });
+  }
+
+  // Auto-Push nach Änderungen (debounced, 8 Sekunden)
+  function schedulePush() {
+    if (!_active() || !_cfg().autoSync) return;
+    clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(function() { push(true); }, 8000);
+  }
+
+  function disconnect() {
+    localStorage.removeItem(TOKEN_KEY);
+    FP.Store.setGithubSync({ enabled: false, owner: null, lastSync: null });
+    ghsRenderUI();
+    toast('GitHub-Verbindung getrennt');
+  }
+
+  function _setBusy(on) {
+    var btn = document.getElementById('st-gh-sync-btn');
+    var dot = document.getElementById('st-gh-dot');
+    if (btn) { btn.disabled = on; btn.textContent = on ? '…' : '↕ Jetzt sync'; }
+    if (dot) { dot.className = 'ghs-status-dot ' + (on ? 'busy' : 'ok'); }
+  }
+
+  function init() {
+    ghsRenderUI();
+    if (_active()) {
+      // Beim Start: Pull (silent, kein Reload — nur wenn Remote neuer)
+      setTimeout(function() {
+        var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+        _api('GET', path).then(function(file) {
+          if (!file || !file.content) return;
+          // Remote-Zeitstempel vergleichen
+          var lastSync = _cfg().lastSync;
+          if (!lastSync) { pull(true).then(function(){ location.reload(); }); return; }
+          // Commit-Datum via API
+          return _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
+            .then(function(commits) {
+              if (!commits || !commits[0]) return;
+              var remoteDate = new Date(commits[0].commit.committer.date);
+              var localDate  = new Date(lastSync);
+              if (remoteDate > localDate) {
+                toast('Neuere Daten auf GitHub gefunden — wird geladen…');
+                setTimeout(function(){ pull(false); }, 800);
+              }
+            });
+        }).catch(function(){});
+      }, 1500);
+    }
+  }
+
+  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init };
+})();
+
+// ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
+function ghsRenderUI() {
+  var cfg = FP.Store.get().settings.githubSync || {};
+  var token = localStorage.getItem('fp_gh_token');
+  var connected = cfg.enabled && !!token && !!cfg.owner;
+  var setup = document.getElementById('st-gh-setup');
+  var conn  = document.getElementById('st-gh-connected');
+  var badge = document.getElementById('st-gh-badge');
+  var lbl   = document.getElementById('st-gh-status-lbl');
+  var auto  = document.getElementById('st-gh-auto');
+  if (!setup) return;
+  if (connected) {
+    setup.style.display = 'none';
+    conn.style.display  = 'block';
+    if (badge) { badge.textContent = '✓ ' + cfg.owner; badge.style.color = 'var(--green)'; }
+    if (lbl) {
+      lbl.textContent = cfg.lastSync
+        ? 'Letzter Sync: ' + new Date(cfg.lastSync).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+        : 'Noch nicht synchronisiert';
+    }
+    if (auto) auto.checked = cfg.autoSync !== false;
+  } else {
+    setup.style.display = 'block';
+    conn.style.display  = 'none';
+    if (badge) { badge.textContent = 'Nicht verbunden'; badge.style.color = 'var(--tx3)'; }
+  }
+}
+
+function ghsConnect() {
+  var inp = document.getElementById('st-gh-token-input');
+  var token = inp ? inp.value.trim() : '';
+  if (!token) { toast('Bitte Token eingeben'); return; }
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) { toast('Token muss mit ghp_ beginnen'); return; }
+  toast('Verbinde mit GitHub…');
+  GHSync.connect(token).catch(function(err) { toast('Fehler: ' + err.message); });
+}
+
+function ghsManualSync() {
+  toast('Synchronisiere…');
+  GHSync.push(false);
+}
+
+function ghsDisconnect() {
+  if (!confirm('GitHub-Verbindung wirklich trennen?\nDie Daten auf GitHub bleiben erhalten.')) return;
+  GHSync.disconnect();
+}
+
+function ghsToggleAuto(val) {
+  FP.Store.setGithubSync({ autoSync: val });
+  toast(val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   FP.Store.load();
   FP.Store.generateRecurringTransactions({ retroactive: true });
@@ -4937,6 +5250,13 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('resize', function(){
     if(document.getElementById('p-rente').classList.contains('active')) rpSidebarHeight();
   });
+  // GitHub Sync initialisieren
+  GHSync.init();
+  // Auto-Push nach Store-Saves hooken
+  var _origSave = FP.Store.save;
+  if (typeof _origSave === 'function') {
+    FP.Store.save = function() { _origSave.apply(this, arguments); GHSync.schedulePush(); };
+  }
 });
 
 /* ── Navigation ── */
