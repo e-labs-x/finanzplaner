@@ -911,6 +911,19 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .ghs-switch-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
 .ghs-switch input:checked+.ghs-switch-slider{background:var(--blue)}
 .ghs-switch input:checked+.ghs-switch-slider:before{transform:translateX(18px)}
+
+/* Sync-Status-Indikator */
+#sync-indicator{display:none;align-items:center;gap:4px;font-size:10px;color:var(--tx3);white-space:nowrap;opacity:0;transition:opacity .18s}
+#sidebar.expanded #sync-indicator{opacity:1}
+.sync-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.sync-dot.synced{background:var(--green)}
+.sync-dot.pending{background:var(--amber);animation:sync-pulse 1.2s infinite}
+.sync-dot.busy{background:var(--blue);animation:sync-pulse .8s infinite}
+.sync-dot.error{background:var(--red)}
+@keyframes sync-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* Mobile Sync-Badge auf Einstellungen-Button */
+.bn-sync-badge{position:absolute;top:4px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--amber);display:none}
+.bn-sync-badge.show{display:block}
 .st-danger-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .st-danger-sub{font-size:12px;color:var(--tx2);margin-bottom:12px}
 
@@ -1305,6 +1318,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <div>
       <div class="sb-name">Finanzplaner</div>
       <div class="sb-ver">v11.0</div>
+      <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
   <div class="sb-scroll">
@@ -2144,7 +2158,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <button class="bn-item"        data-p="auswertung" onclick="nav('auswertung')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="bn-lbl">Übersicht</span></button>
     <button class="bn-item"        data-p="vermoegen"  onclick="nav('vermoegen')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="bn-lbl">Vermögen</span></button>
     <button class="bn-item"        data-p="rente"      onclick="nav('rente')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg></span><span class="bn-lbl">Rente</span></button>
-    <button class="bn-item"        data-p="mehr"       onclick="nav('mehr')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span class="bn-lbl">Mehr</span></button>
+    <button class="bn-item" data-p="mehr" onclick="nav('mehr')" style="position:relative"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span class="bn-lbl">Mehr</span><span class="bn-sync-badge" id="bn-sync-badge"></span></button>
   </div>
 </div>
 
@@ -5072,11 +5086,13 @@ var GHSync = (function() {
       var now = new Date().toISOString();
       FP.Store.Settings.setGithubSync({ lastSync: now });
       ghsRenderUI();
+      setSyncStatus('synced', 'Synchronisiert');
       if (!silent) toast('↑ Sync abgeschlossen');
       _maybeDailyBackup(backup, content);
     }).catch(function(err) {
       _busy = false;
       _setBusy(false);
+      setSyncStatus('error', 'Fehler');
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] push:', err);
     });
@@ -5155,6 +5171,7 @@ var GHSync = (function() {
   function schedulePush() {
     if (!_active() || !_cfg().autoSync || _startupLock) return;
     clearTimeout(_pushTimer);
+    setSyncStatus('pending', 'Ausstehend…');
     _pushTimer = setTimeout(function() { push(true); }, 6000);
   }
 
@@ -5180,10 +5197,14 @@ var GHSync = (function() {
     if (pushBtn) pushBtn.disabled = on;
     if (pullBtn) pullBtn.disabled = on;
     if (dot) dot.className = 'ghs-status-dot ' + (on ? 'busy' : 'ok');
+    if (on) setSyncStatus('busy', 'Sync…');
+    else    setSyncStatus('synced', 'Synchronisiert');
   }
 
   function init() {
     ghsRenderUI();
+    if (_active()) setSyncStatus('pending', 'Prüfe…');
+    else setSyncStatus('off', '');
     // Startup-Lock nach 15 Sekunden aufheben
     setTimeout(function() { _startupLock = false; }, 15000);
     if (_active()) {
@@ -5199,7 +5220,8 @@ var GHSync = (function() {
               toast('Neuere Daten auf GitHub — wird geladen…');
               setTimeout(function(){ pull(false); }, 500);
             } else {
-              _startupLock = false; // Kein Pull nötig — Push freigeben
+              _startupLock = false;
+              setSyncStatus('synced', 'Synchronisiert');
             }
           }).catch(function(){ _startupLock = false; });
       }, 2000);
@@ -5210,6 +5232,27 @@ var GHSync = (function() {
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  // state: 'synced' | 'pending' | 'busy' | 'error' | 'off'
+  var ind   = document.getElementById('sync-indicator');
+  var dot   = document.getElementById('sync-dot');
+  var lbl   = document.getElementById('sync-lbl');
+  var badge = document.getElementById('bn-sync-badge');
+  if (!ind) return;
+  if (state === 'off') {
+    ind.style.display = 'none';
+    if (badge) badge.classList.remove('show');
+    return;
+  }
+  ind.style.display = 'flex';
+  if (dot) dot.className = 'sync-dot ' + state;
+  if (lbl) lbl.textContent = label || '';
+  if (badge) {
+    badge.style.background = state === 'synced' ? 'var(--green)' : state === 'error' ? 'var(--red)' : 'var(--amber)';
+    badge.classList.toggle('show', state !== 'synced');
+  }
+}
+
 function ghsRenderUI() {
   var cfg = FP.Store.Settings.get().githubSync || {};
   var token = localStorage.getItem('fp_gh_token');
