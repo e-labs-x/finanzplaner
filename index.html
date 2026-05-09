@@ -2031,7 +2031,10 @@ canvas#avc{display:block;width:100%;cursor:pointer}
             <div id="st-gh-connected" style="display:none;padding:0 16px 14px">
               <div class="ghs-toggle-row">
                 <span class="ghs-toggle-lbl"><span class="ghs-status-dot ok" id="st-gh-dot"></span><span id="st-gh-status-lbl">Verbunden</span></span>
-                <button class="st-btn primary" id="st-gh-sync-btn" onclick="ghsManualSync()">↕ Jetzt sync</button>
+                <span style="display:flex;gap:6px">
+                  <button class="st-btn primary" id="st-gh-push-btn" onclick="ghsPush()" title="Lokale Daten hochladen">↑ Upload</button>
+                  <button class="st-btn primary" id="st-gh-pull-btn" onclick="ghsPull()" title="Daten von GitHub laden">↓ Download</button>
+                </span>
               </div>
               <div class="ghs-toggle-row">
                 <span class="ghs-toggle-lbl">Automatischer Sync</span>
@@ -5139,7 +5142,15 @@ var GHSync = (function() {
   function schedulePush() {
     if (!_active() || !_cfg().autoSync) return;
     clearTimeout(_pushTimer);
-    _pushTimer = setTimeout(function() { push(true); }, 8000);
+    _pushTimer = setTimeout(function() { push(true); }, 6000);
+  }
+
+  function installStorageHook() {
+    var _orig = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) {
+      _orig(key, value);
+      if (key === 'finanzplaner_v3') schedulePush();
+    };
   }
 
   function disconnect() {
@@ -5150,10 +5161,12 @@ var GHSync = (function() {
   }
 
   function _setBusy(on) {
-    var btn = document.getElementById('st-gh-sync-btn');
+    var pushBtn = document.getElementById('st-gh-push-btn');
+    var pullBtn = document.getElementById('st-gh-pull-btn');
     var dot = document.getElementById('st-gh-dot');
-    if (btn) { btn.disabled = on; btn.textContent = on ? '…' : '↕ Jetzt sync'; }
-    if (dot) { dot.className = 'ghs-status-dot ' + (on ? 'busy' : 'ok'); }
+    if (pushBtn) pushBtn.disabled = on;
+    if (pullBtn) pullBtn.disabled = on;
+    if (dot) dot.className = 'ghs-status-dot ' + (on ? 'busy' : 'ok');
   }
 
   function init() {
@@ -5183,7 +5196,7 @@ var GHSync = (function() {
     }
   }
 
-  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init };
+  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -5223,9 +5236,14 @@ function ghsConnect() {
   GHSync.connect(token).catch(function(err) { toast('Fehler: ' + err.message); });
 }
 
-function ghsManualSync() {
-  toast('Synchronisiere…');
+function ghsPush() {
+  toast('Lade hoch…');
   GHSync.push(false);
+}
+
+function ghsPull() {
+  toast('Lade herunter…');
+  GHSync.pull(false);
 }
 
 function ghsDisconnect() {
@@ -5250,13 +5268,9 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('resize', function(){
     if(document.getElementById('p-rente').classList.contains('active')) rpSidebarHeight();
   });
-  // GitHub Sync initialisieren
+  // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
+  GHSync.installStorageHook();
   GHSync.init();
-  // Auto-Push nach Store-Saves hooken
-  var _origSave = FP.Store.save;
-  if (typeof _origSave === 'function') {
-    FP.Store.save = function() { _origSave.apply(this, arguments); GHSync.schedulePush(); };
-  }
 });
 
 /* ── Navigation ── */
