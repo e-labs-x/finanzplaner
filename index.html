@@ -956,27 +956,6 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .fk-row-btn.del:hover{background:var(--red-lt);color:var(--red)}
 .fk-section-hdr{display:flex;align-items:center;justify-content:space-between}
 .fk-section-title{font-size:14px;font-weight:700;color:var(--tx)}
-.fk-month-nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.fk-month-nav-btn{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:5px 14px;font-size:18px;color:var(--tx);cursor:pointer;line-height:1}
-.fk-month-nav-btn:hover{background:var(--surf3,var(--brd))}
-.fk-month-lbl{font-size:15px;font-weight:700;color:var(--tx);text-align:center;flex:1}
-.fk-timeline{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
-.fk-tl-empty{padding:20px;text-align:center;color:var(--tx3);font-size:13px}
-.fk-tl-row{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer}
-.fk-tl-row:hover{background:var(--surf2)}
-.fk-tl-row+.fk-tl-row{border-top:1px solid var(--brd2,var(--brd))}
-.fk-tl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:2px solid transparent}
-.fk-tl-dot.paid{background:var(--green);border-color:var(--green)}
-.fk-tl-dot.pending{background:transparent;border-color:var(--tx3)}
-.fk-tl-day{font-size:12px;color:var(--tx3);min-width:22px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
-.fk-tl-info{flex:1;min-width:0}
-.fk-tl-name{font-size:14px;font-weight:500;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fk-tl-meta{font-size:11px;color:var(--tx3);margin-top:1px}
-.fk-tl-amt{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.fk-tl-status{font-size:11px;font-weight:600;white-space:nowrap;min-width:70px;text-align:right}
-.fk-tl-status.paid{color:var(--green)}
-.fk-tl-status.pending{color:var(--tx3)}
-.fk-tl-footer{padding:10px 14px;background:var(--surf2);font-size:13px;color:var(--tx2);display:flex;justify-content:space-between;border-top:1px solid var(--brd)}
 .fk-only-badge{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-lt,oklch(from var(--purple) l c h / .12));border-radius:4px;padding:1px 5px;margin-left:6px}
 
 /* ════════════════════════════════════════
@@ -1879,14 +1858,8 @@ canvas#avc{display:block;width:100%;cursor:pointer}
       <div class="pg">
         <div class="fk-wrap">
           <div class="fk-stat-row" id="fk-stats"></div>
-          <div class="fk-month-nav">
-            <button class="fk-month-nav-btn" onclick="fkPrevMonth()">‹</button>
-            <span class="fk-month-lbl" id="fk-month-lbl"></span>
-            <button class="fk-month-nav-btn" onclick="fkNextMonth()">›</button>
-          </div>
-          <div class="fk-timeline" id="fk-timeline"></div>
-          <div class="fk-section-hdr" style="margin-top:4px">
-            <span class="fk-section-title">Vorlagen verwalten</span>
+          <div class="fk-section-hdr">
+            <span class="fk-section-title">Wiederkehrende Fixkosten</span>
             <button class="av-heute" onclick="fkOpenNew()" style="font-size:12px;padding:5px 10px">+ Hinzufügen</button>
           </div>
           <div id="fk-list"></div>
@@ -8084,95 +8057,10 @@ function esppDelZyklus(id){
 var FK_TYPE_LABEL={fixed:'Fix',variable:'Variabel',savings:'Rücklage'};
 var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--purple)'};
 
-var fkViewMonth = (function(){
-  var d = new Date();
-  return { m: d.getMonth()+1, y: d.getFullYear() };
-})();
-
-function fkPrevMonth(){
-  fkViewMonth.m--;
-  if(fkViewMonth.m<1){fkViewMonth.m=12;fkViewMonth.y--;}
-  fkRenderTimeline();
-}
-function fkNextMonth(){
-  fkViewMonth.m++;
-  if(fkViewMonth.m>12){fkViewMonth.m=1;fkViewMonth.y++;}
-  fkRenderTimeline();
-}
-
-function fkMonthKey(){ return fkViewMonth.y+'-'+String(fkViewMonth.m).padStart(2,'0'); }
-
-function fkRenderTimeline(){
-  var lbl=document.getElementById('fk-month-lbl');
-  var el=document.getElementById('fk-timeline');
-  if(!lbl||!el)return;
-  var MONTHS=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  lbl.textContent=MONTHS[fkViewMonth.m-1]+' '+fkViewMonth.y;
-
-  var items=FP.Store.Recurring.getActive();
-  // Filter: nur Vorlagen die in diesem Monat gültig waren (validFrom <= viewMonth)
-  var monthKey=fkMonthKey();
-  items=items.filter(function(fc){
-    if(!fc.validFrom)return true;
-    var parts=fc.validFrom.split('.');
-    if(parts.length!==2)return true;
-    var fFrom=parts[1]+'-'+parts[0].padStart(2,'0');
-    return fFrom<=monthKey;
-  });
-
-  if(!items.length){
-    el.innerHTML='<div class="fk-tl-empty">Keine Vorlagen für diesen Monat.</div>';
-    return;
-  }
-
-  // Transaktionen dieses Monats mit source=recurring
-  var txs=FP.Store.Transactions.getAll().filter(function(tx){
-    return tx.source==='recurring'&&tx.date&&tx.date.startsWith(monthKey);
-  });
-  var paidIds={};
-  txs.forEach(function(tx){if(tx.recurringId)paidIds[tx.recurringId]=true;});
-
-  var cats={};FP.Store.Categories.getAll().forEach(function(c){cats[c.id]=c;});
-
-  // Sortierung: dayOfMonth (null = 99), dann Name
-  items.sort(function(a,b){
-    var da=a.dayOfMonth||99, db=b.dayOfMonth||99;
-    if(da!==db)return da-db;
-    return a.name.localeCompare(b.name);
-  });
-
-  var pendingTotal=0;
-  var rows=items.map(function(fc){
-    var paid=!!paidIds[fc.id];
-    if(!paid)pendingTotal+=fc.amount;
-    var cat=cats[fc.categoryId];
-    var dayStr=fc.dayOfMonth?fc.dayOfMonth+'.':'–';
-    var catName=cat?cat.name:'';
-    var typeColor=fc.type==='savings'?'var(--purple)':'var(--blue)';
-    return '<div class="fk-tl-row" onclick="fkOpenEdit(\''+fc.id+'\')" title="Bearbeiten">'+
-      '<div class="fk-tl-dot '+(paid?'paid':'pending')+'"></div>'+
-      '<div class="fk-tl-day">'+dayStr+'</div>'+
-      '<div class="fk-tl-info">'+
-        '<div class="fk-tl-name">'+fc.name+'</div>'+
-        (catName?'<div class="fk-tl-meta">'+catName+'</div>':'')+
-      '</div>'+
-      '<div class="fk-tl-amt" style="color:'+typeColor+'">'+eur(fc.amount)+'</div>'+
-      '<div class="fk-tl-status '+(paid?'paid':'pending')+'">'+(paid?'✓ bezahlt':'ausstehend')+'</div>'+
-    '</div>';
-  }).join('');
-
-  var footer=pendingTotal>0
-    ?'<div class="fk-tl-footer"><span>Noch ausstehend</span><span style="font-weight:700;color:var(--blue)">'+eur(FP.r2(pendingTotal))+'</span></div>'
-    :'<div class="fk-tl-footer" style="color:var(--green)"><span>Alle Positionen bezahlt ✓</span><span></span></div>';
-
-  el.innerHTML=rows+footer;
-}
-
 function fkInit(){ fkRender(); }
 
 function fkRender(){
   fkRenderStats();
-  fkRenderTimeline();
   fkRenderList();
 }
 
