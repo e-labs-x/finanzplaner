@@ -5176,9 +5176,10 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync) return;
-    if (_justPushed) { _pendingPush = true; return; }
-    if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
+    if (!_active()) { FP.Store.appLog('SYNC', '⚠ kein Push: enabled='+_cfg().enabled+' token='+!!_token()+' owner='+!!_owner()); return; }
+    if (!_cfg().autoSync) { FP.Store.appLog('SYNC', '⚠ kein Push: autoSync=false'); return; }
+    if (_justPushed) { _pendingPush = true; FP.Store.appLog('SYNC', '⚠ kein Push: justPushed, pending=true'); return; }
+    if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); FP.Store.appLog('SYNC', '⚠ kein Push: startupLock, pending=true'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
     _pushTimer = setTimeout(function() { push(true); }, 3000);
