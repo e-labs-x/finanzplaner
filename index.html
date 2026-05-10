@@ -2299,7 +2299,6 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <div class="fg"><label class="fl">Kategorie</label><select class="fs" id="mfk-cat"></select></div>
     <div class="fg"><label class="fl">Objekt (optional)</label><select class="fs" id="mfk-obj"><option value="">— kein Objekt —</option></select></div>
     <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfk-from" type="text" placeholder="z.B. 01.2024" maxlength="7"></div>
-    <div class="fg"><label class="fl">Fällig am (Tag des Monats, optional)</label><input class="fi" id="mfk-day" type="number" min="1" max="31" step="1" placeholder="z.B. 1 für den 1. des Monats" inputmode="numeric"></div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-fk')">Abbrechen</button>
       <button class="btn btn-p" onclick="fkSave()">Speichern</button>
@@ -8147,7 +8146,6 @@ function fkOpenNew(){
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
   document.getElementById('mfk-from').value=FP.currentMonthStr();
-  document.getElementById('mfk-day').value='';
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -8163,7 +8161,6 @@ function fkOpenEdit(id){
   document.getElementById('mfk-amount').value=fc.amount;
   document.getElementById('mfk-type').value=fc.type;
   document.getElementById('mfk-from').value=fc.validFrom||FP.currentMonthStr();
-  document.getElementById('mfk-day').value=fc.dayOfMonth||'';
   fkFillCatSelect(fc.categoryId);
   fkFillObjSelect(fc.objectId);
   openM('m-fk');
@@ -8205,7 +8202,6 @@ function fkSave(){
   if(!name||!amount){toast('Name und Betrag eingeben');return;}
   var newObjectId=document.getElementById('mfk-obj').value||null;
   var newCategoryId=document.getElementById('mfk-cat').value;
-  var dayVal=parseInt(document.getElementById('mfk-day').value)||null;
   var data={
     name:name,
     amount:amount,
@@ -8213,7 +8209,6 @@ function fkSave(){
     categoryId:newCategoryId,
     objectId:newObjectId,
     validFrom:document.getElementById('mfk-from').value.trim()||FP.currentMonthStr(),
-    dayOfMonth:dayVal,
   };
   if(id){
     FP.Store.Recurring.update(id,data);
