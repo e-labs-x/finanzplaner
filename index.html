@@ -5186,6 +5186,30 @@ var GHSync = (function() {
     if (_pendingPush) { _pendingPush = false; schedulePush(); }
   }
 
+  function _checkRemote() {
+    if (!_active() || _busy) return;
+    var localLastSync = _cfg().lastSync;
+    _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
+      .then(function(commits) {
+        if (!commits || !commits[0]) return;
+        var remoteDate = new Date(commits[0].commit.committer.date);
+        var localDate  = localLastSync ? new Date(localLastSync) : new Date(0);
+        if (remoteDate > localDate) {
+          toast('Neuere Daten auf GitHub — wird geladen…');
+          setTimeout(function(){ pull(false); }, 400);
+        }
+      }).catch(function(){});
+  }
+
+  function startPolling() {
+    // Alle 2 Minuten prüfen
+    setInterval(function() { _checkRemote(); }, 120000);
+    // Sofort prüfen wenn Tab/App wieder aktiv wird
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') _checkRemote();
+    });
+  }
+
   function installStorageHook() {
     _origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
@@ -5239,7 +5263,7 @@ var GHSync = (function() {
     }
   }
 
-  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook };
+  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -5335,6 +5359,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
   GHSync.installStorageHook();
   GHSync.init();
+  GHSync.startPolling();
 });
 
 /* ── Navigation ── */
