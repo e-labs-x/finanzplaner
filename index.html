@@ -2061,6 +2061,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
                 <span class="ghs-toggle-lbl" style="color:var(--tx2)">Verbindung trennen</span>
                 <button class="st-btn danger" onclick="ghsDisconnect()">Trennen</button>
               </div>
+              <div id="sync-debug" style="margin-top:8px;border-top:1px solid var(--brd);padding-top:8px;font-size:10px;font-family:var(--mono);color:var(--tx3);line-height:1.8"></div>
             </div>
           </div>
 
@@ -5015,7 +5016,8 @@ var GHSync = (function() {
   var _origSetItem  = null;
   var _startupLock  = true;
   var _pendingPush  = false;
-  var _justPushed   = false; // Verhindert Push-Loop nach setGithubSync/appLog
+  var _justPushed   = false;
+  var _scheduleCount = 0;
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -5177,6 +5179,7 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
+    _scheduleCount++;
     if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
@@ -5208,6 +5211,20 @@ var GHSync = (function() {
   function startPolling() {
     // Alle 3 Minuten auf neuere Remote-Daten prüfen
     setInterval(function() { _checkRemote(); }, 180000);
+    // Live-Debug-Anzeige (nur lesen, kein Store-Zugriff)
+    setInterval(function() {
+      var el = document.getElementById('sync-debug');
+      if (!el) return;
+      var cfg = _cfg();
+      el.innerHTML =
+        'active: '       + _active()       + '&nbsp;&nbsp;' +
+        'autoSync: '     + cfg.autoSync    + '<br>' +
+        'startupLock: '  + _startupLock    + '&nbsp;&nbsp;' +
+        'busy: '         + _busy           + '<br>' +
+        'justPushed: '   + _justPushed     + '&nbsp;&nbsp;' +
+        'pending: '      + _pendingPush    + '<br>' +
+        'scheduleCalls: '+ _scheduleCount;
+    }, 1000);
     // Sofort pushen wenn App in Hintergrund geht (iOS pausiert sonst den debounce-Timer)
     document.addEventListener('visibilitychange', function() {
       if (!document.hidden || !_active() || !_cfg().autoSync || _justPushed || _busy) return;
