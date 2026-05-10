@@ -3172,6 +3172,7 @@ const Store = (() => {
       console.error('[Store] Fehler beim Speichern:', e);
       throw new Error('LocalStorage voll oder gesperrt.');
     }
+    if (window.GHSync) try { GHSync.schedulePush(); } catch(e) {}
   }
 
   function _patchSystemCategories() {
@@ -5217,10 +5218,7 @@ var GHSync = (function() {
 
   function installStorageHook() {
     _origSetItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(key, value) {
-      _origSetItem(key, value);
-      if (key === LS_KEY_STORE) schedulePush();
-    };
+    // schedulePush wird direkt aus FP.Store._save aufgerufen (iOS-sicher)
   }
 
   function disconnect() {
