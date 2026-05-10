@@ -5175,15 +5175,19 @@ var GHSync = (function() {
     return _api('GET', path).then(function(file) {
       if (!file || !file.content) { return push(false); }
       if (isFirstConnect) {
-        // Beim ersten Verbinden: wenn Remote Daten hat, fragen
         var jsonStr = _dec(file.content);
         var remote = JSON.parse(jsonStr);
         var remoteCount = (remote.store && remote.store.transactions) ? remote.store.transactions.length : 0;
         var localCount = FP.Store.get().transactions.length;
-        if (remoteCount > 0 && localCount > 0 && remoteCount !== localCount) {
+        if (remoteCount > 0 && localCount > 0) {
+          // Beide Geräte haben Daten → Nutzer fragen
           var msg = 'GitHub hat ' + remoteCount + ' Transaktionen, lokal sind ' + localCount + '.\nWelche Daten sollen verwendet werden?\n\nOK = GitHub laden\nAbbrechen = Lokale Daten hochladen';
           if (confirm(msg)) { return pull(false); }
+          return push(false);
         }
+        // Neues Gerät (lokal leer) → GitHub-Daten immer laden, niemals überschreiben
+        if (remoteCount > 0) { return pull(false); }
+        // GitHub leer → lokale Daten hochladen
         return push(false);
       } else {
         return pull(false);
