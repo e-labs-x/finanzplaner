@@ -5087,14 +5087,15 @@ var GHSync = (function() {
       var body = { message: 'Sync ' + new Date().toISOString().slice(0,16), content: content };
       if (existing && existing.sha) body.sha = existing.sha;
       return _api('PUT', path, body);
-    }).then(function() {
+    }).then(function(putResult) {
       _busy = false;
       _setBusy(false);
       var now = new Date().toISOString();
+      var newSHA = putResult && putResult.commit ? putResult.commit.sha : null;
       _justPushed = true;
       setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
       _syncingNow = true;
-      FP.Store.Settings.setGithubSync({ lastSync: now });
+      FP.Store.Settings.setGithubSync({ lastSync: now, lastCommitSHA: newSHA });
       FP.Store.appLog('SYNC', '↑ Hochgeladen');
       _syncingNow = false;
       ghsRenderUI();
@@ -5114,7 +5115,7 @@ var GHSync = (function() {
   }
 
   // Pull: Remote-Daten laden und anwenden
-  function pull(silent) {
+  function pull(silent, commitSHA) {
     if (!_active() || _busy) return Promise.resolve();
     _busy = true;
     _setBusy(true);
@@ -5128,15 +5129,16 @@ var GHSync = (function() {
     }).then(function() {
       _busy = false;
       _setBusy(false);
-      // lastSync direkt in localStorage schreiben ohne _state zu überschreiben
+      // SHA + lastSync direkt in localStorage schreiben ohne _state zu überschreiben
       try {
         var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
         if (!s.settings) s.settings = {};
         if (!s.settings.githubSync) s.settings.githubSync = {};
-        s.settings.githubSync.lastSync = new Date().toISOString();
-        s.settings.githubSync.enabled  = true;
-        s.settings.githubSync.owner    = _owner();
-        s.settings.githubSync.autoSync = _cfg().autoSync !== false;
+        s.settings.githubSync.lastSync     = new Date().toISOString();
+        s.settings.githubSync.lastCommitSHA = commitSHA || null;
+        s.settings.githubSync.enabled      = true;
+        s.settings.githubSync.owner        = _owner();
+        s.settings.githubSync.autoSync     = _cfg().autoSync !== false;
         _origSetItem(LS_KEY_STORE, JSON.stringify(s));
       } catch(e) {}
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
@@ -5201,15 +5203,14 @@ var GHSync = (function() {
 
   function _checkRemote() {
     if (!_active() || _busy) return;
-    var localLastSync = _cfg().lastSync;
+    var localSHA = _cfg().lastCommitSHA;
     _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
       .then(function(commits) {
         if (!commits || !commits[0]) return;
-        var remoteDate = new Date(commits[0].commit.committer.date);
-        var localDate  = localLastSync ? new Date(localLastSync) : new Date(0);
-        if (remoteDate > localDate) {
+        var remoteSHA = commits[0].sha;
+        if (remoteSHA !== localSHA) {
           toast('Neuere Daten auf GitHub — wird geladen…');
-          setTimeout(function(){ pull(false); }, 400);
+          setTimeout(function(){ pull(false, remoteSHA); }, 400);
         }
       }).catch(function(){});
   }
@@ -5269,17 +5270,16 @@ var GHSync = (function() {
     // Startup-Lock nach 15 Sekunden aufheben
     setTimeout(function() { _releaseLock(); }, 15000);
     if (_active()) {
-      // Beim Start prüfen ob Remote neuer ist
+      // Beim Start prüfen ob Remote neuer ist (SHA-Vergleich — unabhängig von Uhrzeiten)
       setTimeout(function() {
-        var localLastSync = _cfg().lastSync;
+        var localSHA = _cfg().lastCommitSHA;
         _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
           .then(function(commits) {
             if (!commits || !commits[0]) { _releaseLock(); return; }
-            var remoteDate = new Date(commits[0].commit.committer.date);
-            var localDate  = localLastSync ? new Date(localLastSync) : new Date(0);
-            if (remoteDate > localDate) {
+            var remoteSHA = commits[0].sha;
+            if (remoteSHA !== localSHA) {
               toast('Neuere Daten auf GitHub — wird geladen…');
-              setTimeout(function(){ pull(false); }, 500);
+              setTimeout(function(){ pull(false, remoteSHA); }, 500);
             } else {
               _releaseLock();
               setSyncStatus('synced', 'Synchronisiert');
