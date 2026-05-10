@@ -5106,6 +5106,14 @@ var GHSync = (function() {
     }).catch(function(err) {
       _busy = false;
       _setBusy(false);
+      // 422 = SHA veraltet (anderes Gerät hat zwischenzeitlich gepusht) → einmal neu versuchen
+      if (err.status === 422 && !push._retrying) {
+        push._retrying = true;
+        setSyncStatus('pending', 'Wiederhole…');
+        setTimeout(function() { push._retrying = false; push(silent); }, 1500);
+        return;
+      }
+      push._retrying = false;
       setSyncStatus('error', 'Fehler');
       _syncingNow = true;
       FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
