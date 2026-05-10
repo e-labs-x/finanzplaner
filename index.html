@@ -2017,7 +2017,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
           <!-- Log -->
           <div class="st-card st-card-mehr">
             <div class="st-card-hdr">
-              <span class="st-card-title">Fehlerprotokoll (Log)</span>
+              <span class="st-card-title">Log</span>
               <div style="display:flex;gap:6px">
                 <button class="st-btn" onclick="stCopyLog()">📋 Kopieren</button>
                 <button class="st-btn" onclick="stClearLog()">Leeren</button>
@@ -5090,7 +5090,7 @@ var GHSync = (function() {
       _justPushed = true;
       setTimeout(function() { _justPushed = false; }, 12000);
       FP.Store.Settings.setGithubSync({ lastSync: now });
-      appLog('SYNC', '↑ Hochgeladen');
+      FP.Store.appLog('SYNC', '↑ Hochgeladen');
       ghsRenderUI();
       setSyncStatus('synced', 'Synchronisiert');
       if (!silent) toast('↑ Sync abgeschlossen');
@@ -5099,7 +5099,7 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       setSyncStatus('error', 'Fehler');
-      appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
+      FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] push:', err);
     });
@@ -5944,12 +5944,23 @@ function appLog(level, msg) {
   var el = document.getElementById('st-log-output');
   if(el) _renderLog(el);
 }
+function _fmtLogTs(ts) {
+  try {
+    var d = new Date(ts);
+    var dd  = String(d.getDate()).padStart(2,'0');
+    var mm  = String(d.getMonth()+1).padStart(2,'0');
+    var yy  = d.getFullYear();
+    var hh  = String(d.getHours()).padStart(2,'0');
+    var min = String(d.getMinutes()).padStart(2,'0');
+    return dd+'.'+mm+'.'+yy+' '+hh+':'+min;
+  } catch(e) { return ts; }
+}
 function _renderLog(el) {
   var log = FP.Store.get().log || [];
   if(!log.length){ el.textContent='(noch keine Einträge)'; return; }
   el.innerHTML = log.slice(0,200).map(function(e){
-    var col = e.level==='ERROR'?'var(--red)': e.level==='WARN'?'var(--amber)':e.level==='INFO'?'var(--tx2)':'var(--blue)';
-    return '<div style="margin-bottom:4px"><span style="color:var(--tx3);font-size:11px">'+e.ts+'</span> '
+    var col = e.level==='ERROR'?'var(--red)':e.level==='WARN'?'var(--amber)':e.level==='SYNC'?'var(--green)':e.level==='KATEGORIE'?'var(--purple)':e.level==='INFO'?'var(--tx2)':'var(--blue)';
+    return '<div style="margin-bottom:4px"><span style="color:var(--tx3);font-size:11px">'+_fmtLogTs(e.ts)+'</span> '
       +'<span style="color:'+col+';font-weight:600">'+e.level+'</span> '
       +'<span style="word-break:break-all">'+(e.msg||'').replace(/</g,'&lt;')+'</span></div>';
   }).join('');
