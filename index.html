@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
-<title>Finanzplaner v11.0</title>
+<title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
 <style>
@@ -956,6 +956,28 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .fk-row-btn.del:hover{background:var(--red-lt);color:var(--red)}
 .fk-section-hdr{display:flex;align-items:center;justify-content:space-between}
 .fk-section-title{font-size:14px;font-weight:700;color:var(--tx)}
+.fk-month-nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fk-month-nav-btn{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:5px 14px;font-size:18px;color:var(--tx);cursor:pointer;line-height:1}
+.fk-month-nav-btn:hover{background:var(--surf3,var(--brd))}
+.fk-month-lbl{font-size:15px;font-weight:700;color:var(--tx);text-align:center;flex:1}
+.fk-timeline{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.fk-tl-empty{padding:20px;text-align:center;color:var(--tx3);font-size:13px}
+.fk-tl-row{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer}
+.fk-tl-row:hover{background:var(--surf2)}
+.fk-tl-row+.fk-tl-row{border-top:1px solid var(--brd2,var(--brd))}
+.fk-tl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:2px solid transparent}
+.fk-tl-dot.paid{background:var(--green);border-color:var(--green)}
+.fk-tl-dot.pending{background:transparent;border-color:var(--tx3)}
+.fk-tl-day{font-size:12px;color:var(--tx3);min-width:22px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
+.fk-tl-info{flex:1;min-width:0}
+.fk-tl-name{font-size:14px;font-weight:500;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fk-tl-meta{font-size:11px;color:var(--tx3);margin-top:1px}
+.fk-tl-amt{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fk-tl-status{font-size:11px;font-weight:600;white-space:nowrap;min-width:70px;text-align:right}
+.fk-tl-status.paid{color:var(--green)}
+.fk-tl-status.pending{color:var(--tx3)}
+.fk-tl-footer{padding:10px 14px;background:var(--surf2);font-size:13px;color:var(--tx2);display:flex;justify-content:space-between;border-top:1px solid var(--brd)}
+.fk-only-badge{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-lt,oklch(from var(--purple) l c h / .12));border-radius:4px;padding:1px 5px;margin-left:6px}
 
 /* ════════════════════════════════════════
    RENTENPLANUNG TAB
@@ -1320,7 +1342,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v11.0</div>
+      <div class="sb-ver">v12.0</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -1857,8 +1879,14 @@ canvas#avc{display:block;width:100%;cursor:pointer}
       <div class="pg">
         <div class="fk-wrap">
           <div class="fk-stat-row" id="fk-stats"></div>
-          <div class="fk-section-hdr">
-            <span class="fk-section-title">Wiederkehrende Fixkosten</span>
+          <div class="fk-month-nav">
+            <button class="fk-month-nav-btn" onclick="fkPrevMonth()">‹</button>
+            <span class="fk-month-lbl" id="fk-month-lbl"></span>
+            <button class="fk-month-nav-btn" onclick="fkNextMonth()">›</button>
+          </div>
+          <div class="fk-timeline" id="fk-timeline"></div>
+          <div class="fk-section-hdr" style="margin-top:4px">
+            <span class="fk-section-title">Vorlagen verwalten</span>
             <button class="av-heute" onclick="fkOpenNew()" style="font-size:12px;padding:5px 10px">+ Hinzufügen</button>
           </div>
           <div id="fk-list"></div>
@@ -2231,6 +2259,11 @@ canvas#avc{display:block;width:100%;cursor:pointer}
         <option value="">— Hauptkategorie —</option>
       </select>
     </div>
+    <div class="rp-tgl-row" style="margin:8px 0 4px">
+      <span class="fl" style="margin:0">In Eingabe anzeigen</span>
+      <button class="rp-tgl on" id="mc-show-input" onclick="this.classList.toggle('on')"></button>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);padding:0 0 8px">Deaktivieren für reine Fixkosten-Kategorien (z.B. Versicherungen)</div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-cat')">Abbrechen</button>
       <button class="btn btn-p" id="mc-save-btn" onclick="saveKat()">Erstellen</button>
@@ -2292,7 +2325,8 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     </div>
     <div class="fg"><label class="fl">Kategorie</label><select class="fs" id="mfk-cat"></select></div>
     <div class="fg"><label class="fl">Objekt (optional)</label><select class="fs" id="mfk-obj"><option value="">— kein Objekt —</option></select></div>
-    <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfk-from" type="text" placeholder="z.B. 04.2026" maxlength="7"></div>
+    <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfk-from" type="text" placeholder="z.B. 01.2024" maxlength="7"></div>
+    <div class="fg"><label class="fl">Fällig am (Tag des Monats, optional)</label><input class="fi" id="mfk-day" type="number" min="1" max="31" step="1" placeholder="z.B. 1 für den 1. des Monats" inputmode="numeric"></div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-fk')">Abbrechen</button>
       <button class="btn btn-p" onclick="fkSave()">Speichern</button>
@@ -2473,7 +2507,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 // KONSTANTEN
 // ═══════════════════════════════════════════════════════════════
 
-const FP_VERSION = '11.0.0';
+const FP_VERSION = '12.0.0';
 const STORE_VERSION    = 1;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
@@ -2557,6 +2591,19 @@ function createDefaultStore() {
 
       { id:'cat_sim_gps',       name:'SIM GPS Lamija',   parentId:null,       group:'fixkosten', color:'var(--cat-cyan)', hidden:false, sortOrder:20, source:'system' },
       { id:'cat_sonstiges',     name:'Sonstiges',        parentId:null,       group:'freizeit',  color:'var(--cat-slate)', hidden:false, sortOrder:99, source:'system' },
+
+      // Fixkosten-only Kategorien (showInInput:false → erscheinen nicht in der Eingabe-Leiste)
+      { id:'fk_versicherungen', name:'Versicherungen',     parentId:null,                group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:50,  source:'system', showInInput:false },
+      { id:'fk_kfz_vers',       name:'KFZ-Versicherung',   parentId:'fk_versicherungen', group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:501, source:'system', showInInput:false },
+      { id:'fk_haftpflicht',    name:'Haftpflicht',        parentId:'fk_versicherungen', group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:502, source:'system', showInInput:false },
+      { id:'fk_hausrat',        name:'Hausrat',            parentId:'fk_versicherungen', group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:503, source:'system', showInInput:false },
+      { id:'fk_leben_bu',       name:'Leben / BU',         parentId:'fk_versicherungen', group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:504, source:'system', showInInput:false },
+      { id:'fk_pkv',            name:'Krankenversicherung',parentId:'fk_versicherungen', group:'fixkosten', color:'var(--cat-slate)', hidden:false, sortOrder:505, source:'system', showInInput:false },
+      { id:'fk_kredite',        name:'Kredite & Leasing',  parentId:null,                group:'fixkosten', color:'var(--red)',       hidden:false, sortOrder:60,  source:'system', showInInput:false },
+      { id:'fk_kredit',         name:'Kredit / Rate',      parentId:'fk_kredite',        group:'fixkosten', color:'var(--red)',       hidden:false, sortOrder:601, source:'system', showInInput:false },
+      { id:'fk_leasing',        name:'Leasing',            parentId:'fk_kredite',        group:'fixkosten', color:'var(--red)',       hidden:false, sortOrder:602, source:'system', showInInput:false },
+      { id:'fk_kfz_steuer',     name:'KFZ-Steuer',         parentId:'cat_auto',          group:'fixkosten', color:'var(--cat-cyan)', hidden:false, sortOrder:46,  source:'system', showInInput:false },
+      { id:'fk_kfz_hu',         name:'HU / TÜV',           parentId:'cat_auto',          group:'fixkosten', color:'var(--cat-cyan)', hidden:false, sortOrder:47,  source:'system', showInInput:false },
     ],
 
     // ── Objekte / Projekte ──
@@ -3363,14 +3410,15 @@ const Store = (() => {
 
     add(cat) {
       const full = {
-        id:        generateId('cat'),
-        name:      cat.name,
-        parentId:  cat.parentId  || null,
-        group:     cat.group     || 'freizeit',
-        color:     cat.color     || '#6B7280',
-        hidden:    false,
-        sortOrder: _state.categories.length + 1,
-        source:    'user',
+        id:          generateId('cat'),
+        name:        cat.name,
+        parentId:    cat.parentId    || null,
+        group:       cat.group       || 'freizeit',
+        color:       cat.color       || '#6B7280',
+        hidden:      false,
+        sortOrder:   _state.categories.length + 1,
+        source:      cat.source      || 'user',
+        showInInput: cat.showInInput !== false,
       };
       _state.categories.push(full);
       _save();
@@ -5592,7 +5640,7 @@ function hmDrawSparkline(data) {
 function buildCats() {
   var panel = document.getElementById('cats-panel');
   panel.innerHTML = '';
-  var allCats = FP.Store.Categories.getVisible();
+  var allCats = FP.Store.Categories.getVisible().filter(function(c) { return c.showInInput !== false; });
   var mainCats = allCats.filter(function(c) { return !c.parentId; });
 
   SECS.forEach(function(sec) {
@@ -5928,26 +5976,26 @@ function saveKat() {
   var name = document.getElementById('mc-name').value.trim();
   if (!name) { toast('Bitte Namen eingeben'); return; }
   var editId = document.getElementById('mc-edit-id').value;
+  var showInInput = document.getElementById('mc-show-input') ? document.getElementById('mc-show-input').classList.contains('on') : true;
   if (editId) {
-    // Edit-Modus: Name, Gruppe und ggf. Parent aktualisieren
     var grp = document.getElementById('mc-grp').value;
     var par = document.getElementById('mc-par').value || null;
     var parCat = par ? FP.Store.Categories.getAll().find(function(c){return c.id===par;}) : null;
     FP.Store.Categories.update(editId, {
       name: name,
       group: parCat ? parCat.group : grp,
-      parentId: par
+      parentId: par,
+      showInInput: showInInput,
     });
     closeM('m-cat');
     buildCats();
     stRenderCats();
     toast('✓ "' + name + '" gespeichert');
   } else {
-    // Neu-Modus
     var grp  = document.getElementById('mc-grp').value;
     var par  = document.getElementById('mc-par').value || null;
     var parCat = par ? FP.Store.Categories.getAll().find(function(c) { return c.id === par; }) : null;
-    FP.Store.Categories.add({ name: name, group: parCat ? parCat.group : grp, parentId: par });
+    FP.Store.Categories.add({ name: name, group: parCat ? parCat.group : grp, parentId: par, showInInput: showInInput });
     closeM('m-cat');
     buildCats();
     toast('✓ "' + name + '" angelegt');
@@ -7088,7 +7136,8 @@ function stRenderCats(){
       '<div class="st-row-info">'+
         '<div class="st-row-name" style="opacity:'+(hidden?0.4:1)+'">'+icon+'<span>'+c.name+'</span></div>'+
         '<div class="st-row-sub">'+(c.group==='fixkosten'?'Notwendig':'Freizeit & Lifestyle')+
-          (subs.length?' · '+subs.length+' Unterkategor'+(subs.length===1?'ie':'ien'):'')+(hidden?' · ausgeblendet':'')+'</div>'+
+          (subs.length?' · '+subs.length+' Unterkategor'+(subs.length===1?'ie':'ien'):'')+(hidden?' · ausgeblendet':'')+
+          (c.showInInput===false?'<span class="fk-only-badge">Nur Fixkosten</span>':'')+'</div>'+
       '</div>'+
       '<div class="st-row-actions">'+
         '<button class="st-btn" onclick="stEditCat(\''+c.id+'\')">Bearbeiten</button>'+
@@ -7128,6 +7177,8 @@ function stNewKat(){
   document.getElementById('mc-save-btn').textContent='Erstellen';
   document.getElementById('mc-name').value='';
   document.getElementById('mc-grp').value='freizeit';
+  var tgl=document.getElementById('mc-show-input');
+  if(tgl) tgl.classList.add('on');
   var par=document.getElementById('mc-par');
   if(par){
     par.innerHTML='<option value="">— Hauptkategorie —</option>'+
@@ -7148,6 +7199,8 @@ function stEditCat(id){
   document.getElementById('mc-save-btn').textContent='Speichern';
   document.getElementById('mc-name').value=cat.name;
   document.getElementById('mc-grp').value=cat.group;
+  var tgl=document.getElementById('mc-show-input');
+  if(tgl){ if(cat.showInInput===false) tgl.classList.remove('on'); else tgl.classList.add('on'); }
   // Parent-Selektor: alle Hauptkategorien außer sich selbst
   var par=document.getElementById('mc-par');
   par.innerHTML='<option value="">— Keine (Hauptkategorie) —</option>'+
@@ -8031,10 +8084,95 @@ function esppDelZyklus(id){
 var FK_TYPE_LABEL={fixed:'Fix',variable:'Variabel',savings:'Rücklage'};
 var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--purple)'};
 
+var fkViewMonth = (function(){
+  var d = new Date();
+  return { m: d.getMonth()+1, y: d.getFullYear() };
+})();
+
+function fkPrevMonth(){
+  fkViewMonth.m--;
+  if(fkViewMonth.m<1){fkViewMonth.m=12;fkViewMonth.y--;}
+  fkRenderTimeline();
+}
+function fkNextMonth(){
+  fkViewMonth.m++;
+  if(fkViewMonth.m>12){fkViewMonth.m=1;fkViewMonth.y++;}
+  fkRenderTimeline();
+}
+
+function fkMonthKey(){ return fkViewMonth.y+'-'+String(fkViewMonth.m).padStart(2,'0'); }
+
+function fkRenderTimeline(){
+  var lbl=document.getElementById('fk-month-lbl');
+  var el=document.getElementById('fk-timeline');
+  if(!lbl||!el)return;
+  var MONTHS=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  lbl.textContent=MONTHS[fkViewMonth.m-1]+' '+fkViewMonth.y;
+
+  var items=FP.Store.Recurring.getActive();
+  // Filter: nur Vorlagen die in diesem Monat gültig waren (validFrom <= viewMonth)
+  var monthKey=fkMonthKey();
+  items=items.filter(function(fc){
+    if(!fc.validFrom)return true;
+    var parts=fc.validFrom.split('.');
+    if(parts.length!==2)return true;
+    var fFrom=parts[1]+'-'+parts[0].padStart(2,'0');
+    return fFrom<=monthKey;
+  });
+
+  if(!items.length){
+    el.innerHTML='<div class="fk-tl-empty">Keine Vorlagen für diesen Monat.</div>';
+    return;
+  }
+
+  // Transaktionen dieses Monats mit source=recurring
+  var txs=FP.Store.Transactions.getAll().filter(function(tx){
+    return tx.source==='recurring'&&tx.date&&tx.date.startsWith(monthKey);
+  });
+  var paidIds={};
+  txs.forEach(function(tx){if(tx.recurringId)paidIds[tx.recurringId]=true;});
+
+  var cats={};FP.Store.Categories.getAll().forEach(function(c){cats[c.id]=c;});
+
+  // Sortierung: dayOfMonth (null = 99), dann Name
+  items.sort(function(a,b){
+    var da=a.dayOfMonth||99, db=b.dayOfMonth||99;
+    if(da!==db)return da-db;
+    return a.name.localeCompare(b.name);
+  });
+
+  var pendingTotal=0;
+  var rows=items.map(function(fc){
+    var paid=!!paidIds[fc.id];
+    if(!paid)pendingTotal+=fc.amount;
+    var cat=cats[fc.categoryId];
+    var dayStr=fc.dayOfMonth?fc.dayOfMonth+'.':'–';
+    var catName=cat?cat.name:'';
+    var typeColor=fc.type==='savings'?'var(--purple)':'var(--blue)';
+    return '<div class="fk-tl-row" onclick="fkOpenEdit(\''+fc.id+'\')" title="Bearbeiten">'+
+      '<div class="fk-tl-dot '+(paid?'paid':'pending')+'"></div>'+
+      '<div class="fk-tl-day">'+dayStr+'</div>'+
+      '<div class="fk-tl-info">'+
+        '<div class="fk-tl-name">'+fc.name+'</div>'+
+        (catName?'<div class="fk-tl-meta">'+catName+'</div>':'')+
+      '</div>'+
+      '<div class="fk-tl-amt" style="color:'+typeColor+'">'+eur(fc.amount)+'</div>'+
+      '<div class="fk-tl-status '+(paid?'paid':'pending')+'">'+(paid?'✓ bezahlt':'ausstehend')+'</div>'+
+    '</div>';
+  }).join('');
+
+  var footer=pendingTotal>0
+    ?'<div class="fk-tl-footer"><span>Noch ausstehend</span><span style="font-weight:700;color:var(--blue)">'+eur(FP.r2(pendingTotal))+'</span></div>'
+    :'<div class="fk-tl-footer" style="color:var(--green)"><span>Alle Positionen bezahlt ✓</span><span></span></div>';
+
+  el.innerHTML=rows+footer;
+}
+
 function fkInit(){ fkRender(); }
 
 function fkRender(){
   fkRenderStats();
+  fkRenderTimeline();
   fkRenderList();
 }
 
@@ -8121,6 +8259,7 @@ function fkOpenNew(){
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
   document.getElementById('mfk-from').value=FP.currentMonthStr();
+  document.getElementById('mfk-day').value='';
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -8135,8 +8274,8 @@ function fkOpenEdit(id){
   document.getElementById('mfk-name').value=fc.name;
   document.getElementById('mfk-amount').value=fc.amount;
   document.getElementById('mfk-type').value=fc.type;
-  // Bei Bearbeitung: aktuellen Monat als Standard, nicht das Original-Startdatum
-  document.getElementById('mfk-from').value=FP.currentMonthStr();
+  document.getElementById('mfk-from').value=fc.validFrom||FP.currentMonthStr();
+  document.getElementById('mfk-day').value=fc.dayOfMonth||'';
   fkFillCatSelect(fc.categoryId);
   fkFillObjSelect(fc.objectId);
   openM('m-fk');
@@ -8178,6 +8317,7 @@ function fkSave(){
   if(!name||!amount){toast('Name und Betrag eingeben');return;}
   var newObjectId=document.getElementById('mfk-obj').value||null;
   var newCategoryId=document.getElementById('mfk-cat').value;
+  var dayVal=parseInt(document.getElementById('mfk-day').value)||null;
   var data={
     name:name,
     amount:amount,
@@ -8185,6 +8325,7 @@ function fkSave(){
     categoryId:newCategoryId,
     objectId:newObjectId,
     validFrom:document.getElementById('mfk-from').value.trim()||FP.currentMonthStr(),
+    dayOfMonth:dayVal,
   };
   if(id){
     FP.Store.Recurring.update(id,data);
