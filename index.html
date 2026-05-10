@@ -5181,7 +5181,7 @@ var GHSync = (function() {
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
-    _pushTimer = setTimeout(function() { push(true); }, 6000);
+    _pushTimer = setTimeout(function() { push(true); }, 3000);
   }
 
   function _releaseLock() {
@@ -5207,6 +5207,14 @@ var GHSync = (function() {
   function startPolling() {
     // Alle 3 Minuten auf neuere Remote-Daten prüfen
     setInterval(function() { _checkRemote(); }, 180000);
+    // Sofort pushen wenn App in Hintergrund geht (iOS pausiert sonst den debounce-Timer)
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden && _pushTimer && _active() && _cfg().autoSync && !_justPushed) {
+        clearTimeout(_pushTimer);
+        _pushTimer = null;
+        push(true);
+      }
+    });
   }
 
   function installStorageHook() {
