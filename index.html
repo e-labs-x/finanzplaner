@@ -5017,6 +5017,7 @@ var GHSync = (function() {
   var _startupLock  = true;
   var _pendingPush  = false;
   var _justPushed   = false;
+  var _syncingNow   = false;
   var _scheduleCount = 0;
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
@@ -5092,8 +5093,10 @@ var GHSync = (function() {
       var now = new Date().toISOString();
       _justPushed = true;
       setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
+      _syncingNow = true;
       FP.Store.Settings.setGithubSync({ lastSync: now });
       FP.Store.appLog('SYNC', '↑ Hochgeladen');
+      _syncingNow = false;
       ghsRenderUI();
       setSyncStatus('synced', 'Synchronisiert');
       if (!silent) toast('↑ Sync abgeschlossen');
@@ -5102,7 +5105,9 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       setSyncStatus('error', 'Fehler');
+      _syncingNow = true;
       FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
+      _syncingNow = false;
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] push:', err);
     });
@@ -5180,6 +5185,7 @@ var GHSync = (function() {
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
     _scheduleCount++;
+    if (_syncingNow) return;
     if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
