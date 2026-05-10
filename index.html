@@ -5946,7 +5946,7 @@ function appLog(level, msg) {
 }
 function _fmtLogTs(ts) {
   try {
-    var d = new Date(ts);
+    var d = new Date(ts.replace(' ', 'T') + 'Z');
     var dd  = String(d.getDate()).padStart(2,'0');
     var mm  = String(d.getMonth()+1).padStart(2,'0');
     var yy  = d.getFullYear();
