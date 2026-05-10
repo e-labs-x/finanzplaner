@@ -2256,7 +2256,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 <div class="modal-bg" id="m-obj" onclick="if(event.target===this)closeM('m-obj')">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-ttl">Neues Objekt</div>
+    <div class="modal-ttl" id="mo-ttl">Neues Objekt</div>
     <div class="fg"><label class="fl">Name</label><input class="fi" id="mo-name" type="text" placeholder="z.B. BMW X3" autocomplete="off"></div>
     <div class="fg"><label class="fl">Typ</label>
       <select class="fs" id="mo-type">
@@ -2271,7 +2271,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
     <div class="fg"><label class="fl">Beschreibung (optional)</label><input class="fi" id="mo-desc" type="text" placeholder="z.B. Kennzeichen, Modell…"></div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-obj')">Abbrechen</button>
-      <button class="btn btn-p" onclick="stSaveObj()">Erstellen</button>
+      <button class="btn btn-p" id="mo-save-btn" onclick="stSaveObj()">Erstellen</button>
     </div>
   </div>
 </div>
@@ -6773,9 +6773,12 @@ var OB_TYPE_LABEL={fahrzeug:'Fahrzeug',reise:'Reise',projekt:'Projekt',person:'P
 function obInit(){obS.selectedId=null;obRender();}
 
 function obNew(){
+  _stEditObjId = null;
   document.getElementById('mo-name').value='';
   document.getElementById('mo-type').value='fahrzeug';
   document.getElementById('mo-desc').value='';
+  document.getElementById('mo-ttl').textContent='Neues Objekt';
+  document.getElementById('mo-save-btn').textContent='Erstellen';
   openM('m-obj');
   setTimeout(function(){document.getElementById('mo-name').focus();},150);
 }
@@ -7173,6 +7176,7 @@ function stRenderObjs(){
         '<div class="st-row-sub">'+(typeLabel[o.type]||o.type)+(o.description?' · '+o.description:'')+(arch?' · archiviert':'')+'</div>'+
       '</div>'+
       '<div class="st-row-actions">'+
+        '<button class="st-btn" onclick="stEditObj(\''+o.id+'\')" style="margin-right:6px">Bearbeiten</button>'+
         (arch?
           '<button class="st-btn" onclick="stRestoreObj(\''+o.id+'\')">Wiederherstellen</button>':
           '<button class="st-btn danger" onclick="stArchiveObj(\''+o.id+'\')">Archivieren</button>')+
@@ -7208,10 +7212,28 @@ function stDeleteObj(id){
   });
 }
 
+var _stEditObjId = null;
+
 function stNewObj(){
+  _stEditObjId = null;
   document.getElementById('mo-name').value='';
   document.getElementById('mo-type').value='fahrzeug';
   document.getElementById('mo-desc').value='';
+  document.getElementById('mo-ttl').textContent='Neues Objekt';
+  document.getElementById('mo-save-btn').textContent='Erstellen';
+  openM('m-obj');
+  setTimeout(function(){document.getElementById('mo-name').focus();},150);
+}
+
+function stEditObj(id){
+  var obj=FP.Store.Objects.getById(id);
+  if(!obj)return;
+  _stEditObjId = id;
+  document.getElementById('mo-name').value=obj.name||'';
+  document.getElementById('mo-type').value=obj.type||'fahrzeug';
+  document.getElementById('mo-desc').value=obj.description||'';
+  document.getElementById('mo-ttl').textContent='Objekt bearbeiten';
+  document.getElementById('mo-save-btn').textContent='Speichern';
   openM('m-obj');
   setTimeout(function(){document.getElementById('mo-name').focus();},150);
 }
@@ -7220,16 +7242,22 @@ function stSaveObj(){
   var name=document.getElementById('mo-name').value.trim();
   if(!name){toast('Name eingeben');return;}
   var type=document.getElementById('mo-type').value;
-  FP.Store.Objects.add({
-    name:name,type:type,
-    description:document.getElementById('mo-desc').value.trim(),
-    color:'var(--cat-slate)',
-  });
-  closeM('m-obj');
-  stRenderObjs();
-  obRenderGrid();
-  appLog('OBJEKT', 'Neu: '+name+' ('+type+')');
-  toast('Objekt erstellt');
+  var desc=document.getElementById('mo-desc').value.trim();
+  if(_stEditObjId){
+    FP.Store.Objects.update(_stEditObjId,{name:name,type:type,description:desc});
+    closeM('m-obj');
+    stRenderObjs();
+    obRenderGrid();
+    appLog('OBJEKT', 'Bearbeitet: '+name+' ('+type+')');
+    toast('Objekt gespeichert');
+  } else {
+    FP.Store.Objects.add({name:name,type:type,description:desc,color:'var(--cat-slate)'});
+    closeM('m-obj');
+    stRenderObjs();
+    obRenderGrid();
+    appLog('OBJEKT', 'Neu: '+name+' ('+type+')');
+    toast('Objekt erstellt');
+  }
 }
 
 /* ── Währungen (Settings) ── */
