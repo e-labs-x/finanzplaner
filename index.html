@@ -3373,12 +3373,12 @@ const Store = (() => {
 
     hide(id) {
       const cat = _state.categories.find(c => c.id === id);
-      if (cat) { cat.hidden = true; _save(); }
+      if (cat) { cat.hidden = true; _save(); appLog('KATEGORIE', 'Ausgeblendet: ' + cat.name); }
     },
 
     show(id) {
       const cat = _state.categories.find(c => c.id === id);
-      if (cat) { cat.hidden = false; _save(); }
+      if (cat) { cat.hidden = false; _save(); appLog('KATEGORIE', 'Eingeblendet: ' + cat.name); }
     },
 
     update(id, changes) {
@@ -3386,6 +3386,7 @@ const Store = (() => {
       if (!cat) return null;
       Object.assign(cat, changes);
       _save();
+      appLog('KATEGORIE', 'Geändert: ' + cat.name);
       return cat;
     },
 
@@ -5008,10 +5009,11 @@ var GHSync = (function() {
   var REPO         = 'finanzplaner-data';
   var SYNC_FILE    = 'sync.fpbackup';
   var LS_KEY_STORE = 'finanzplaner_v3';
-  var _pushTimer   = null;
-  var _busy        = false;
-  var _origSetItem = null;
-  var _startupLock = true; // Kein Auto-Push in den ersten 15 Sekunden
+  var _pushTimer    = null;
+  var _busy         = false;
+  var _origSetItem  = null;
+  var _startupLock  = true;
+  var _pendingPush  = false; // Änderung während Startup-Lock aufgetreten
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -5087,12 +5089,14 @@ var GHSync = (function() {
       FP.Store.Settings.setGithubSync({ lastSync: now });
       ghsRenderUI();
       setSyncStatus('synced', 'Synchronisiert');
+      appLog('SYNC', '↑ Upload abgeschlossen');
       if (!silent) toast('↑ Sync abgeschlossen');
       _maybeDailyBackup(backup, content);
     }).catch(function(err) {
       _busy = false;
       _setBusy(false);
       setSyncStatus('error', 'Fehler');
+      appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] push:', err);
     });
@@ -5124,6 +5128,7 @@ var GHSync = (function() {
         s.settings.githubSync.autoSync = _cfg().autoSync !== false;
         _origSetItem(LS_KEY_STORE, JSON.stringify(s));
       } catch(e) {}
+      appLog('SYNC', '↓ Download abgeschlossen — App wird neu gestartet');
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
     }).catch(function(err) {
       _busy = false;
@@ -5169,10 +5174,16 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync || _startupLock) return;
+    if (!_active() || !_cfg().autoSync) return;
+    if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
     _pushTimer = setTimeout(function() { push(true); }, 6000);
+  }
+
+  function _releaseLock() {
+    _startupLock = false;
+    if (_pendingPush) { _pendingPush = false; schedulePush(); }
   }
 
   function installStorageHook() {
@@ -5206,24 +5217,24 @@ var GHSync = (function() {
     if (_active()) setSyncStatus('pending', 'Prüfe…');
     else setSyncStatus('off', '');
     // Startup-Lock nach 15 Sekunden aufheben
-    setTimeout(function() { _startupLock = false; }, 15000);
+    setTimeout(function() { _releaseLock(); }, 15000);
     if (_active()) {
       // Beim Start prüfen ob Remote neuer ist
       setTimeout(function() {
         var localLastSync = _cfg().lastSync;
         _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
           .then(function(commits) {
-            if (!commits || !commits[0]) { _startupLock = false; return; }
+            if (!commits || !commits[0]) { _releaseLock(); return; }
             var remoteDate = new Date(commits[0].commit.committer.date);
             var localDate  = localLastSync ? new Date(localLastSync) : new Date(0);
             if (remoteDate > localDate) {
               toast('Neuere Daten auf GitHub — wird geladen…');
               setTimeout(function(){ pull(false); }, 500);
             } else {
-              _startupLock = false;
+              _releaseLock();
               setSyncStatus('synced', 'Synchronisiert');
             }
-          }).catch(function(){ _startupLock = false; });
+          }).catch(function(){ _releaseLock(); });
       }, 2000);
     }
   }
