@@ -5013,7 +5013,8 @@ var GHSync = (function() {
   var _busy         = false;
   var _origSetItem  = null;
   var _startupLock  = true;
-  var _pendingPush  = false; // Änderung während Startup-Lock aufgetreten
+  var _pendingPush  = false;
+  var _justPushed   = false; // Verhindert Push-Loop nach setGithubSync/appLog
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -5086,10 +5087,12 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       var now = new Date().toISOString();
+      _justPushed = true;
+      setTimeout(function() { _justPushed = false; }, 12000);
       FP.Store.Settings.setGithubSync({ lastSync: now });
+      appLog('SYNC', '↑ Hochgeladen');
       ghsRenderUI();
       setSyncStatus('synced', 'Synchronisiert');
-      appLog('SYNC', '↑ Upload abgeschlossen');
       if (!silent) toast('↑ Sync abgeschlossen');
       _maybeDailyBackup(backup, content);
     }).catch(function(err) {
@@ -5128,7 +5131,6 @@ var GHSync = (function() {
         s.settings.githubSync.autoSync = _cfg().autoSync !== false;
         _origSetItem(LS_KEY_STORE, JSON.stringify(s));
       } catch(e) {}
-      appLog('SYNC', '↓ Download abgeschlossen — App wird neu gestartet');
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
     }).catch(function(err) {
       _busy = false;
@@ -5174,7 +5176,7 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync) return;
+    if (!_active() || !_cfg().autoSync || _justPushed) return;
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
@@ -5202,12 +5204,8 @@ var GHSync = (function() {
   }
 
   function startPolling() {
-    // Alle 2 Minuten prüfen
-    setInterval(function() { _checkRemote(); }, 120000);
-    // Sofort prüfen wenn Tab/App wieder aktiv wird
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') _checkRemote();
-    });
+    // Alle 3 Minuten auf neuere Remote-Daten prüfen
+    setInterval(function() { _checkRemote(); }, 180000);
   }
 
   function installStorageHook() {
@@ -7063,6 +7061,7 @@ function stToggleCat(id,hidden){
   if(hidden)FP.Store.Categories.show(id);
   else      FP.Store.Categories.hide(id);
   stRenderCats();
+  buildCats();
   toast(hidden?'Eingeblendet':'Ausgeblendet');
 }
 
