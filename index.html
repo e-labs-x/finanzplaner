@@ -3416,6 +3416,14 @@ const Store = (() => {
       return cat;
     },
 
+    delete(id) {
+      const cat = _state.categories.find(c => c.id === id);
+      if (!cat) return;
+      _state.categories = _state.categories.filter(c => c.id !== id && c.parentId !== id);
+      _save();
+      appLog('KATEGORIE', 'Gelöscht: ' + cat.name);
+    },
+
     /** Findet oder erstellt Kategorie anhand des Namens (für Import) */
     findOrCreate(name, parentName) {
       if (!name) return null;
@@ -7114,6 +7122,7 @@ function stRenderCats(){
       '<div class="st-row-actions">'+
         '<button class="st-btn" onclick="stEditCat(\''+c.id+'\')">Bearbeiten</button>'+
         '<button class="st-btn" onclick="stToggleCat(\''+c.id+'\','+hidden+')">'+(hidden?'Einblenden':'Ausblenden')+'</button>'+
+        (c.source==='user'?'<button class="st-btn danger" onclick="stDeleteCat(\''+c.id+'\')">Löschen</button>':'')+
       '</div>'+
     '</div>';
     // Unterkategorien eingerückt darunter
@@ -7128,6 +7137,7 @@ function stRenderCats(){
         '<div class="st-row-actions">'+
           '<button class="st-btn" onclick="stEditCat(\''+s.id+'\')">Bearbeiten</button>'+
           '<button class="st-btn" onclick="stToggleCat(\''+s.id+'\','+shidden+')">'+(shidden?'Einblenden':'Ausblenden')+'</button>'+
+          (s.source==='user'?'<button class="st-btn danger" onclick="stDeleteCat(\''+s.id+'\')">Löschen</button>':'')+
         '</div>'+
       '</div>';
     });
@@ -7141,6 +7151,22 @@ function stToggleCat(id,hidden){
   stRenderCats();
   buildCats();
   toast(hidden?'Eingeblendet':'Ausgeblendet');
+}
+
+function stDeleteCat(id){
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===id;});
+  if(!cat)return;
+  var txCount=FP.Store.Transactions.getAll().filter(function(t){return t.categoryId===id;}).length;
+  var recCount=FP.Store.Recurring.getAll().filter(function(r){return r.categoryId===id;}).length;
+  var inUse=txCount+recCount;
+  var msg=inUse>0
+    ?'"'+cat.name+'" löschen? Die Kategorie wird noch in '+inUse+' Einträgen verwendet (Transaktionen/Fixkosten bleiben erhalten, Kategorie wird entfernt).'
+    :'"'+cat.name+'" endgültig löschen?';
+  if(!confirm(msg))return;
+  FP.Store.Categories.delete(id);
+  stRenderCats();
+  buildCats();
+  toast('"'+cat.name+'" gelöscht');
 }
 
 function stNewKat(){
