@@ -5176,13 +5176,12 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active()) { FP.Store.appLog('SYNC', '⚠ kein Push: enabled='+_cfg().enabled+' token='+!!_token()+' owner='+!!_owner()); return; }
-    if (!_cfg().autoSync) { FP.Store.appLog('SYNC', '⚠ kein Push: autoSync=false'); return; }
-    if (_justPushed) { _pendingPush = true; FP.Store.appLog('SYNC', '⚠ kein Push: justPushed, pending=true'); return; }
-    if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); FP.Store.appLog('SYNC', '⚠ kein Push: startupLock, pending=true'); return; }
+    if (!_active() || !_cfg().autoSync) return;
+    if (_justPushed) { _pendingPush = true; return; }
+    if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
-    _pushTimer = setTimeout(function() { push(true); }, 3000);
+    _pushTimer = setTimeout(function() { _pushTimer = null; push(true); }, 500);
   }
 
   function _releaseLock() {
@@ -5210,11 +5209,9 @@ var GHSync = (function() {
     setInterval(function() { _checkRemote(); }, 180000);
     // Sofort pushen wenn App in Hintergrund geht (iOS pausiert sonst den debounce-Timer)
     document.addEventListener('visibilitychange', function() {
-      if (document.hidden && _pushTimer && _active() && _cfg().autoSync && !_justPushed) {
-        clearTimeout(_pushTimer);
-        _pushTimer = null;
-        push(true);
-      }
+      if (!document.hidden || !_active() || !_cfg().autoSync || _justPushed || _busy) return;
+      if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; push(true); }
+      else if (_pendingPush && !_startupLock) { _pendingPush = false; push(true); }
     });
   }
 
