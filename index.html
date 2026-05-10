@@ -2048,6 +2048,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
                 <span style="display:flex;gap:6px">
                   <button class="st-btn primary" id="st-gh-push-btn" onclick="ghsPush()" title="Lokale Daten hochladen">↑ Upload</button>
                   <button class="st-btn primary" id="st-gh-pull-btn" onclick="ghsPull()" title="Daten von GitHub laden">↓ Download</button>
+                  <button class="st-btn" onclick="ghsCheck()" title="Jetzt auf neue Daten prüfen">⟳ Prüfen</button>
                 </span>
               </div>
               <div class="ghs-toggle-row">
@@ -5120,7 +5121,16 @@ var GHSync = (function() {
     _busy = true;
     _setBusy(true);
     var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-    return _api('GET', path).then(function(file) {
+    // SHA holen falls nicht übergeben (z.B. manueller Pull via Button)
+    var shaP = commitSHA
+      ? Promise.resolve(commitSHA)
+      : _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
+          .then(function(c) { return c && c[0] ? c[0].sha : null; }).catch(function(){ return null; });
+    var _sha = null;
+    return shaP.then(function(sha) {
+      _sha = sha;
+      return _api('GET', path);
+    }).then(function(file) {
       if (!file || !file.content) throw new Error('Keine Sync-Datei gefunden');
       var jsonStr = _dec(file.content);
       var blob = new Blob([jsonStr], { type: 'application/json' });
@@ -5134,11 +5144,11 @@ var GHSync = (function() {
         var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
         if (!s.settings) s.settings = {};
         if (!s.settings.githubSync) s.settings.githubSync = {};
-        s.settings.githubSync.lastSync     = new Date().toISOString();
-        s.settings.githubSync.lastCommitSHA = commitSHA || null;
-        s.settings.githubSync.enabled      = true;
-        s.settings.githubSync.owner        = _owner();
-        s.settings.githubSync.autoSync     = _cfg().autoSync !== false;
+        s.settings.githubSync.lastSync      = new Date().toISOString();
+        s.settings.githubSync.lastCommitSHA = _sha;
+        s.settings.githubSync.enabled       = true;
+        s.settings.githubSync.owner         = _owner();
+        s.settings.githubSync.autoSync      = _cfg().autoSync !== false;
         _origSetItem(LS_KEY_STORE, JSON.stringify(s));
       } catch(e) {}
       if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
@@ -5289,7 +5299,7 @@ var GHSync = (function() {
     }
   }
 
-  return { connect: connect, push: push, pull: pull, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -5358,6 +5368,11 @@ function ghsPush() {
 function ghsPull() {
   toast('Lade herunter…');
   GHSync.pull(false);
+}
+
+function ghsCheck() {
+  toast('Prüfe auf neue Daten…');
+  GHSync.checkRemote();
 }
 
 function ghsDisconnect() {
