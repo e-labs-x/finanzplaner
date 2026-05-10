@@ -5048,7 +5048,7 @@ var GHSync = (function() {
       return r.json();
     }).then(function(user) {
       localStorage.setItem(TOKEN_KEY, token);
-      FP.Store.Settings.setGithubSync({ enabled: true, owner: user.login, lastSync: null });
+      FP.Store.Settings.setGithubSync({ enabled: true, owner: user.login, lastSync: null, autoSync: true });
       ghsRenderUI();
       return _ensureRepo(user.login);
     }).then(function() {
@@ -5176,7 +5176,7 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync) return;
+    if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
