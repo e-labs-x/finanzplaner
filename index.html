@@ -3230,7 +3230,7 @@ const Store = (() => {
   function appLog(level, msg) {
     if (!_state) return;
     if (!Array.isArray(_state.log)) _state.log = [];
-    var ts = new Date().toISOString().replace('T',' ').slice(0,19);
+    var _n=new Date(); var ts=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0')+' '+String(_n.getHours()).padStart(2,'0')+':'+String(_n.getMinutes()).padStart(2,'0')+':'+String(_n.getSeconds()).padStart(2,'0');
     _state.log.unshift({ ts, level, msg: msg || '' });
     if (_state.log.length > 500) _state.log.length = 500;
     _save();
@@ -5088,7 +5088,7 @@ var GHSync = (function() {
       _setBusy(false);
       var now = new Date().toISOString();
       _justPushed = true;
-      setTimeout(function() { _justPushed = false; }, 12000);
+      setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
       FP.Store.Settings.setGithubSync({ lastSync: now });
       FP.Store.appLog('SYNC', '↑ Hochgeladen');
       ghsRenderUI();
@@ -5176,7 +5176,8 @@ var GHSync = (function() {
 
   // Auto-Push nach Änderungen (debounced, 8 Sekunden)
   function schedulePush() {
-    if (!_active() || !_cfg().autoSync || _justPushed) return;
+    if (!_active() || !_cfg().autoSync) return;
+    if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
     clearTimeout(_pushTimer);
     setSyncStatus('pending', 'Ausstehend…');
@@ -5946,7 +5947,7 @@ function appLog(level, msg) {
 }
 function _fmtLogTs(ts) {
   try {
-    var d = new Date(ts.replace(' ', 'T') + 'Z');
+    var d = new Date(ts.replace(' ', 'T'));
     var dd  = String(d.getDate()).padStart(2,'0');
     var mm  = String(d.getMonth()+1).padStart(2,'0');
     var yy  = d.getFullYear();
