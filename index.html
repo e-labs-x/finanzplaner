@@ -7122,7 +7122,7 @@ function stRenderCats(){
       '<div class="st-row-actions">'+
         '<button class="st-btn" onclick="stEditCat(\''+c.id+'\')">Bearbeiten</button>'+
         '<button class="st-btn" onclick="stToggleCat(\''+c.id+'\','+hidden+')">'+(hidden?'Einblenden':'Ausblenden')+'</button>'+
-        (c.source==='user'?'<button class="st-btn danger" onclick="stDeleteCat(\''+c.id+'\')">Löschen</button>':'')+
+        '<button class="st-btn danger" onclick="stDeleteCat(\''+c.id+'\')">Löschen</button>'+
       '</div>'+
     '</div>';
     // Unterkategorien eingerückt darunter
@@ -7137,7 +7137,7 @@ function stRenderCats(){
         '<div class="st-row-actions">'+
           '<button class="st-btn" onclick="stEditCat(\''+s.id+'\')">Bearbeiten</button>'+
           '<button class="st-btn" onclick="stToggleCat(\''+s.id+'\','+shidden+')">'+(shidden?'Einblenden':'Ausblenden')+'</button>'+
-          (s.source==='user'?'<button class="st-btn danger" onclick="stDeleteCat(\''+s.id+'\')">Löschen</button>':'')+
+          '<button class="st-btn danger" onclick="stDeleteCat(\''+s.id+'\')">Löschen</button>'+
         '</div>'+
       '</div>';
     });
@@ -7156,25 +7156,30 @@ function stToggleCat(id,hidden){
 function stDeleteCat(id){
   var cat=FP.Store.Categories.getAll().find(function(c){return c.id===id;});
   if(!cat)return;
+  var isSystem=cat.source==='system';
   var txs=FP.Store.Transactions.getAll().filter(function(t){return t.categoryId===id;});
   var recs=FP.Store.Recurring.getAll().filter(function(r){return r.categoryId===id;});
-  var msg=txs.length+recs.length>0
-    ?'"'+cat.name+'" löschen? Bei '+txs.length+' Transaktionen wird die Kategorie als Notiz gesichert.'+(recs.length?' '+recs.length+' Fixkosten-Vorlagen werden auf "Sonstiges" umgebucht.':'')
-    :'"'+cat.name+'" endgültig löschen?';
+  var inUse=txs.length+recs.length;
+  var action=isSystem?'ausblenden':'löschen';
+  var msg=inUse>0
+    ?'"'+cat.name+'" '+action+'? Bei '+txs.length+' Transaktionen wird die Kategorie als Notiz gesichert.'+(recs.length?' '+recs.length+' Fixkosten-Vorlagen auf "Sonstiges".':'')
+    :'"'+cat.name+'" '+action+'?';
   if(!confirm(msg))return;
-  // Transaktionen: Kategorienamen als Notiz sichern, dann auf Sonstiges
   txs.forEach(function(t){
     var n=t.note?t.note.trim():'';
-    FP.Store.Transactions.update(t.id,{categoryId:'cat_sonstiges', note:n?n+' \xb7 ['+cat.name+']':'['+cat.name+']'});
+    FP.Store.Transactions.update(t.id,{categoryId:'cat_sonstiges',note:n?n+' \xb7 ['+cat.name+']':'['+cat.name+']'});
   });
-  // Fixkosten-Vorlagen: auf Sonstiges umbuchen
   recs.forEach(function(r){
     FP.Store.Recurring.update(r.id,{categoryId:'cat_sonstiges'});
   });
-  FP.Store.Categories.delete(id);
+  if(isSystem){
+    FP.Store.Categories.hide(id);
+  } else {
+    FP.Store.Categories.delete(id);
+  }
   stRenderCats();
   buildCats();
-  toast('"'+cat.name+'" gelöscht'+(txs.length>0?' \xb7 '+txs.length+' Buchungen gesichert':''));
+  toast('"'+cat.name+'" '+(isSystem?'ausgeblendet':'gelöscht')+(txs.length>0?' \xb7 '+txs.length+' Buchungen gesichert':''));
 }
 
 function stNewKat(){
