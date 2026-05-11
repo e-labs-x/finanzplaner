@@ -7160,7 +7160,9 @@ function stDeleteCat(id){
   var txs=FP.Store.Transactions.getAll().filter(function(t){return t.categoryId===id;});
   var recs=FP.Store.Recurring.getAll().filter(function(r){return r.categoryId===id;});
   var inUse=txs.length+recs.length;
-  var action=isSystem?'ausblenden':'löschen';
+  // System-Kategorien ohne Nutzung dürfen echte gelöscht werden; mit Nutzung nur ausblenden
+  var mustHide=isSystem&&inUse>0;
+  var action=mustHide?'ausblenden':'löschen';
   var msg=inUse>0
     ?'"'+cat.name+'" '+action+'? Bei '+txs.length+' Transaktionen wird die Kategorie als Notiz gesichert.'+(recs.length?' '+recs.length+' Fixkosten-Vorlagen auf "Sonstiges".':'')
     :'"'+cat.name+'" '+action+'?';
@@ -7172,14 +7174,14 @@ function stDeleteCat(id){
   recs.forEach(function(r){
     FP.Store.Recurring.update(r.id,{categoryId:'cat_sonstiges'});
   });
-  if(isSystem){
+  if(mustHide){
     FP.Store.Categories.hide(id);
   } else {
     FP.Store.Categories.delete(id);
   }
   stRenderCats();
   buildCats();
-  toast('"'+cat.name+'" '+(isSystem?'ausgeblendet':'gelöscht')+(txs.length>0?' \xb7 '+txs.length+' Buchungen gesichert':''));
+  toast('"'+cat.name+'" '+(mustHide?'ausgeblendet':'gelöscht')+(txs.length>0?' \xb7 '+txs.length+' Buchungen gesichert':''));
 }
 
 function stNewKat(){
