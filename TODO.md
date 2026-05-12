@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-05-09
+Letzte Aktualisierung: 2026-05-12
 
 ---
 
@@ -66,6 +66,18 @@ Letzte Aktualisierung: 2026-05-09
 - [ ] Monats-PDF: Eine Seite, alle Buchungen als Tabelle, Summen, Top-Kategorien
 - [ ] Steuer-Helfer-Sheet: Anlage R / AV / Vorsorgeaufwand, Werte aus Salary + Versicherungen vorausgefüllt
 - [ ] Dark Mode wird im Print zu Light umgeschaltet
+
+### Auszahlplan — Entnahmeplanung Rente _(komplex, eigene Session)_
+- [ ] Strategie-Entscheidung vor Implementierung (Glidepath-Variante vs. Bucket vs. Floor+Upside)
+- [ ] Jahr-für-Jahr-Simulation ab Renteneintritt
+- [ ] Einnahmen: DRV + Direktzusage + weitere Quellen aus dem Store
+- [ ] Lücke: benötigte Ausgaben (inflationsangepasst) minus garantierte Einnahmen
+- [ ] Depot-Entnahme dynamisch angepasst an tatsächliche Portfolioentwicklung
+- [ ] Eimer-Puffer: Cash/Geldmarkt (1–2 Jahre), Anleihen (3–7 Jahre), ETF (langfristig)
+- [ ] Warnung wenn Depot vor Lebenserwartung aufgebraucht
+- [ ] Szenario-Vergleich: „mit Erbschaft/Immobilien-Erlös" vs. ohne
+- [ ] Daten-Fundament bereits vorhanden (Ausgaben, Vermögen, Rentendaten)
+- [ ] Neue Store-Felder für Strategie-Einstellungen ergänzen (noch zu definieren)
 
 ### H — Smart-Input _(~3–4h, optional)_
 - [ ] Natural-Language-Input: Button im Numpad, Textfeld „45€ rewe gestern", Betrag/Datum/Beschreibung-Parser (offline)
