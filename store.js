@@ -422,6 +422,7 @@ function createDefaultStore() {
         owner:     null,
         lastSync:  null,
       },
+      deletedSystemCats: [],
     },
 
     // ── ESPP (Employee Stock Purchase Plan) ──
@@ -735,8 +736,10 @@ const Store = (() => {
 
   function _patchSystemCategories() {
     const defaults = createDefaultStore().categories;
+    const deleted = _state.settings?.deletedSystemCats || [];
     let patched = false;
     defaults.forEach(def => {
+      if (deleted.includes(def.id)) return; // bewusst gelöscht — nicht wieder hinzufügen
       const exists = _state.categories.find(c => c.id === def.id);
       if (!exists) {
         _state.categories.push(def);
@@ -953,6 +956,14 @@ const Store = (() => {
     delete(id) {
       const cat = _state.categories.find(c => c.id === id);
       if (!cat) return;
+      if (cat.source === 'system') {
+        if (!_state.settings.deletedSystemCats) _state.settings.deletedSystemCats = [];
+        if (!_state.settings.deletedSystemCats.includes(id)) _state.settings.deletedSystemCats.push(id);
+        // Unterkategorien ebenfalls merken
+        _state.categories.filter(c => c.parentId === id).forEach(sub => {
+          if (!_state.settings.deletedSystemCats.includes(sub.id)) _state.settings.deletedSystemCats.push(sub.id);
+        });
+      }
       _state.categories = _state.categories.filter(c => c.id !== id && c.parentId !== id);
       _save();
       appLog('KATEGORIE', 'Gelöscht: ' + cat.name);
