@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260514">
+<link rel="stylesheet" href="style.css?v=20260514b">
 </head>
 <body>
 
@@ -668,6 +668,16 @@
             <div style="padding:0 16px" id="st-objs"></div>
           </div>
 
+          <!-- Papierkorb -->
+          <div class="st-card">
+            <div class="st-card-hdr">
+              <span class="st-card-title">Papierkorb</span>
+              <button class="st-btn danger" onclick="stTrashClear()">Leeren</button>
+            </div>
+            <div style="padding:0 16px 8px;font-size:12px;color:var(--tx3)">Gelöschte Kategorien, Objekte und Fixkosten — automatisch entfernt nach 30 Tagen.</div>
+            <div style="padding:0 16px" id="st-trash"></div>
+          </div>
+
           <!-- Währungen -->
           <!-- Toggle: Standard / Erweitert -->
           <button class="st-mehr-btn" id="st-mehr-btn" onclick="stToggleMehr()">＋ Erweiterte Einstellungen</button>
@@ -1171,8 +1181,8 @@
 </div>
 
 
-<script src="store.js?v=20260514"></script>
-<script src="app.js?v=20260514"></script>
+<script src="store.js?v=20260514b"></script>
+<script src="app.js?v=20260514b"></script>
 
 </body>
 </html>

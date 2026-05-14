@@ -2007,6 +2007,7 @@ function stRender(){
   stRenderBudget();
   stRenderCats();
   stRenderObjs();
+  stRenderTrash();
   stRenderCurrencies();
   stRenderInflation();
   stRenderApiKey();
@@ -2222,15 +2223,67 @@ function stEditCat(id){
   document.getElementById('mc-grp').value=cat.group;
   var tgl=document.getElementById('mc-show-input');
   if(tgl){ if(cat.showInInput===false) tgl.classList.remove('on'); else tgl.classList.add('on'); }
-  // Parent-Selektor: alle Hauptkategorien außer sich selbst
-  var par=document.getElementById('mc-par');
-  par.innerHTML='<option value="">— Keine (Hauptkategorie) —</option>'+
-    FP.Store.Categories.getAll().filter(function(c){return !c.parentId&&c.id!==id;}).map(function(c){
-      return '<option value="'+c.id+'"'+(cat.parentId===c.id?' selected':'')+'>'+c.name+'</option>';
-    }).join('');
-  document.getElementById('mc-par-group').style.display='';
+  var hasSubs=FP.Store.Categories.getAll().some(function(c){return c.parentId===id;});
+  var parGroup=document.getElementById('mc-par-group');
+  if(hasSubs){
+    // Kategorie hat Unterkategorien → kann nicht selbst Unterkategorie werden
+    parGroup.style.display='none';
+  } else {
+    var par=document.getElementById('mc-par');
+    par.innerHTML='<option value="">— Keine (Hauptkategorie) —</option>'+
+      FP.Store.Categories.getAll().filter(function(c){return !c.parentId&&c.id!==id;}).map(function(c){
+        return '<option value="'+c.id+'"'+(cat.parentId===c.id?' selected':'')+'>'+c.name+'</option>';
+      }).join('');
+    parGroup.style.display='';
+  }
   openM('m-cat');
   setTimeout(function(){document.getElementById('mc-name').focus();},150);
+}
+
+function stRenderTrash(){
+  var el=document.getElementById('st-trash');
+  if(!el)return;
+  var items=FP.Trash.getAll();
+  if(!items.length){
+    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Papierkorb ist leer.</div>';
+    return;
+  }
+  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost'};
+  var now=Date.now();
+  el.innerHTML=items.map(function(e){
+    var daysLeft=Math.max(0,30-Math.floor((now-new Date(e.deletedAt).getTime())/86400000));
+    return '<div class="st-row">'+
+      '<div class="st-row-info">'+
+        '<div class="st-row-name" style="opacity:0.7">'+e.item.name+'</div>'+
+        '<div class="st-row-sub">'+typeLabel[e.type]+' · noch '+daysLeft+' Tag'+(daysLeft===1?'':'e')+'</div>'+
+      '</div>'+
+      '<div class="st-row-actions">'+
+        '<button class="st-btn" onclick="stTrashRestore(\''+e.id+'\')">Wiederherstellen</button>'+
+        '<button class="st-btn danger" onclick="stTrashDelete(\''+e.id+'\')">Endgültig löschen</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function stTrashRestore(id){
+  FP.Trash.restore(id);
+  stRenderCats();
+  stRenderObjs();
+  stRenderTrash();
+  buildCats();
+  toast('Wiederhergestellt');
+}
+function stTrashDelete(id){
+  if(!confirm('Endgültig löschen? Das kann nicht rückgängig gemacht werden.'))return;
+  FP.Trash.permanentDelete(id);
+  stRenderTrash();
+  toast('Endgültig gelöscht');
+}
+function stTrashClear(){
+  if(!FP.Trash.getAll().length)return;
+  if(!confirm('Papierkorb leeren? Alle Einträge werden endgültig gelöscht.'))return;
+  FP.Trash.clear();
+  stRenderTrash();
+  toast('Papierkorb geleert');
 }
 
 function stRenderObjs(){
