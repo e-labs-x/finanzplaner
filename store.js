@@ -392,6 +392,9 @@ function createDefaultStore() {
       { code:'CZK', name:'Tschech. Krone',       symbol:'Kč',  rate:25.3,  active:false },
     ],
 
+    // ── Papierkorb (30 Tage, dann auto-gelöscht) ──
+    trash: [],
+
     // ── Einstellungen ──
     settings: {
       currency:        'EUR',
@@ -763,7 +766,9 @@ const Store = (() => {
       }
       const parsed = JSON.parse(raw);
       _state = migrateStore(parsed);
+      if (!_state.trash) _state.trash = [];
       _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
+      Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
       const errors = validateStore(_state);
       if (errors.length > 0) {
         console.warn('[Store] Validierungsfehler:', errors);
@@ -959,11 +964,13 @@ const Store = (() => {
       if (cat.source === 'system') {
         if (!_state.settings.deletedSystemCats) _state.settings.deletedSystemCats = [];
         if (!_state.settings.deletedSystemCats.includes(id)) _state.settings.deletedSystemCats.push(id);
-        // Unterkategorien ebenfalls merken
         _state.categories.filter(c => c.parentId === id).forEach(sub => {
           if (!_state.settings.deletedSystemCats.includes(sub.id)) _state.settings.deletedSystemCats.push(sub.id);
         });
       }
+      // Papierkorb: erst Unterkategorien, dann Hauptkategorie
+      _state.categories.filter(c => c.parentId === id).forEach(sub => Trash._add('category', sub));
+      Trash._add('category', cat);
       _state.categories = _state.categories.filter(c => c.id !== id && c.parentId !== id);
       _save();
       appLog('KATEGORIE', 'Gelöscht: ' + cat.name);
@@ -1030,8 +1037,11 @@ const Store = (() => {
     },
 
     delete(id) {
-      const idx = _state.objects.findIndex(o => o.id === id);
-      if (idx !== -1) { _state.objects.splice(idx, 1); _save(); }
+      const obj = _state.objects.find(o => o.id === id);
+      if (!obj) return;
+      Trash._add('object', obj);
+      _state.objects = _state.objects.filter(o => o.id !== id);
+      _save();
     },
   };
 
@@ -1222,14 +1232,54 @@ const Store = (() => {
     delete(id) {
       if (!_state.recurring) return;
       const rec = _state.recurring.find(r => r.id === id);
+      if (!rec) return;
+      Trash._add('recurring', rec);
       _state.recurring = _state.recurring.filter(r => r.id !== id);
       _save();
-      if (rec) appLog('recurring_delete', rec.name);
+      appLog('recurring_delete', rec.name);
     },
   };
 
   // Rückwärtskompatibilität: FixedCosts zeigt auf Recurring
   const FixedCosts = Recurring;
+
+  // ── Papierkorb ──
+  const TRASH_TTL_DAYS = 30;
+  const Trash = {
+    _add(type, item) {
+      if (!_state.trash) _state.trash = [];
+      _state.trash.push({ id: generateId('tr'), type, item: JSON.parse(JSON.stringify(item)), deletedAt: new Date().toISOString() });
+    },
+    getAll()  { return _state.trash || []; },
+    purgeOld() {
+      if (!_state.trash?.length) return;
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - TRASH_TTL_DAYS);
+      const before = _state.trash.length;
+      _state.trash = _state.trash.filter(e => new Date(e.deletedAt) > cutoff);
+      if (_state.trash.length < before) _save();
+    },
+    restore(trashId) {
+      if (!_state.trash) return;
+      const entry = _state.trash.find(e => e.id === trashId);
+      if (!entry) return;
+      if (entry.type === 'category')  _state.categories.push(entry.item);
+      if (entry.type === 'object')    _state.objects.push(entry.item);
+      if (entry.type === 'recurring') _state.recurring.push(entry.item);
+      // Aus deletedSystemCats entfernen falls vorhanden
+      if (entry.type === 'category' && _state.settings.deletedSystemCats) {
+        _state.settings.deletedSystemCats = _state.settings.deletedSystemCats.filter(id => id !== entry.item.id);
+      }
+      _state.trash = _state.trash.filter(e => e.id !== trashId);
+      _save();
+      appLog('PAPIERKORB', 'Wiederhergestellt: ' + (entry.item.name || trashId));
+    },
+    permanentDelete(trashId) {
+      if (!_state.trash) return;
+      _state.trash = _state.trash.filter(e => e.id !== trashId);
+      _save();
+    },
+    clear() { _state.trash = []; _save(); },
+  };
 
   // ── Currencies ──
   const Currencies = {
@@ -2520,6 +2570,7 @@ function deepMerge(target, source) {
 if (typeof window !== 'undefined') {
   window.FP = {
     Store,
+    Trash,
     Calculator,
     BackupManager,
     ExcelImporter,
