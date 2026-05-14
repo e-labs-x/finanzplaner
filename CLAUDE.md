@@ -41,6 +41,14 @@ git push
 ```
 Nach ~1 Min ist die Live-URL aktualisiert.
 
+**WICHTIG — Cache-Busting:** Bei jedem Deploy das Datum in den Script/CSS-Tags in `index.html` aktualisieren:
+```html
+<link rel="stylesheet" href="style.css?v=YYYYMMDD">
+<script src="store.js?v=YYYYMMDD"></script>
+<script src="app.js?v=YYYYMMDD"></script>
+```
+Ohne das können Browser alte Versionen der JS/CSS-Dateien cachen und Fixes greifen nicht.
+
 **Version bumpen** (bei neuen Meilensteinen): `<title>`, `FP_VERSION` in store.js, `<div class="sb-ver">` in index.html.
 
 ---
