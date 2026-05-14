@@ -1413,6 +1413,7 @@ const Store = (() => {
     FixedCosts,   // backward compat alias
     Settings,
     Currencies,
+    Trash,
     generateRecurringTransactions,
     generateFixcostTransactions,  // backward compat alias
   };
@@ -2570,7 +2571,7 @@ function deepMerge(target, source) {
 if (typeof window !== 'undefined') {
   window.FP = {
     Store,
-    Trash,
+    Trash: Store.Trash,
     Calculator,
     BackupManager,
     ExcelImporter,
