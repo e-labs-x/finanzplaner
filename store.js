@@ -373,6 +373,7 @@ function createDefaultStore() {
 
     // ── Budget ──
     budget: { fixPct:50, freiPct:30, sparPct:20 },
+    categoryBudgets: {},
 
     // ── Währungen (Kurs = Einheiten Fremdwährung pro 1 EUR) ──
     currencies: [
@@ -767,6 +768,7 @@ const Store = (() => {
       const parsed = JSON.parse(raw);
       _state = migrateStore(parsed);
       if (!_state.trash) _state.trash = [];
+      if (!_state.categoryBudgets) _state.categoryBudgets = {};
       _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
       Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
       const errors = validateStore(_state);
@@ -1333,6 +1335,17 @@ const Store = (() => {
     setBudget(fix, frei, spar) {
       if (Math.round(fix + frei + spar) !== 100) throw new Error('Budget muss 100% ergeben');
       _state.budget = { fixPct:fix, freiPct:frei, sparPct:spar };
+      _save();
+    },
+
+    getCategoryBudgets() { return _state.categoryBudgets || {}; },
+    setCategoryBudget(catId, amount) {
+      if (!_state.categoryBudgets) _state.categoryBudgets = {};
+      _state.categoryBudgets[catId] = Math.max(0, amount);
+      _save();
+    },
+    removeCategoryBudget(catId) {
+      if (_state.categoryBudgets) delete _state.categoryBudgets[catId];
       _save();
     },
 
