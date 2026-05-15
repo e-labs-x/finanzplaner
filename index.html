@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260515d">
+<link rel="stylesheet" href="style.css?v=20260515e">
 </head>
 <body>
 
@@ -39,6 +39,7 @@
       <button class="sb-item active" data-p="eingabe"    data-tip="Eingabe"    onclick="nav('eingabe')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span><span class="sb-txt">Eingabe</span></button>
       <button class="sb-item" data-p="auswertung"        data-tip="Übersicht"  onclick="nav('auswertung')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="sb-txt">Übersicht</span></button>
       <button class="sb-item" data-p="cashflow"          data-tip="Cashflow"   onclick="nav('cashflow')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg></span><span class="sb-txt">Cashflow</span></button>
+      <button class="sb-item" data-p="budget"            data-tip="Budget"     onclick="nav('budget')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="sb-txt">Budget</span></button>
       <button class="sb-item" data-p="vermoegen"         data-tip="Vermögen"   onclick="nav('vermoegen')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="sb-txt">Vermögen</span></button>
       <button class="sb-item" data-p="rente"             data-tip="Rente"       onclick="nav('rente')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg></span><span class="sb-txt">Rente</span></button>
       <button class="sb-item" data-p="mehr"              data-tip="Mehr"        onclick="nav('mehr')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span class="sb-txt">Mehr</span></button>
@@ -856,6 +857,14 @@
               </div>
               <div class="me-item-arr">›</div>
             </div>
+            <div class="me-item" onclick="nav('budget')">
+              <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <div class="me-item-info">
+                <div class="me-item-name">Budget</div>
+                <div class="me-item-sub">Kategorien · Soll vs. Ist</div>
+              </div>
+              <div class="me-item-arr">›</div>
+            </div>
             <div class="me-item" onclick="nav('objekte')">
               <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17H5v-7l3-5h8l3 5v7z"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg></div>
               <div class="me-item-info">
@@ -877,6 +886,22 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- BUDGET -->
+    <div class="page" id="p-budget">
+      <div class="pg">
+        <div class="bgt-hdr">
+          <div class="bgt-month-nav">
+            <button class="cf-nav-btn" onclick="bgtShift(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+            <span class="bgt-month-lbl" id="bgt-month-lbl">Mai 2026</span>
+            <button class="cf-nav-btn" onclick="bgtShift(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+          </div>
+          <button class="bgt-add-btn" onclick="bgtOpenAdd()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Budget hinzufügen</button>
+        </div>
+        <div class="bgt-summary-card" id="bgt-summary"></div>
+        <div id="bgt-list"></div>
       </div>
     </div>
 
@@ -930,6 +955,26 @@
     <button class="bn-item"        data-p="vermoegen"  onclick="nav('vermoegen')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="bn-lbl">Vermögen</span></button>
     <button class="bn-item"        data-p="rente"      onclick="nav('rente')"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg></span><span class="bn-lbl">Rente</span></button>
     <button class="bn-item" data-p="mehr" onclick="nav('mehr')" style="position:relative"><span class="bn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span class="bn-lbl">Mehr</span><span class="bn-sync-badge" id="bn-sync-badge"></span></button>
+  </div>
+</div>
+
+<!-- Modal: Budget hinzufügen -->
+<div class="modal-bg" id="m-bgt-add" onclick="if(event.target===this)closeM('m-bgt-add')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Budget hinzufügen</div>
+    <div class="fg">
+      <label class="fl">Kategorie</label>
+      <select class="fi" id="bgt-add-cat" style="appearance:auto"></select>
+    </div>
+    <div class="fg">
+      <label class="fl">Monatliches Budget (€)</label>
+      <input class="fi" id="bgt-add-val" type="number" min="0" step="10" inputmode="decimal" placeholder="z.B. 400">
+    </div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeM('m-bgt-add')">Abbrechen</button>
+      <button class="btn btn-p" onclick="bgtAddConfirm()">Hinzufügen</button>
+    </div>
   </div>
 </div>
 
@@ -1228,8 +1273,8 @@
 </div>
 
 
-<script src="store.js?v=20260515d"></script>
-<script src="app.js?v=20260515d"></script>
+<script src="store.js?v=20260515e"></script>
+<script src="app.js?v=20260515e"></script>
 
 </body>
 </html>

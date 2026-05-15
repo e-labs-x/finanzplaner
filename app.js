@@ -1,7 +1,7 @@
 'use strict';
 
 const MON = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', cashflow:'Cashflow', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr' };
+const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', cashflow:'Cashflow', budget:'Budget', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr' };
 const MEHR_PAGES = ['gehalt','fixkosten','objekte','einstellungen'];
 const ICONS  = {
   cat_lebensmittel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
@@ -453,6 +453,7 @@ function nav(id) {
   if (id === 'home')       setTimeout(hmInit, 80);
   if (id === 'auswertung') setTimeout(avInit, 80);
   if (id === 'cashflow')   setTimeout(cfInit, 80);
+  if (id === 'budget')     setTimeout(bgtInit, 80);
   if (id === 'gehalt')    setTimeout(ghInit, 80);
   if (id === 'vermoegen') setTimeout(vmInit, 80);
   if (id === 'rente')     setTimeout(rpInit, 80);
@@ -6793,6 +6794,185 @@ function srGoCat(id){
   closeSearch();
   nav('auswertung');
   setTimeout(function(){ avCatDetail(id); },120);
+}
+
+// ── Budget ──
+var bgtState = { month: new Date().getMonth() + 1, year: new Date().getFullYear(), editingCat: null };
+
+function bgtInit() { bgtUpdateHeader(); bgtRender(); }
+
+function bgtShift(d) {
+  bgtState.month += d;
+  if (bgtState.month > 12) { bgtState.month = 1; bgtState.year++; }
+  if (bgtState.month < 1)  { bgtState.month = 12; bgtState.year--; }
+  bgtState.editingCat = null;
+  bgtUpdateHeader();
+  bgtRender();
+}
+
+function bgtUpdateHeader() {
+  var el = document.getElementById('bgt-month-lbl');
+  if (el) el.textContent = FP.MONATE_LANG[bgtState.month - 1] + ' ' + bgtState.year;
+}
+
+function bgtRender() {
+  var store    = FP.Store.get();
+  var budgets  = FP.Store.Settings.getCategoryBudgets();
+  var summary  = FP.Calculator.getMonthSummary(bgtState.month, bgtState.year);
+  var byCat    = summary.byCat;
+  var catMap   = {};
+  store.categories.forEach(function(c) { catMap[c.id] = c; });
+
+  // Kategorien mit Budget
+  var budgeted = Object.keys(budgets).map(function(catId) {
+    var spent   = byCat[catId] ? byCat[catId].total : 0;
+    var limit   = budgets[catId];
+    var cat     = catMap[catId];
+    return { catId: catId, name: cat ? cat.name : catId, color: cat ? cat.color : 'var(--cat-slate)', spent: spent, limit: limit };
+  }).sort(function(a, b) { return b.spent - a.spent; });
+
+  // Gesamtsummary
+  var totalSpent = budgeted.reduce(function(s, b) { return s + b.spent; }, 0);
+  var totalLimit = budgeted.reduce(function(s, b) { return s + b.limit; }, 0);
+  var totalPct   = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
+  var sumBarCls  = totalPct >= 100 ? 'bgt-bar-over' : totalPct >= 80 ? 'bgt-bar-warn' : 'bgt-bar-ok';
+
+  var sumEl = document.getElementById('bgt-summary');
+  if (sumEl) {
+    sumEl.innerHTML = budgeted.length === 0
+      ? '<div class="bgt-empty">Noch kein Budget gesetzt — klick auf "Budget hinzufügen"</div>'
+      : '<div class="bgt-sum-row"><span class="bgt-sum-lbl">Gesamt</span><span class="bgt-sum-amounts"><strong>' + eur(totalSpent) + '</strong> von ' + eur(totalLimit) + '</span></div>' +
+        '<div class="bgt-sum-bar-wrap"><div class="bgt-sum-bar-fill ' + sumBarCls + '" style="width:' + totalPct.toFixed(1) + '%"></div></div>';
+  }
+
+  // Kategorien mit Budget rendern
+  var listEl = document.getElementById('bgt-list');
+  if (!listEl) return;
+  var html = '';
+
+  if (budgeted.length > 0) {
+    html += '<div class="bgt-section-lbl">Budgetierte Kategorien</div>';
+    budgeted.forEach(function(b) {
+      var pct    = b.limit > 0 ? Math.min((b.spent / b.limit) * 100, 100) : 0;
+      var over   = b.spent > b.limit;
+      var warn   = !over && pct >= 80;
+      var barCls = over ? 'bgt-bar-over' : warn ? 'bgt-bar-warn' : 'bgt-bar-ok';
+      var stCls  = over ? 'bgt-status-over' : warn ? 'bgt-status-warn' : 'bgt-status-ok';
+      var stTxt  = over
+        ? '▲ ' + eur(b.spent - b.limit) + ' überzogen'
+        : warn
+        ? '⚡ ' + eur(b.limit - b.spent) + ' verbleibend'
+        : '✓ ' + eur(b.limit - b.spent) + ' verbleibend';
+
+      var editRow = bgtState.editingCat === b.catId
+        ? '<div class="bgt-edit-row">' +
+          '<input class="bgt-edit-input" id="bgt-inp-' + b.catId + '" type="number" min="0" step="10" value="' + b.limit + '" placeholder="Budget in €">' +
+          '<button class="bgt-edit-save" onclick="bgtSave(\'' + b.catId + '\')">Speichern</button>' +
+          '<button class="bgt-edit-cancel" onclick="bgtCancelEdit()">Abbrechen</button>' +
+          '<button class="bgt-edit-del" onclick="bgtRemove(\'' + b.catId + '\')">Entfernen</button>' +
+          '</div>'
+        : '';
+
+      html += '<div class="bgt-item">' +
+        '<div class="bgt-item-top">' +
+          '<div class="bgt-item-dot" style="background:' + b.color + '"></div>' +
+          '<div class="bgt-item-name">' + b.name + '</div>' +
+          '<div class="bgt-item-amounts"><span>' + eur(b.spent) + '</span> / ' + eur(b.limit) + '</div>' +
+          '<button class="bgt-item-edit" onclick="bgtStartEdit(\'' + b.catId + '\')">' + (bgtState.editingCat === b.catId ? 'Schließen' : 'Bearbeiten') + '</button>' +
+        '</div>' +
+        '<div class="bgt-bar-wrap"><div class="bgt-bar-fill ' + barCls + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<div class="bgt-status ' + stCls + '">' + stTxt + '</div>' +
+        editRow +
+        '</div>';
+    });
+  }
+
+  // Kategorien ohne Budget aber mit Ausgaben
+  var unbudgetedWithSpend = Object.keys(byCat)
+    .filter(function(catId) { return !budgets[catId] && byCat[catId].total > 0; })
+    .map(function(catId) { return { catId: catId, name: byCat[catId].name, color: (catMap[catId] && catMap[catId].color) || 'var(--cat-slate)', spent: byCat[catId].total }; })
+    .sort(function(a, b) { return b.spent - a.spent; });
+
+  if (unbudgetedWithSpend.length > 0) {
+    html += '<div class="bgt-section-lbl" style="margin-top:8px">Ohne Budget — diesen Monat aktiv</div>';
+    html += '<div class="bgt-unbudgeted">';
+    unbudgetedWithSpend.forEach(function(u) {
+      html += '<div class="bgt-unb-item">' +
+        '<div class="bgt-item-dot" style="background:' + u.color + '"></div>' +
+        '<div class="bgt-unb-name">' + u.name + '</div>' +
+        '<div class="bgt-unb-amt">' + eur(u.spent) + '</div>' +
+        '<button class="bgt-unb-add" onclick="bgtQuickAdd(\'' + u.catId + '\')">+ Budget</button>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  listEl.innerHTML = html;
+
+  if (bgtState.editingCat) {
+    var inp = document.getElementById('bgt-inp-' + bgtState.editingCat);
+    if (inp) { inp.focus(); inp.select(); }
+  }
+}
+
+function bgtStartEdit(catId) {
+  bgtState.editingCat = bgtState.editingCat === catId ? null : catId;
+  bgtRender();
+}
+
+function bgtCancelEdit() { bgtState.editingCat = null; bgtRender(); }
+
+function bgtSave(catId) {
+  var inp = document.getElementById('bgt-inp-' + catId);
+  if (!inp) return;
+  var val = parseFloat(inp.value);
+  if (isNaN(val) || val < 0) { toast('Bitte einen gültigen Betrag eingeben'); return; }
+  FP.Store.Settings.setCategoryBudget(catId, val);
+  bgtState.editingCat = null;
+  toast('Budget gespeichert');
+  bgtRender();
+}
+
+function bgtRemove(catId) {
+  FP.Store.Settings.removeCategoryBudget(catId);
+  bgtState.editingCat = null;
+  toast('Budget entfernt');
+  bgtRender();
+}
+
+function bgtQuickAdd(catId) {
+  bgtState.editingCat = catId;
+  var budgets = FP.Store.Settings.getCategoryBudgets();
+  if (!budgets[catId]) FP.Store.Settings.setCategoryBudget(catId, 0);
+  bgtRender();
+}
+
+function bgtOpenAdd() {
+  var store   = FP.Store.get();
+  var budgets = FP.Store.Settings.getCategoryBudgets();
+  var unset   = store.categories.filter(function(c) { return !budgets[c.id] && !c.hidden; });
+  if (!unset.length) { toast('Alle Kategorien haben bereits ein Budget'); return; }
+  var sel = document.getElementById('bgt-add-cat');
+  if (sel) {
+    sel.innerHTML = unset.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+  }
+  var inp = document.getElementById('bgt-add-val');
+  if (inp) inp.value = '';
+  openM('m-bgt-add');
+}
+
+function bgtAddConfirm() {
+  var catEl = document.getElementById('bgt-add-cat');
+  var valEl = document.getElementById('bgt-add-val');
+  if (!catEl || !valEl) return;
+  var catId = catEl.value;
+  var val   = parseFloat(valEl.value);
+  if (!catId) { toast('Bitte Kategorie wählen'); return; }
+  if (isNaN(val) || val <= 0) { toast('Bitte einen Betrag eingeben'); return; }
+  FP.Store.Settings.setCategoryBudget(catId, val);
+  closeM('m-bgt-add');
+  toast('Budget hinzugefügt');
+  bgtRender();
 }
 
 // ── Cashflow ──
