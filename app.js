@@ -541,9 +541,9 @@ function hmInit() {
 
     // ── KPIs ──
     '<div class="hm-kpi-row">' +
-      '<div class="hm-kpi-card"><div class="hm-kpi-label">Einnahmen</div><div class="hm-kpi-value" style="color:var(--blue)">' + eur(einnahmen) + '</div></div>' +
-      '<div class="hm-kpi-card"><div class="hm-kpi-label">Ausgaben</div><div class="hm-kpi-value" style="color:var(--red)">' + eur(ausgaben) + '</div></div>' +
-      '<div class="hm-kpi-card"><div class="hm-kpi-label">Saldo</div><div class="hm-kpi-value" style="color:' + saldoColor + '">' + (saldo >= 0 ? '+' : '') + eur(saldo) + '</div></div>' +
+      '<div class="hm-kpi-card hm-kpi-einnahmen"><div class="hm-kpi-label">Einnahmen</div><div class="hm-kpi-value" style="color:var(--blue)">' + eur(einnahmen) + '</div></div>' +
+      '<div class="hm-kpi-card hm-kpi-ausgaben"><div class="hm-kpi-label">Ausgaben</div><div class="hm-kpi-value" style="color:var(--red)">' + eur(ausgaben) + '</div></div>' +
+      '<div class="hm-kpi-card hm-kpi-saldo" style="border-top-color:' + saldoColor + ';background:linear-gradient(180deg,' + (saldo >= 0 ? 'var(--green-lt)' : 'var(--red-lt)') + ' 0%,var(--surf) 60%)"><div class="hm-kpi-label">Saldo</div><div class="hm-kpi-value" style="color:' + saldoColor + '">' + (saldo >= 0 ? '+' : '') + eur(saldo) + '</div></div>' +
     '</div>' +
 
     // ── Bottom ──
@@ -6855,7 +6855,7 @@ function cfDrawChart(months) {
   if (!canvas) return;
   var dpr = window.devicePixelRatio || 1;
   var W = canvas.parentNode.getBoundingClientRect().width || canvas.parentNode.offsetWidth || 600;
-  var H = 160;
+  var H = 180;
   canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   var ctx = canvas.getContext('2d');
@@ -6868,16 +6868,28 @@ function cfDrawChart(months) {
   var cRed      = cs.getPropertyValue('--red').trim();
   var cRedLt    = cs.getPropertyValue('--red-lt').trim();
   var cBlue     = cs.getPropertyValue('--blue').trim();
+  var cBrd      = cs.getPropertyValue('--brd').trim();
   var cTx       = cs.getPropertyValue('--tx').trim();
   var cTx3      = cs.getPropertyValue('--tx3').trim();
 
   var maxV = Math.max.apply(null, months.map(function(mo) { return Math.max(mo.inc, mo.exp, 1); }));
-  var pL = 8, pR = 8, pT = 10, pB = 22;
+  var pL = 8, pR = 8, pT = 16, pB = 22;
   var bW = (W - pL - pR) / 12;
   var cH = H - pT - pB;
-  var outerGap = Math.max(3, bW * 0.15);
+  var outerGap = Math.max(2, bW * 0.10);
   var innerW = bW - outerGap;
   var barW = (innerW - 2) / 2;
+
+  // Horizontale Hilfslinien (3 Linien)
+  ctx.strokeStyle = cBrd;
+  ctx.lineWidth = 0.5;
+  for (var g = 1; g <= 3; g++) {
+    var gy = pT + (g / 4) * cH;
+    ctx.beginPath();
+    ctx.moveTo(pL, gy);
+    ctx.lineTo(W - pR, gy);
+    ctx.stroke();
+  }
   var now = new Date();
 
   function drawBar(x, y, w, h, color) {
@@ -6954,8 +6966,9 @@ function cfRenderTable(months) {
   months.forEach(function(mo, i) {
     var isCur = cfY === now.getFullYear() && (i + 1) === (now.getMonth() + 1);
     var hasData = mo.inc > 0 || mo.exp > 0;
-    var netCls = mo.net >= 0 ? 'cf-net-pos' : 'cf-net-neg';
+    var netBadgeCls = hasData ? (mo.net >= 0 ? 'cf-net-pos' : 'cf-net-neg') : 'cf-net-nil';
     var netStr = hasData ? ((mo.net >= 0 ? '+' : '') + eur(mo.net)) : '–';
+    var netCell = '<span class="cf-net-badge ' + netBadgeCls + '">' + netStr + '</span>';
     var trend = '';
     if (i > 0 && hasData && (months[i - 1].inc > 0 || months[i - 1].exp > 0)) {
       var delta = mo.net - months[i - 1].net;
@@ -6967,7 +6980,7 @@ function cfRenderTable(months) {
       '<td>' + MON[i] + '</td>' +
       '<td>' + (mo.inc > 0 ? eur(mo.inc) : '–') + '</td>' +
       '<td>' + (mo.exp > 0 ? eur(mo.exp) : '–') + '</td>' +
-      '<td class="' + (hasData ? netCls : '') + '">' + netStr + '</td>' +
+      '<td style="text-align:left;padding-left:10px">' + netCell + '</td>' +
       '<td>' + trend + '</td>' +
       '</tr>';
   });
