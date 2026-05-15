@@ -1289,3 +1289,49 @@ canvas#avc{display:block;width:100%;cursor:pointer}
   .hm-hero-amount{font-size:32px}
 }
 
+/* ════════════════════════════════════════
+   CASHFLOW
+════════════════════════════════════════ */
+.cf-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cf-year-nav{display:flex;align-items:center;gap:12px}
+.cf-nav-btn{width:32px;height:32px;border-radius:var(--r-sm);background:var(--surf2);border:1px solid var(--brd);color:var(--tx2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s,color .12s;flex-shrink:0}
+.cf-nav-btn:hover{background:var(--surf3);color:var(--tx)}
+.cf-year{font-size:18px;font-weight:700;color:var(--tx);min-width:52px;text-align:center}
+
+.cf-hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.cf-kpi-card{background:var(--surf);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh)}
+.cf-kpi-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:8px}
+.cf-kpi-val{font-size:22px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
+.cf-kpi-inc .cf-kpi-val{color:var(--green)}
+.cf-kpi-exp .cf-kpi-val{color:var(--red)}
+.cf-kpi-net .cf-kpi-val{color:var(--tx)}
+
+.cf-chart-card{background:var(--surf);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh);margin-bottom:14px}
+.cf-chart-legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3);font-weight:500;margin-bottom:12px;flex-wrap:wrap}
+.cf-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.cf-leg-line{width:18px;height:2px;border-top:2px dashed var(--blue);display:inline-block;flex-shrink:0}
+.cf-canvas-wrap{width:100%;overflow:hidden}
+
+.cf-table-card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px}
+.cf-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cf-tbl th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);padding:11px 16px;text-align:right;border-bottom:1px solid var(--brd);background:var(--surf2)}
+.cf-tbl th:first-child{text-align:left}
+.cf-tbl td{padding:10px 16px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--brd2);color:var(--tx2)}
+.cf-tbl td:first-child{text-align:left;font-weight:500;color:var(--tx)}
+.cf-tbl tr:last-child td{border-bottom:none}
+.cf-tbl tr.cf-cur td{background:var(--blue-lt)}
+.cf-tbl tr.cf-cur td:first-child{color:var(--blue);font-weight:700}
+.cf-net-pos{color:var(--green)!important;font-weight:700!important}
+.cf-net-neg{color:var(--red)!important;font-weight:700!important}
+.cf-trend{font-size:13px}
+.cf-trend-up{color:var(--green)}
+.cf-trend-dn{color:var(--red)}
+.cf-empty{color:var(--tx3);font-size:13px;padding:20px 0;text-align:center}
+
+@media(max-width:767px){
+  .cf-hero{gap:8px}
+  .cf-kpi-card{padding:14px 12px}
+  .cf-kpi-val{font-size:17px}
+  .cf-kpi-lbl{font-size:10px}
+  .cf-tbl th,.cf-tbl td{padding:9px 10px;font-size:12px}
+}

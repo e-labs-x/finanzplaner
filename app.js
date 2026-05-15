@@ -1,7 +1,7 @@
 'use strict';
 
 const MON = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr' };
+const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', cashflow:'Cashflow', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr' };
 const MEHR_PAGES = ['gehalt','fixkosten','objekte','einstellungen'];
 const ICONS  = {
   cat_lebensmittel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
@@ -452,6 +452,7 @@ function nav(id) {
   if (lbl) lbl.textContent = LABELS[id] || id;
   if (id === 'home')       setTimeout(hmInit, 80);
   if (id === 'auswertung') setTimeout(avInit, 80);
+  if (id === 'cashflow')   setTimeout(cfInit, 80);
   if (id === 'gehalt')    setTimeout(ghInit, 80);
   if (id === 'vermoegen') setTimeout(vmInit, 80);
   if (id === 'rente')     setTimeout(rpInit, 80);
@@ -6792,6 +6793,187 @@ function srGoCat(id){
   closeSearch();
   nav('auswertung');
   setTimeout(function(){ avCatDetail(id); },120);
+}
+
+// ── Cashflow ──
+var cfY = new Date().getFullYear();
+
+function cfInit() {
+  var el = document.getElementById('cf-year');
+  if (el) el.textContent = cfY;
+  cfRender();
+}
+
+function cfShift(d) {
+  cfY += d;
+  var el = document.getElementById('cf-year');
+  if (el) el.textContent = cfY;
+  cfRender();
+}
+
+function cfGetData() {
+  var store = FP.Store.get();
+  var months = [];
+  for (var m = 1; m <= 12; m++) {
+    var ds = String(m).padStart(2, '0') + '.' + cfY;
+    var inc = 0;
+    ['person_1', 'person_2'].forEach(function(pid) {
+      if (store.salary && store.salary[pid] && store.salary[pid][ds]) {
+        inc += store.salary[pid][ds].netSalary || 0;
+      }
+    });
+    var exp = store.transactions
+      .filter(function(t) { return t.date === ds && t.amount > 0; })
+      .reduce(function(s, t) { return s + t.amount; }, 0);
+    months.push({ m: m, ds: ds, inc: inc, exp: exp, net: inc - exp });
+  }
+  return months;
+}
+
+function cfRender() {
+  var months = cfGetData();
+  var totalInc = months.reduce(function(s, mo) { return s + mo.inc; }, 0);
+  var totalExp = months.reduce(function(s, mo) { return s + mo.exp; }, 0);
+  var totalNet = totalInc - totalExp;
+
+  var incEl = document.getElementById('cf-inc');
+  var expEl = document.getElementById('cf-exp');
+  var netEl = document.getElementById('cf-net');
+  if (incEl) incEl.textContent = eur(totalInc);
+  if (expEl) expEl.textContent = eur(totalExp);
+  if (netEl) {
+    netEl.textContent = (totalNet >= 0 ? '+' : '') + eur(totalNet);
+    netEl.className = 'cf-kpi-val ' + (totalNet >= 0 ? 'cf-net-pos' : 'cf-net-neg');
+  }
+
+  cfDrawChart(months);
+  cfRenderTable(months);
+}
+
+function cfDrawChart(months) {
+  var canvas = document.getElementById('cf-canvas');
+  if (!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentNode.getBoundingClientRect().width || canvas.parentNode.offsetWidth || 600;
+  var H = 160;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  var cs = getComputedStyle(document.documentElement);
+  var cGreen    = cs.getPropertyValue('--green').trim();
+  var cGreenLt  = cs.getPropertyValue('--green-lt').trim();
+  var cRed      = cs.getPropertyValue('--red').trim();
+  var cRedLt    = cs.getPropertyValue('--red-lt').trim();
+  var cBlue     = cs.getPropertyValue('--blue').trim();
+  var cTx       = cs.getPropertyValue('--tx').trim();
+  var cTx3      = cs.getPropertyValue('--tx3').trim();
+
+  var maxV = Math.max.apply(null, months.map(function(mo) { return Math.max(mo.inc, mo.exp, 1); }));
+  var pL = 8, pR = 8, pT = 10, pB = 22;
+  var bW = (W - pL - pR) / 12;
+  var cH = H - pT - pB;
+  var outerGap = Math.max(3, bW * 0.15);
+  var innerW = bW - outerGap;
+  var barW = (innerW - 2) / 2;
+  var now = new Date();
+
+  function drawBar(x, y, w, h, color) {
+    var r = Math.min(3, w / 2, h / 2);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  months.forEach(function(mo, i) {
+    var isCur = cfY === now.getFullYear() && (i + 1) === (now.getMonth() + 1);
+    var xBase = pL + i * bW + outerGap / 2;
+
+    if (mo.inc > 0) {
+      var bh = Math.max(2, (mo.inc / maxV) * cH);
+      drawBar(xBase, H - pB - bh, barW, bh, isCur ? cGreen : cGreenLt);
+    }
+    if (mo.exp > 0) {
+      var bh2 = Math.max(2, (mo.exp / maxV) * cH);
+      drawBar(xBase + barW + 2, H - pB - bh2, barW, bh2, isCur ? cRed : cRedLt);
+    }
+
+    ctx.font = (isCur ? '700 ' : '') + '10px Inter,sans-serif';
+    ctx.fillStyle = isCur ? cTx : cTx3;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(MON[i].slice(0, 3), xBase + innerW / 2, H);
+  });
+
+  // Netto-Trend-Linie (gestrichelt)
+  var hasAny = months.some(function(mo) { return mo.inc > 0 || mo.exp > 0; });
+  if (hasAny) {
+    ctx.strokeStyle = cBlue;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    var started = false;
+    months.forEach(function(mo, i) {
+      if (mo.inc === 0 && mo.exp === 0) return;
+      var cx = pL + i * bW + outerGap / 2 + innerW / 2;
+      var netPct = (mo.net + maxV) / (2 * maxV);
+      netPct = Math.min(1, Math.max(0, netPct));
+      var cy = pT + (1 - netPct) * cH;
+      if (!started) { ctx.moveTo(cx, cy); started = true; }
+      else           { ctx.lineTo(cx, cy); }
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function cfRenderTable(months) {
+  var el = document.getElementById('cf-table');
+  if (!el) return;
+  var now = new Date();
+  var hasAny = months.some(function(mo) { return mo.inc > 0 || mo.exp > 0; });
+  if (!hasAny) {
+    el.innerHTML = '<div class="cf-empty">Keine Daten für ' + cfY + '</div>';
+    return;
+  }
+
+  var html = '<table class="cf-tbl"><thead><tr>' +
+    '<th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th><th></th>' +
+    '</tr></thead><tbody>';
+
+  months.forEach(function(mo, i) {
+    var isCur = cfY === now.getFullYear() && (i + 1) === (now.getMonth() + 1);
+    var hasData = mo.inc > 0 || mo.exp > 0;
+    var netCls = mo.net >= 0 ? 'cf-net-pos' : 'cf-net-neg';
+    var netStr = hasData ? ((mo.net >= 0 ? '+' : '') + eur(mo.net)) : '–';
+    var trend = '';
+    if (i > 0 && hasData && (months[i - 1].inc > 0 || months[i - 1].exp > 0)) {
+      var delta = mo.net - months[i - 1].net;
+      trend = delta >= 0
+        ? '<span class="cf-trend cf-trend-up">↑</span>'
+        : '<span class="cf-trend cf-trend-dn">↓</span>';
+    }
+    html += '<tr' + (isCur ? ' class="cf-cur"' : '') + '>' +
+      '<td>' + MON[i] + '</td>' +
+      '<td>' + (mo.inc > 0 ? eur(mo.inc) : '–') + '</td>' +
+      '<td>' + (mo.exp > 0 ? eur(mo.exp) : '–') + '</td>' +
+      '<td class="' + (hasData ? netCls : '') + '">' + netStr + '</td>' +
+      '<td>' + trend + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
 
 // ── Sidebar Tooltip ──
