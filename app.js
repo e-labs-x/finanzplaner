@@ -7208,6 +7208,7 @@ var _rp2 = { period: 'all', offset: 0, cats: [] };
 function rp2Init() {
   _rp2.cats = [];
   rp2RenderChips();
+  rp2UpdatePeriodLabel();
   rp2Render();
 }
 
@@ -7217,17 +7218,27 @@ function rp2SetPeriod(p) {
   document.querySelectorAll('.rp2-period-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.period === p);
   });
-  document.getElementById('rp2-period-nav').style.display = (p === 'all') ? 'none' : 'flex';
+  var nav = document.getElementById('rp2-period-nav');
+  if (nav) nav.style.display = (p === 'all') ? 'none' : 'flex';
+  rp2UpdatePeriodLabel();
   rp2Render();
 }
 
 function rp2Shift(d) {
   _rp2.offset += d;
+  rp2UpdatePeriodLabel();
   rp2Render();
 }
 
+function rp2UpdatePeriodLabel() {
+  var range = rp2GetRange();
+  var lbl = document.getElementById('rp2-period-lbl');
+  if (lbl) lbl.textContent = range.label;
+}
+
 function rp2RenderChips() {
-  var cats = FP.Store.Categories.getVisible().filter(function(c) { return !c.parentId; });
+  var cats = FP.Store.Categories.getAll().filter(function(c) { return !c.parentId; });
+  cats.sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'de'); });
   var wrap = document.getElementById('rp2-cat-chips');
   if (!wrap) return;
   wrap.innerHTML = cats.map(function(c) {
@@ -7241,6 +7252,18 @@ function rp2RenderChips() {
 function rp2ToggleCat(id) {
   var idx = _rp2.cats.indexOf(id);
   if (idx >= 0) _rp2.cats.splice(idx, 1); else _rp2.cats.push(id);
+  rp2RenderChips();
+  rp2Render();
+}
+
+function rp2SelectAll() {
+  _rp2.cats = FP.Store.Categories.getAll().filter(function(c) { return !c.parentId; }).map(function(c) { return c.id; });
+  rp2RenderChips();
+  rp2Render();
+}
+
+function rp2ClearCats() {
+  _rp2.cats = [];
   rp2RenderChips();
   rp2Render();
 }
@@ -7299,8 +7322,6 @@ function rp2TxDate(tx) {
 
 function rp2Filter() {
   var range  = rp2GetRange();
-  var lbl = document.getElementById('rp2-period-lbl');
-  if (lbl) lbl.textContent = range.label;
 
   var all = FP.Store.Transactions.getAll();
   return all.filter(function(tx) {
@@ -7420,9 +7441,8 @@ function rp2RenderTxList(txs) {
     var dFmt  = d.length === 10 ? d.substring(8) + '.' + d.substring(5, 7) + '.' + d.substring(0, 4) : d;
     var isPos = tx.amount > 0;
     var meta  = [];
-    if (cat)  meta.push('<span style="color:' + (cat.color || 'var(--tx3)') + '">' + esc(cat.name) + '</span>');
     if (obj)  meta.push(esc(obj.name));
-    if (tx.rawName) meta.push('<span style="color:var(--tx3)">' + esc(tx.rawName) + '</span>');
+    if (tx.rawName && tx.rawName !== 'undefined') meta.push('<span style="color:var(--tx3)">' + esc(tx.rawName) + '</span>');
 
     html += '<div class="rp2-tx-item">' +
       '<div class="rp2-tx-date">' + esc(dFmt) + '</div>' +
