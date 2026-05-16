@@ -4,6 +4,47 @@
 
 ---
 
+## Design- und UX-Aufgaben — Pflichtprozess (niemals überspringen)
+
+### Das Problem, das es zu verhindern gilt
+Vage Anforderungen ("mach es wie X", "näher an Y") führen zu Stunden Aufwand
+für Ergebnisse, die der Erwartung nicht entsprechen. Dieser Prozess ist
+Pflicht — kein optionaler Schritt.
+
+### Schritt 1 — Scope definieren, bevor Code geschrieben wird
+Bei jeder Anfrage mit visuellem oder UX-Bezug:
+
+1. **Was genau soll anders aussehen?**
+   Konkrete Elemente nennen: Karten, Navigation, Farben, Abstände, Schrift.
+   Nicht akzeptabel: "wie Monarch", "moderner", "schöner".
+
+2. **Was bleibt unverändert?**
+   Explizit abgrenzen, damit der Scope klar ist.
+
+3. **Ist das in einer Session machbar?**
+   Wenn nicht: Session aufteilen und Teilziel definieren.
+   Niemals eine Mammutaufgabe beginnen ohne Meilenstein.
+
+4. **Schriftliche Zusammenfassung zeigen und Freigabe einholen:**
+   > "Ich werde folgendes ändern: [Liste]. Das wird so aussehen: [Beschreibung].
+   > Ist das was du meinst? Soll ich anfangen?"
+   Erst nach explizitem Ja weitermachen.
+
+### Schritt 2 — Nach erstem Deploy: Sichtkontrolle Pflicht
+Nach dem ersten Deploy einer Design-Änderung immer fragen:
+> "Bitte schau es dir live an. Entspricht es dem was du dir vorgestellt hast?"
+Erst wenn Bestätigung kommt, weiter mit dem nächsten Schritt.
+Niemals mehrere Design-Schritte hintereinander ohne Zwischenfeedback.
+
+### Schritt 3 — Aufwands-Ehrlichkeit
+Wenn eine Anfrage nicht in einer Session umsetzbar ist, das sofort sagen:
+> "Das was du beschreibst ist eine vollständige visuelle Umgestaltung.
+> Das bedeutet X Stunden Arbeit und braucht eine eigene Session mit klarem Plan.
+> Willst du das so angehen, oder soll ich einen kleineren Teilschritt vorschlagen?"
+Niemals klein anfangen und hoffen dass es reicht.
+
+---
+
 ## Arbeitsweise — Pflichtregeln
 
 **Best Practices sind Standard, keine Option.**
