@@ -1401,6 +1401,10 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 }
 
 /* ── Reports ── */
+.rp2-tabs{display:flex;gap:0;border-bottom:1px solid var(--brd);margin-bottom:20px}
+.rp2-tab-btn{padding:10px 20px;font-size:14px;font-weight:600;color:var(--tx3);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color .15s,border-color .15s}
+.rp2-tab-btn:hover{color:var(--tx)}
+.rp2-tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
 .rp2-filter-card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
 .rp2-period-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .rp2-period-btns{display:flex;gap:6px;flex-wrap:wrap}

@@ -7203,13 +7203,33 @@ function cfRenderTable(months) {
 
 // ── Reports ──
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-var _rp2 = { period: 'all', offset: 0, cats: [] };
+var _rp2 = { period: 'all', offset: 0, cats: [], tab: 'ausgaben' };
 var RP2_MLAB = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
 function rp2Init() {
   _rp2.cats = [];
   _rp2.period = 'all';
   _rp2.offset = 0;
+  document.querySelectorAll('.rp2-period-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.period === 'all');
+  });
+  var nav = document.getElementById('rp2-period-nav');
+  if (nav) nav.style.display = 'none';
+  var search = document.getElementById('rp2-search');
+  if (search) search.value = '';
+  rp2RenderChips();
+  rp2UpdatePeriodLabel();
+  rp2Render();
+}
+
+function rp2SetTab(tab) {
+  _rp2.tab = tab;
+  _rp2.cats = [];
+  _rp2.period = 'all';
+  _rp2.offset = 0;
+  document.querySelectorAll('.rp2-tab-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
   document.querySelectorAll('.rp2-period-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.period === 'all');
   });
@@ -7348,6 +7368,9 @@ function rp2Filter() {
 
   var all = FP.Store.Transactions.getAll();
   return all.filter(function(tx) {
+    var amt = Number(tx.amount);
+    if (_rp2.tab === 'ausgaben'  && amt <= 0) return false;
+    if (_rp2.tab === 'einnahmen' && amt >  0) return false;
     if (_rp2.cats.length) {
       var rootId = catParent[tx.categoryId] || tx.categoryId;
       if (_rp2.cats.indexOf(tx.categoryId) < 0 && _rp2.cats.indexOf(rootId) < 0) return false;
@@ -7373,14 +7396,6 @@ function rp2Render() {
   var bdCard  = document.getElementById('rp2-breakdown-card');
   var txCard  = document.getElementById('rp2-tx-card');
 
-  if (!_rp2.cats.length) {
-    if (hint)    hint.style.display    = '';
-    if (emptyEl) emptyEl.style.display = 'none';
-    if (bdCard)  bdCard.style.display  = 'none';
-    if (txCard)  txCard.style.display  = 'none';
-    rp2SetKpi(null, null, null);
-    return;
-  }
   if (hint) hint.style.display = 'none';
 
   var txs = rp2Filter();
