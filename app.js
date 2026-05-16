@@ -7313,24 +7313,41 @@ function rp2DateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function rp2TxDate(tx) {
+/* Gibt ISO-Datum für Vergleich zurück. MM.YYYY → YYYY-MM-01, DD.MM.YYYY → YYYY-MM-DD */
+function rp2TxISO(tx) {
   if (!tx.date) return null;
-  var parts = tx.date.split('.');
-  if (parts.length === 3) return parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
+  var p = tx.date.split('.');
+  if (p.length === 3) return p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
+  if (p.length === 2) return p[1] + '-' + p[0].padStart(2,'0') + '-01';
+  return tx.date;
+}
+
+/* Gibt lesbares Datum zurück: MM.YYYY bleibt MM.YYYY, YYYY-MM-DD → DD.MM.YYYY */
+function rp2TxFmt(tx) {
+  if (!tx.date) return '';
+  var p = tx.date.split('.');
+  if (p.length >= 2) return tx.date;
+  if (tx.date.length === 10) return tx.date.substring(8)+'.'+tx.date.substring(5,7)+'.'+tx.date.substring(0,4);
   return tx.date;
 }
 
 function rp2Filter() {
-  var range  = rp2GetRange();
+  var range = rp2GetRange();
+  var q = ((document.getElementById('rp2-search') || {}).value || '').toLowerCase().trim();
 
   var all = FP.Store.Transactions.getAll();
   return all.filter(function(tx) {
     if (_rp2.cats.length && _rp2.cats.indexOf(tx.categoryId) < 0) return false;
     if (range.from || range.to) {
-      var d = rp2TxDate(tx);
+      var d = rp2TxISO(tx);
       if (!d) return false;
       if (range.from && d < range.from) return false;
       if (range.to   && d > range.to)   return false;
+    }
+    if (q) {
+      var note = (tx.note || '').toLowerCase();
+      var raw  = (tx.rawName || '').toLowerCase();
+      if (!note.includes(q) && !raw.includes(q)) return false;
     }
     return true;
   });
@@ -7355,7 +7372,7 @@ function rp2Render() {
 
   var txs = rp2Filter();
   txs.sort(function(a, b) {
-    var da = rp2TxDate(a) || '', db = rp2TxDate(b) || '';
+    var da = rp2TxISO(a) || '', db = rp2TxISO(b) || '';
     return db < da ? -1 : db > da ? 1 : 0;
   });
 
@@ -7388,7 +7405,7 @@ function rp2Render() {
 function rp2CountMonths(txs) {
   var keys = {};
   txs.forEach(function(tx) {
-    var d = rp2TxDate(tx);
+    var d = rp2TxISO(tx);
     if (d) keys[d.substring(0, 7)] = true;
   });
   return Object.keys(keys).length || 1;
@@ -7404,7 +7421,7 @@ function rp2SetKpi(total, count, avg) {
 function rp2RenderBreakdown(txs) {
   var byMonth = {};
   txs.forEach(function(tx) {
-    var d = rp2TxDate(tx);
+    var d = rp2TxISO(tx);
     if (!d) return;
     var key = d.substring(0, 7);
     byMonth[key] = (byMonth[key] || 0) + Math.abs(tx.amount);
@@ -7435,23 +7452,29 @@ function rp2RenderTxList(txs) {
 
   var html = '';
   txs.forEach(function(tx) {
-    var cat   = cats[tx.categoryId];
-    var obj   = tx.objectId ? objs[tx.objectId] : null;
-    var d     = rp2TxDate(tx) || tx.date || '';
-    var dFmt  = d.length === 10 ? d.substring(8) + '.' + d.substring(5, 7) + '.' + d.substring(0, 4) : d;
-    var isPos = tx.amount > 0;
-    var meta  = [];
-    if (obj)  meta.push(esc(obj.name));
-    if (tx.rawName && tx.rawName !== 'undefined') meta.push('<span style="color:var(--tx3)">' + esc(tx.rawName) + '</span>');
+    var cat   = tx.categoryId ? cats[tx.categoryId] : null;
+    var obj   = tx.objectId   ? objs[tx.objectId]   : null;
+    var dFmt  = rp2TxFmt(tx);
+    var isPos = Number(tx.amount) > 0;
+    var amt   = isFinite(tx.amount) ? Math.abs(Number(tx.amount)) : 0;
+
+    var catName = cat && cat.name && cat.name !== 'undefined' ? cat.name : '';
+    var catClr  = cat && cat.color ? cat.color : 'var(--tx3)';
+    var objName = obj && obj.name && obj.name !== 'undefined' ? obj.name : '';
+    var note    = tx.note && tx.note !== 'undefined' ? tx.note : '';
+
+    var meta = [];
+    if (catName) meta.push('<span style="color:' + catClr + ';font-weight:600">' + esc(catName) + '</span>');
+    if (objName) meta.push(esc(objName));
 
     html += '<div class="rp2-tx-item">' +
       '<div class="rp2-tx-date">' + esc(dFmt) + '</div>' +
       '<div class="rp2-tx-main">' +
         (meta.length ? '<div class="rp2-tx-meta">' + meta.join(' · ') + '</div>' : '') +
-        (tx.note ? '<div class="rp2-tx-note">' + esc(tx.note) + '</div>' : '') +
+        (note ? '<div class="rp2-tx-note">' + esc(note) + '</div>' : '') +
       '</div>' +
       '<div class="rp2-tx-amt' + (isPos ? ' rp2-pos' : '') + '">' +
-        (isPos ? '+' : '') + Math.abs(tx.amount).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' +
+        (isPos ? '+' : '−') + amt.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' +
       '</div></div>';
   });
   document.getElementById('rp2-tx-list').innerHTML = html || '<div class="cf-empty">Keine Einträge</div>';
@@ -7469,7 +7492,7 @@ function rp2ExportExcel(btn) {
   }
 
   var txs = rp2Filter();
-  txs.sort(function(a, b) { var da = rp2TxDate(a)||'', db = rp2TxDate(b)||''; return da < db ? -1 : da > db ? 1 : 0; });
+  txs.sort(function(a, b) { var da = rp2TxISO(a)||'', db = rp2TxISO(b)||''; return da < db ? -1 : da > db ? 1 : 0; });
 
   var cats = {};
   FP.Store.Categories.getAll().forEach(function(c) { cats[c.id] = c; });
@@ -7477,24 +7500,23 @@ function rp2ExportExcel(btn) {
   FP.Store.Objects.getAll().forEach(function(o) { objs[o.id] = o; });
 
   // Sheet 1: Transaktionen
-  var txRows = [['Datum','Betrag (€)','Kategorie','Objekt','Bezeichnung','Notiz']];
+  var txRows = [['Datum','Betrag (€)','Kategorie','Objekt','Notiz']];
   txs.forEach(function(tx) {
-    var d   = rp2TxDate(tx) || tx.date || '';
-    var dFmt = d.length === 10 ? d.substring(8) + '.' + d.substring(5,7) + '.' + d.substring(0,4) : d;
+    var cat = tx.categoryId ? cats[tx.categoryId] : null;
+    var obj = tx.objectId   ? objs[tx.objectId]   : null;
     txRows.push([
-      dFmt,
+      rp2TxFmt(tx),
       tx.amount,
-      cats[tx.categoryId] ? cats[tx.categoryId].name : '',
-      tx.objectId && objs[tx.objectId] ? objs[tx.objectId].name : '',
-      tx.rawName || '',
-      tx.note    || ''
+      cat && cat.name !== 'undefined' ? (cat.name || '') : '',
+      obj && obj.name !== 'undefined' ? (obj.name || '') : '',
+      tx.note && tx.note !== 'undefined' ? (tx.note || '') : ''
     ]);
   });
 
   // Sheet 2: Monats-Breakdown
   var byMonth = {};
   txs.forEach(function(tx) {
-    var d = rp2TxDate(tx);
+    var d = rp2TxISO(tx);
     if (!d) return;
     var key = d.substring(0, 7);
     byMonth[key] = (byMonth[key] || 0) + Math.abs(tx.amount);

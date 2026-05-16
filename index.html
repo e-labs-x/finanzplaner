@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260516b">
+<link rel="stylesheet" href="style.css?v=20260516c">
 </head>
 <body>
 
@@ -975,10 +975,14 @@
           <div class="rp2-cat-wrap">
             <div class="rp2-cat-hdr">
               <span class="rp2-filter-lbl">Kategorien</span>
-              <button class="rp2-cat-ctrl-btn" onclick="rp2SelectAll()">Alle</button>
+              <button class="rp2-cat-ctrl-btn rp2-cat-ctrl-all" onclick="rp2SelectAll()">Alle auswählen</button>
               <button class="rp2-cat-ctrl-btn" onclick="rp2ClearCats()">Keine</button>
             </div>
             <div class="rp2-cat-chips" id="rp2-cat-chips"></div>
+          </div>
+          <!-- Zeile 3: Notiz-Suche -->
+          <div class="rp2-search-row">
+            <input class="rp2-search" id="rp2-search" type="text" placeholder="Notiz / Bezeichnung durchsuchen…" oninput="rp2Render()">
           </div>
         </div>
 
@@ -1351,8 +1355,8 @@
 </div>
 
 
-<script src="store.js?v=20260516b"></script>
-<script src="app.js?v=20260516b"></script>
+<script src="store.js?v=20260516c"></script>
+<script src="app.js?v=20260516c"></script>
 
 </body>
 </html>
