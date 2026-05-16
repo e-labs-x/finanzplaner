@@ -7204,9 +7204,19 @@ function cfRenderTable(months) {
 // ── Reports ──
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 var _rp2 = { period: 'all', offset: 0, cats: [] };
+var RP2_MLAB = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
 function rp2Init() {
   _rp2.cats = [];
+  _rp2.period = 'all';
+  _rp2.offset = 0;
+  document.querySelectorAll('.rp2-period-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.period === 'all');
+  });
+  var nav = document.getElementById('rp2-period-nav');
+  if (nav) nav.style.display = 'none';
+  var search = document.getElementById('rp2-search');
+  if (search) search.value = '';
   rp2RenderChips();
   rp2UpdatePeriodLabel();
   rp2Render();
@@ -7270,7 +7280,6 @@ function rp2ClearCats() {
 
 function rp2GetRange() {
   var now = new Date();
-  var y = now.getFullYear() - Math.max(0, -_rp2.offset > 0 ? -_rp2.offset : 0);
   var p = _rp2.period;
   var o = _rp2.offset;
 
@@ -7299,9 +7308,8 @@ function rp2GetRange() {
   if (p === 'month') {
     var mBase = new Date(now.getFullYear(), now.getMonth() + o, 1);
     var mTo   = new Date(mBase.getFullYear(), mBase.getMonth() + 1, 0);
-    var MLAB  = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     return {
-      label: MLAB[mBase.getMonth()] + ' ' + mBase.getFullYear(),
+      label: RP2_MLAB[mBase.getMonth()] + ' ' + mBase.getFullYear(),
       from:  rp2DateStr(mBase),
       to:    rp2DateStr(mTo)
     };
@@ -7354,11 +7362,10 @@ function rp2Filter() {
 }
 
 function rp2Render() {
-  var hint     = document.getElementById('rp2-hint');
-  var emptyEl  = document.getElementById('rp2-empty');
-  var bdCard   = document.getElementById('rp2-breakdown-card');
-  var txCard   = document.getElementById('rp2-tx-card');
-  var kpiRow   = document.getElementById('rp2-kpi-row');
+  var hint    = document.getElementById('rp2-hint');
+  var emptyEl = document.getElementById('rp2-empty');
+  var bdCard  = document.getElementById('rp2-breakdown-card');
+  var txCard  = document.getElementById('rp2-tx-card');
 
   if (!_rp2.cats.length) {
     if (hint)    hint.style.display    = '';
@@ -7418,7 +7425,7 @@ function rp2SetKpi(total, count, avg) {
   el = document.getElementById('rp2-kpi-avg');   if (el) el.textContent = fmt(avg);
 }
 
-function rp2RenderBreakdown(txs) {
+function rp2BuildByMonth(txs) {
   var byMonth = {};
   txs.forEach(function(tx) {
     var d = rp2TxISO(tx);
@@ -7426,14 +7433,18 @@ function rp2RenderBreakdown(txs) {
     var key = d.substring(0, 7);
     byMonth[key] = (byMonth[key] || 0) + Math.abs(tx.amount);
   });
+  return byMonth;
+}
+
+function rp2RenderBreakdown(txs) {
+  var byMonth = rp2BuildByMonth(txs);
   var keys = Object.keys(byMonth).sort().reverse();
   var total = txs.reduce(function(s, tx) { return s + Math.abs(tx.amount); }, 0);
-  var MLAB  = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
   var html = '<table class="cf-tbl"><thead><tr><th>Monat</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>';
   keys.forEach(function(k) {
     var parts  = k.split('-');
-    var mlbl   = MLAB[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+    var mlbl   = RP2_MLAB[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
     var val    = byMonth[k];
     var pct    = total > 0 ? Math.round((val / total) * 100) : 0;
     html += '<tr><td>' + esc(mlbl) + '</td>' +
@@ -7514,28 +7525,20 @@ function rp2ExportExcel(btn) {
   });
 
   // Sheet 2: Monats-Breakdown
-  var byMonth = {};
-  txs.forEach(function(tx) {
-    var d = rp2TxISO(tx);
-    if (!d) return;
-    var key = d.substring(0, 7);
-    byMonth[key] = (byMonth[key] || 0) + Math.abs(tx.amount);
-  });
-  var total = Object.values(byMonth).reduce(function(s, v) { return s + v; }, 0);
-  var MLAB  = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  var byMonth = rp2BuildByMonth(txs);
+  var total   = Object.values(byMonth).reduce(function(s, v) { return s + v; }, 0);
   var sumKeys = Object.keys(byMonth).sort();
   var sumRows = [['Monat','Betrag (€)','Anteil (%)']];
   sumKeys.forEach(function(k) {
     var p = k.split('-');
     sumRows.push([
-      MLAB[parseInt(p[1],10)-1] + ' ' + p[0],
+      RP2_MLAB[parseInt(p[1],10)-1] + ' ' + p[0],
       byMonth[k],
       total > 0 ? Math.round((byMonth[k]/total)*100) : 0
     ]);
   });
   sumRows.push(['Gesamt', total, 100]);
 
-  var range = rp2GetRange();
   var catNames = _rp2.cats.map(function(id) { return cats[id] ? cats[id].name : id; }).join(', ');
   var dateStr = new Date().toISOString().substring(0, 10).replace(/-/g, '');
 
