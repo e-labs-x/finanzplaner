@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260515e">
+<link rel="stylesheet" href="style.css?v=20260516a">
 </head>
 <body>
 
@@ -39,6 +39,7 @@
       <button class="sb-item active" data-p="eingabe"    data-tip="Eingabe"    onclick="nav('eingabe')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></span><span class="sb-txt">Eingabe</span></button>
       <button class="sb-item" data-p="auswertung"        data-tip="Übersicht"  onclick="nav('auswertung')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="sb-txt">Übersicht</span></button>
       <button class="sb-item" data-p="cashflow"          data-tip="Cashflow"   onclick="nav('cashflow')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg></span><span class="sb-txt">Cashflow</span></button>
+      <button class="sb-item" data-p="reports"           data-tip="Reports"    onclick="nav('reports')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M11 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/><path d="M13 3v5h5"/><path d="m15 18 2 2 4-4"/></svg></span><span class="sb-txt">Reports</span></button>
       <button class="sb-item" data-p="budget"            data-tip="Budget"     onclick="nav('budget')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="sb-txt">Budget</span></button>
       <button class="sb-item" data-p="vermoegen"         data-tip="Vermögen"   onclick="nav('vermoegen')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="sb-txt">Vermögen</span></button>
       <button class="sb-item" data-p="rente"             data-tip="Rente"       onclick="nav('rente')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg></span><span class="sb-txt">Rente</span></button>
@@ -849,6 +850,14 @@
           </div>
           <div class="me-section-lbl">Tracking</div>
           <div class="me-card">
+            <div class="me-item" onclick="nav('reports')">
+              <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M11 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/><path d="M13 3v5h5"/><path d="m15 18 2 2 4-4"/></svg></div>
+              <div class="me-item-info">
+                <div class="me-item-name">Reports</div>
+                <div class="me-item-sub">Kategorie-Analyse · Excel-Export</div>
+              </div>
+              <div class="me-item-arr">›</div>
+            </div>
             <div class="me-item" onclick="nav('cashflow')">
               <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg></div>
               <div class="me-item-info">
@@ -940,6 +949,70 @@
         <div class="cf-table-card">
           <div id="cf-table"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="p-reports">
+      <div class="pg">
+        <!-- Filter-Bereich -->
+        <div class="rp2-filter-card">
+          <div class="rp2-filter-row">
+            <div class="rp2-filter-lbl">Zeitraum</div>
+            <div class="rp2-period-btns" id="rp2-period-btns">
+              <button class="rp2-period-btn active" data-period="all"     onclick="rp2SetPeriod('all')">Gesamt</button>
+              <button class="rp2-period-btn"        data-period="year"    onclick="rp2SetPeriod('year')">Jahr</button>
+              <button class="rp2-period-btn"        data-period="quarter" onclick="rp2SetPeriod('quarter')">Quartal</button>
+              <button class="rp2-period-btn"        data-period="month"   onclick="rp2SetPeriod('month')">Monat</button>
+            </div>
+            <div class="rp2-period-nav" id="rp2-period-nav" style="display:none">
+              <button class="cf-nav-btn" onclick="rp2Shift(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+              <span class="rp2-period-lbl" id="rp2-period-lbl"></span>
+              <button class="cf-nav-btn" onclick="rp2Shift(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            </div>
+          </div>
+          <div class="rp2-filter-row rp2-cat-row">
+            <div class="rp2-filter-lbl">Kategorien</div>
+            <div class="rp2-cat-chips" id="rp2-cat-chips"></div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="rp2-kpi-row" id="rp2-kpi-row">
+          <div class="rp2-kpi-card rp2-kpi-total">
+            <div class="cf-kpi-lbl">Gesamt</div>
+            <div class="cf-kpi-val" id="rp2-kpi-total">–</div>
+          </div>
+          <div class="rp2-kpi-card rp2-kpi-count">
+            <div class="cf-kpi-lbl">Buchungen</div>
+            <div class="cf-kpi-val" id="rp2-kpi-count">–</div>
+          </div>
+          <div class="rp2-kpi-card rp2-kpi-avg">
+            <div class="cf-kpi-lbl">Ø / Monat</div>
+            <div class="cf-kpi-val" id="rp2-kpi-avg">–</div>
+          </div>
+        </div>
+
+        <!-- Monats-Breakdown -->
+        <div class="cf-table-card" id="rp2-breakdown-card" style="display:none">
+          <div id="rp2-breakdown"></div>
+        </div>
+
+        <!-- Transaktionsliste -->
+        <div class="cf-table-card" id="rp2-tx-card" style="display:none">
+          <div class="rp2-tx-hdr">
+            <div class="rp2-tx-title">Transaktionen</div>
+            <button class="rp2-export-btn" onclick="rp2ExportExcel(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel</button>
+          </div>
+          <div id="rp2-tx-list"></div>
+        </div>
+
+        <div class="rp2-empty" id="rp2-empty" style="display:none">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx3);margin-bottom:10px"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M11 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v2"/><path d="m15 18 2 2 4-4"/></svg>
+          <div>Keine Transaktionen für diese Auswahl</div>
+        </div>
+
+        <div class="rp2-hint" id="rp2-hint">Kategorie auswählen um den Report zu starten</div>
       </div>
     </div>
 
@@ -1273,8 +1346,8 @@
 </div>
 
 
-<script src="store.js?v=20260515e"></script>
-<script src="app.js?v=20260515e"></script>
+<script src="store.js?v=20260516a"></script>
+<script src="app.js?v=20260516a"></script>
 
 </body>
 </html>
