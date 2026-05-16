@@ -1406,17 +1406,20 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 
 /* ── Reports ── */
 .rp2-filter-card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
-.rp2-filter-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.rp2-filter-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);min-width:72px;padding-top:7px;flex-shrink:0}
+.rp2-period-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .rp2-period-btns{display:flex;gap:6px;flex-wrap:wrap}
 .rp2-period-btn{padding:5px 14px;border-radius:20px;border:1.5px solid var(--brd);background:transparent;color:var(--tx2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
 .rp2-period-btn:hover{border-color:var(--blue);color:var(--blue)}
 .rp2-period-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
 .rp2-period-nav{display:flex;align-items:center;gap:8px}
-.rp2-period-lbl{font-size:14px;font-weight:600;color:var(--tx);min-width:120px;text-align:center}
-.rp2-cat-row{align-items:flex-start}
+.rp2-period-lbl{font-size:14px;font-weight:700;color:var(--tx);min-width:110px;text-align:center}
+.rp2-filter-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3)}
+.rp2-cat-wrap{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--brd2);padding-top:14px}
+.rp2-cat-hdr{display:flex;align-items:center;gap:8px}
+.rp2-cat-ctrl-btn{padding:2px 10px;border-radius:12px;border:1px solid var(--brd);background:transparent;color:var(--tx3);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.rp2-cat-ctrl-btn:hover{border-color:var(--blue);color:var(--blue)}
 .rp2-cat-chips{display:flex;flex-wrap:wrap;gap:6px}
-.rp2-cat-chip{padding:5px 13px;border-radius:20px;border:1.5px solid var(--brd);background:transparent;color:var(--tx2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.rp2-cat-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--brd);background:transparent;color:var(--tx2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
 .rp2-cat-chip:hover{border-color:var(--blue);color:var(--blue)}
 .rp2-cat-chip.active{border-color:var(--blue);background:var(--blue-lt);color:var(--blue);font-weight:600}
 .rp2-cat-chip .rp2-chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
