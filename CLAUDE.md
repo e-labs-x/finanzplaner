@@ -4,6 +4,27 @@
 
 ---
 
+## Arbeitsweise — Pflichtregeln
+
+**Best Practices sind Standard, keine Option.**
+Weiche nur ab, wenn es einen konkreten Grund gibt — und erkläre diesen Grund unaufgefordert, bevor Code geschrieben wird.
+
+**Lesen vor Schreiben.**
+Vor jeder Implementierung die relevanten Codeabschnitte lesen und verstehen:
+- Datenformate klären (z.B. wie Datum, Betrag, Kategorie-IDs gespeichert sind)
+- Vorhandene Funktionen und Konventionen suchen, bevor neue geschrieben werden
+- Store-APIs und bestehende Patterns prüfen, bevor sie genutzt werden
+
+**Fragen ist Pflicht — Raten ist verboten.**
+Bei Unklarheiten nachfragen, nicht schätzen. Jede vermeidbare Korrektur-Runde kostet Zeit.
+
+Typische Pflicht-Fragen vor dem Start:
+- Unbekanntes Datenformat oder unklare Datenstruktur → fragen
+- Anforderung ist mehrdeutig oder unvollständig → klären
+- Verhalten einer bestehenden Funktion nicht eindeutig aus dem Code ersichtlich → lesen oder fragen
+
+---
+
 ## Design- und UX-Aufgaben — Pflichtprozess (niemals überspringen)
 
 ### Das Problem, das es zu verhindern gilt
@@ -42,27 +63,6 @@ Wenn eine Anfrage nicht in einer Session umsetzbar ist, das sofort sagen:
 > Das bedeutet X Stunden Arbeit und braucht eine eigene Session mit klarem Plan.
 > Willst du das so angehen, oder soll ich einen kleineren Teilschritt vorschlagen?"
 Niemals klein anfangen und hoffen dass es reicht.
-
----
-
-## Arbeitsweise — Pflichtregeln
-
-**Best Practices sind Standard, keine Option.**
-Weiche nur ab, wenn es einen konkreten Grund gibt — und erkläre diesen Grund unaufgefordert, bevor Code geschrieben wird.
-
-**Lesen vor Schreiben.**
-Vor jeder Implementierung die relevanten Codeabschnitte lesen und verstehen:
-- Datenformate klären (z.B. wie Datum, Betrag, Kategorie-IDs gespeichert sind)
-- Vorhandene Funktionen und Konventionen suchen, bevor neue geschrieben werden
-- Store-APIs und bestehende Patterns prüfen, bevor sie genutzt werden
-
-**Fragen ist Pflicht — Raten ist verboten.**
-Bei Unklarheiten nachfragen, nicht schätzen. Jede vermeidbare Korrektur-Runde kostet Zeit.
-
-Typische Pflicht-Fragen vor dem Start:
-- Unbekanntes Datenformat oder unklare Datenstruktur → fragen
-- Anforderung ist mehrdeutig oder unvollständig → klären
-- Verhalten einer bestehenden Funktion nicht eindeutig aus dem Code ersichtlich → lesen oder fragen
 
 ---
 
