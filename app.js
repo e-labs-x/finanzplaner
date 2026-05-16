@@ -7343,9 +7343,15 @@ function rp2Filter() {
   var range = rp2GetRange();
   var q = ((document.getElementById('rp2-search') || {}).value || '').toLowerCase().trim();
 
+  var catParent = {};
+  FP.Store.Categories.getAll().forEach(function(c) { catParent[c.id] = c.parentId || c.id; });
+
   var all = FP.Store.Transactions.getAll();
   return all.filter(function(tx) {
-    if (_rp2.cats.length && _rp2.cats.indexOf(tx.categoryId) < 0) return false;
+    if (_rp2.cats.length) {
+      var rootId = catParent[tx.categoryId] || tx.categoryId;
+      if (_rp2.cats.indexOf(tx.categoryId) < 0 && _rp2.cats.indexOf(rootId) < 0) return false;
+    }
     if (range.from || range.to) {
       var d = rp2TxISO(tx);
       if (!d) return false;
