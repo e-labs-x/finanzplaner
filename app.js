@@ -6539,7 +6539,7 @@ function ghDrawChart(canvas, pts){
   var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
   var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
   var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cRealPos='oklch(60% 0.18 145)'; // Echtes Grün für Reallohn positiv (--green ist Hue 295 = lila)
+  var cRealPos='#30a46c'; // Echtes Grün (#30a46c ≈ oklch 64% H146) — Canvas versteht OKLCH-Strings nicht zuverlässig
   var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
 
