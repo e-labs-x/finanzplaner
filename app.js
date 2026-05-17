@@ -957,7 +957,7 @@ function renderEntries() {
       + '<div class="e-bar" style="background:' + (cat ? cat.color : '#6B7280') + '"></div>'
       + '<div class="e-info">'
       + '<div class="e-cat">' + (cat ? cat.name : '?') + '</div>'
-      + (tx.note ? '<div class="e-note">' + tx.note + '</div>' : '')
+      + (tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
       + '<div class="e-meta"><span style="font-size:11px;color:var(--tx3)">' + dateTx + '</span>'
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
       + objTag + '</div></div>'
@@ -2834,29 +2834,38 @@ function _xlsxGetOrCreateObject(name){
 
 function stImportAusgaben(input){
   var file=input.files[0];
-  if(!file) return;
-  var lbl=document.getElementById('st-import-xlsx-lbl');
-  if(lbl){lbl.style.opacity='0.6';lbl.textContent='Lädt…';}
+  if(!file){ input.value=''; return; }
 
-  function doImport(XLSX){
-    var reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
-        var ws=wb.Sheets['Ausgaben_Flat'];
-        if(!ws){toast('Sheet "Ausgaben_Flat" nicht gefunden');return;}
+  var txCount=(FP.Store.Transactions.getAll()||[]).length;
+  confirmDialog(
+    'Beim Import werden alle bestehenden '+txCount+' Transaktionen gelöscht und durch die Excel-Daten ersetzt. Ein Backup wird automatisch gespeichert.',
+    'Importieren & ersetzen',
+    function(){
+      var lbl=document.getElementById('st-import-xlsx-lbl');
+      if(lbl){lbl.style.opacity='0.6';lbl.textContent='Lädt…';}
 
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-        if(rows.length<2){toast('Keine Daten gefunden');return;}
+      function doImport(XLSX){
+        var reader=new FileReader();
+        reader.onload=function(e){
+          try{
+            var wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+            var ws=wb.Sheets['Ausgaben_Flat'];
+            if(!ws){toast('Sheet "Ausgaben_Flat" nicht gefunden');return;}
 
-        // Header-Zeile analysieren: Spalten I (idx 8) und J (idx 9) optional
-        var hasColI=rows[0][8]!=null;
-        var hasColJ=rows[0][9]!=null;
+            var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+            if(rows.length<2){toast('Keine Daten gefunden');return;}
 
-        // Bestehende Transaktionen löschen
-        var store=FP.Store.get();
-        store.transactions=[];
-        FP.Store.save();
+            // Header-Zeile analysieren: Spalten I (idx 8) und J (idx 9) optional
+            var hasColI=rows[0][8]!=null;
+            var hasColJ=rows[0][9]!=null;
+
+            // Backup erstellen bevor Transaktionen unwiderruflich gelöscht werden
+            FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Vor Excel-Import'));
+
+            // Bestehende Transaktionen löschen
+            var store=FP.Store.get();
+            store.transactions=[];
+            FP.Store.save();
 
         var imported=0,skipped=0,nocat=0,flaggedSkip=0,badData=0;
         var nocatNames={};  // {katName: count} für WARN-Log
@@ -2944,7 +2953,6 @@ function stImportAusgaben(input){
 
         if(lbl){lbl.style.opacity='';lbl.innerHTML='📥 Importieren<input type="file" accept=".xlsx" style="display:none" onchange="stImportAusgaben(this)">';}
         toast('✓ '+imported+' Transaktionen importiert'+(skipped?' · '+skipped+' übersprungen':''));
-        input.value='';
       } catch(err){
         appLog('ERROR','Excel-Import Fehler: '+err.message);
         toast('Import fehlgeschlagen: '+err.message);
@@ -2954,15 +2962,18 @@ function stImportAusgaben(input){
     reader.readAsArrayBuffer(file);
   }
 
-  if(typeof XLSX==='undefined'){
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-    s.onload=function(){doImport(XLSX);};
-    s.onerror=function(){toast('Fehler: SheetJS konnte nicht geladen werden');if(lbl){lbl.style.opacity='';lbl.textContent='📥 Importieren';}};
-    document.head.appendChild(s);
-  } else {
-    doImport(XLSX);
-  }
+      if(typeof XLSX==='undefined'){
+        var s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        s.onload=function(){doImport(XLSX);};
+        s.onerror=function(){toast('Fehler: SheetJS konnte nicht geladen werden');if(lbl){lbl.style.opacity='';lbl.textContent='📥 Importieren';}};
+        document.head.appendChild(s);
+      } else {
+        doImport(XLSX);
+      }
+    }
+  );
+  input.value='';
 }
 
 function stReset(){
@@ -6799,7 +6810,7 @@ function srSearch(q){
       return '<button class="sr-item" onclick="srGoObj(\''+o.id+'\')">'
         +'<div class="sr-item-dot" style="background:'+(o.color||'#6B7280')+'"></div>'
         +'<div class="sr-item-info"><div class="sr-item-title">'+(OBJ_ICONS[o.type]||'')+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+o.name+'</span></div>'
-        +(o.description?'<div class="sr-item-sub">'+o.description+'</div>':'')
+        +(o.description?'<div class="sr-item-sub">'+esc(o.description)+'</div>':'')
         +'</div></button>';
     }).join('');
   }
