@@ -6544,7 +6544,7 @@ function ghDrawChart(canvas, pts){
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
 
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
-  var H=260;
+  var H=284;
   var dpr=window.devicePixelRatio||1;
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
@@ -6635,7 +6635,6 @@ function ghDrawChart(canvas, pts){
       var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
               '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
               '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
-      // Hintergrund
       ctx.font='13px Inter,system-ui,sans-serif';
       var tw=ctx.measureText(txt).width+20;
       ctx.fillStyle=cs.getPropertyValue('--surf').trim()||'#fff';
@@ -6644,6 +6643,34 @@ function ghDrawChart(canvas, pts){
       ctx.fillStyle=cTx;ctx.textAlign='left';
       ctx.fillText(txt,PAD.l+10,17);
     }
+
+    // Legende (im Canvas — exakt gleiche Farben + Alpha wie die Balken)
+    var lgY=H-8;
+    ctx.font='11px Inter,system-ui,sans-serif';
+    ctx.textAlign='left';
+    var lgX=PAD.l;
+
+    // Nominal (blaue Balken, gleiche Alpha wie Chart)
+    ctx.globalAlpha=0.7;ctx.fillStyle=cBlue;
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX,lgY-9,10,10,2):ctx.rect(lgX,lgY-9,10,10);ctx.fill();
+    ctx.globalAlpha=1;ctx.fillStyle=cTx3;
+    ctx.fillText('Nominal Δ p.a.',lgX+14,lgY);
+    lgX+=14+ctx.measureText('Nominal Δ p.a.').width+16;
+
+    // Reallohn (grün wenn positiv, rot wenn negativ — beide als Split zeigen)
+    ctx.globalAlpha=0.7;
+    ctx.fillStyle=cGreen;ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX,lgY-9,5,10,[2,0,0,2]):ctx.rect(lgX,lgY-9,5,10);ctx.fill();
+    ctx.fillStyle=cRed;ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX+5,lgY-9,5,10,[0,2,2,0]):ctx.rect(lgX+5,lgY-9,5,10);ctx.fill();
+    ctx.globalAlpha=1;ctx.fillStyle=cTx3;
+    ctx.fillText('Reallohn Δ p.a.',lgX+14,lgY);
+    lgX+=14+ctx.measureText('Reallohn Δ p.a.').width+16;
+
+    // Inflation (gestrichelte Amber-Linie + Punkt)
+    ctx.strokeStyle=cAmber;ctx.lineWidth=2;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(lgX,lgY-4);ctx.lineTo(lgX+12,lgY-4);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=cAmber;ctx.beginPath();ctx.arc(lgX+6,lgY-4,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=cTx3;ctx.fillText('Inflation p.a.',lgX+16,lgY);
   }
 
   draw(-1);
