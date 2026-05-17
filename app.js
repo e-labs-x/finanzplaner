@@ -278,12 +278,6 @@ var GHSync = (function() {
         'pending: '      + _pendingPush    + '<br>' +
         'scheduleCalls: '+ _scheduleCount;
     }, 1000);
-    // Sofort pushen wenn App in Hintergrund geht (iOS pausiert sonst den debounce-Timer)
-    document.addEventListener('visibilitychange', function() {
-      if (!document.hidden || !_active() || !_cfg().autoSync || _justPushed || _busy) return;
-      if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; push(true); }
-      else if (_pendingPush && !_startupLock) { _pendingPush = false; push(true); }
-    });
   }
 
   function installStorageHook() {
@@ -2824,12 +2818,9 @@ function _xlsxParseAmount(v){
 
 function _xlsxGetOrCreateObject(name){
   if(!name||!name.trim()) return null;
-  var store=FP.Store.get();
-  var found=(store.objects||[]).find(function(o){return o.name===name;});
+  var found=(FP.Store.Objects.getAll()||[]).find(function(o){return o.name===name;});
   if(found) return found.id;
-  var newId='obj_'+name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_');
-  store.objects.push({id:newId,name:name,type:'sonstiges',description:'',startDate:null,endDate:null,icon:'📦',color:'var(--cat-slate)',status:'aktiv'});
-  return newId;
+  return FP.Store.Objects.add({name:name,type:'sonstiges',description:'',icon:'📦',color:'var(--cat-slate)'}).id;
 }
 
 function stImportAusgaben(input){
@@ -4465,10 +4456,9 @@ function rpUpdateSidebarLiveInfo() {
     .reduce(function(s,i){return s+(i.ownerId==='joint'?i.value*0.5:i.value);},0);
   var _spNow=new Date();
   var store=FP.Store.get();
-  // savingsPlans gehören immer Person 1
-  var sp=(personId==='person_1'
-    ?(store.savingsPlans||[]).filter(function(s){return!s.validUntil||new Date(s.validUntil)>_spNow;}).reduce(function(s,p){return s+p.monthlyAmount;},0)
-    :0)
+  var sp=((store.savingsPlans||[])
+    .filter(function(s){return(s.personId||'person_1')===personId;})
+    .filter(function(s){return!s.validUntil||new Date(s.validUntil)>_spNow;}).reduce(function(s,p){return s+p.monthlyAmount;},0))
     +(store.assets||[]).filter(function(a){return a.status==='aktiv'&&a.monthlyPlan>0;})
       .filter(function(a){return(a.ownerId||'person_1')===personId||a.ownerId==='joint';})
       .reduce(function(s,a){return s+a.monthlyPlan*(a.ownerId==='joint'?0.5:1);},0);
