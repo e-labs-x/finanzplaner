@@ -722,13 +722,14 @@ function validateStore(data) {
 
 const Store = (() => {
   let _state = null;
+  let _suppressTouch = false;
 
   function _touch() {
     if (_state?.meta) _state.meta.lastModified = new Date().toISOString();
   }
 
   function _save() {
-    _touch();
+    if (!_suppressTouch) _touch();
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(_state));
     } catch(e) {
@@ -775,7 +776,11 @@ const Store = (() => {
       if (errors.length > 0) {
         console.warn('[Store] Validierungsfehler:', errors);
       }
+      // _suppressTouch: lastModified darf beim Laden nicht auf "jetzt" gesetzt werden —
+      // nur echte User-Änderungen sollen den Timestamp setzen (Grundlage für SHA-Konflikt-Auflösung)
+      _suppressTouch = true;
       _save();
+      _suppressTouch = false;
       return { ok: true, fresh: false, warnings: errors };
     } catch(e) {
       console.error('[Store] Ladefehler:', e);
