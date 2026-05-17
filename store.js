@@ -368,7 +368,7 @@ function createDefaultStore() {
       2007:2.3, 2008:2.6, 2009:0.4, 2010:1.1, 2011:2.1, 2012:2.0,
       2013:1.5, 2014:0.9, 2015:0.3, 2016:0.5, 2017:1.8, 2018:1.9,
       2019:1.4, 2020:0.5, 2021:3.1, 2022:6.9, 2023:5.9, 2024:2.2,
-      2025:2.3, 2026:2.0,
+      2025:2.3, 2026:2.1,
     },
 
     // ── Budget ──
@@ -1649,7 +1649,7 @@ const ExcelImporter = {
 function rpCalcIncomeTax(zvE, isSplit) {
   if (isSplit) return 2 * rpCalcIncomeTax(zvE / 2, false);
   if (zvE <= 0)       return 0;
-  if (zvE <= 17431)  { const y = (zvE - 12084) / 10000; return Math.max(0, (979.18 * y + 1400) * y); }
+  if (zvE <= 17431)  { const y = (zvE - 12096) / 10000; return Math.max(0, (979.18 * y + 1400) * y); }
   if (zvE <= 68430)  { const z = (zvE - 17431) / 10000; return (192.59 * z + 2397) * z + 1025.38; }
   if (zvE <= 277826)   return 0.42 * zvE - 10911.92;
   return 0.45 * zvE - 19246.2;
@@ -1714,7 +1714,7 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
     (g + ru) * bA * 12          // Gesetzl. + Rürup: Kohortenversteuerung
     + (d + wBavTotal) * 12      // bAV: 100% steuerpflichtig
     + wPrivTotal * ertragsanteil * 12  // Private RV: Ertragsanteil
-    - (isSplit ? 24168 : 12084) // Grundfreibetrag 2026
+    - (isSplit ? 24192 : 12096) // Grundfreibetrag 2026
     - (isSplit ? 204 : 102)     // Werbungskostenpauschale §9a Abs. 1 Nr. 3 EStG
   );
   const estJahr  = rpCalcIncomeTax(stpflichtigJahr, isSplit);
