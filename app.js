@@ -324,8 +324,29 @@ var GHSync = (function() {
             if (!commits || !commits[0]) { _releaseLock(); return; }
             var remoteSHA = commits[0].sha;
             if (remoteSHA !== localSHA) {
-              toast('Neuere Daten auf GitHub — wird geladen…');
-              setTimeout(function(){ pull(false, remoteSHA); }, 500);
+              // SHA-Mismatch: Dateiinhalt holen und lastModified vergleichen.
+              // Nur wenn Remote wirklich neuer ist → pull. Sonst lokale Änderungen hochladen.
+              _api('GET', '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE)
+                .then(function(file) {
+                  var doPull = function() {
+                    toast('Neuere Daten auf GitHub — wird geladen…');
+                    setTimeout(function(){ pull(false, remoteSHA); }, 500);
+                  };
+                  if (!file || !file.content) { doPull(); return; }
+                  try {
+                    var rBackup = JSON.parse(_dec(file.content));
+                    var rMod = ((rBackup.store || rBackup).meta || {}).lastModified || '';
+                    var lMod = (FP.Store.get().meta || {}).lastModified || '';
+                    if (lMod > rMod) {
+                      // Lokale Daten sind neuer → hochladen statt überschreiben
+                      _releaseLock();
+                    } else {
+                      doPull();
+                    }
+                  } catch(e) {
+                    doPull();
+                  }
+                }).catch(function() { _releaseLock(); });
             } else {
               _releaseLock();
               setSyncStatus('synced', 'Synchronisiert');
