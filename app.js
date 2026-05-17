@@ -6652,18 +6652,18 @@ function ghDrawChart(canvas, pts){
 
     // Nominal (blaue Balken, gleiche Alpha wie Chart)
     ctx.globalAlpha=0.7;ctx.fillStyle=cBlue;
-    ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX,lgY-9,10,10,2):ctx.rect(lgX,lgY-9,10,10);ctx.fill();
+    ctx.fillRect(lgX,lgY-9,10,10);
     ctx.globalAlpha=1;ctx.fillStyle=cTx3;
     ctx.fillText('Nominal Δ p.a.',lgX+14,lgY);
-    lgX+=14+ctx.measureText('Nominal Δ p.a.').width+16;
+    lgX+=14+Math.round(ctx.measureText('Nominal Δ p.a.').width)+16;
 
-    // Reallohn (grün wenn positiv, rot wenn negativ — beide als Split zeigen)
+    // Reallohn (grün wenn positiv, rot wenn negativ — beide als Split)
     ctx.globalAlpha=0.7;
-    ctx.fillStyle=cGreen;ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX,lgY-9,5,10,[2,0,0,2]):ctx.rect(lgX,lgY-9,5,10);ctx.fill();
-    ctx.fillStyle=cRed;ctx.beginPath();ctx.roundRect?ctx.roundRect(lgX+5,lgY-9,5,10,[0,2,2,0]):ctx.rect(lgX+5,lgY-9,5,10);ctx.fill();
+    ctx.fillStyle=cGreen;ctx.fillRect(lgX,lgY-9,5,10);
+    ctx.fillStyle=cRed;ctx.fillRect(lgX+5,lgY-9,5,10);
     ctx.globalAlpha=1;ctx.fillStyle=cTx3;
     ctx.fillText('Reallohn Δ p.a.',lgX+14,lgY);
-    lgX+=14+ctx.measureText('Reallohn Δ p.a.').width+16;
+    lgX+=14+Math.round(ctx.measureText('Reallohn Δ p.a.').width)+16;
 
     // Inflation (gestrichelte Amber-Linie + Punkt)
     ctx.strokeStyle=cAmber;ctx.lineWidth=2;ctx.setLineDash([4,3]);
