@@ -6539,7 +6539,7 @@ function ghDrawChart(canvas, pts){
   var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
   var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
   var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cGreen=cs.getPropertyValue('--green').trim()||'oklch(57% 0.2 150)';
+  var cRealPos='oklch(60% 0.18 145)'; // Echtes Grün für Reallohn positiv (--green ist Hue 295 = lila)
   var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
 
@@ -6600,7 +6600,7 @@ function ghDrawChart(canvas, pts){
       ctx.fill();
 
       // Real (grün/rot)
-      ctx.fillStyle=p.realYoY>=0?cGreen:cRed;
+      ctx.fillStyle=p.realYoY>=0?cRealPos:cRed;
       var yR=toY(p.realYoY);
       ctx.beginPath();
       ctx.roundRect?ctx.roundRect(x+gap,Math.min(yR,y0),barW,Math.abs(yR-y0)||2,2):
@@ -6659,7 +6659,7 @@ function ghDrawChart(canvas, pts){
 
     // Reallohn (grün wenn positiv, rot wenn negativ — beide als Split)
     ctx.globalAlpha=0.7;
-    ctx.fillStyle=cGreen;ctx.fillRect(lgX,lgY-9,5,10);
+    ctx.fillStyle=cRealPos;ctx.fillRect(lgX,lgY-9,5,10);
     ctx.fillStyle=cRed;ctx.fillRect(lgX+5,lgY-9,5,10);
     ctx.globalAlpha=1;ctx.fillStyle=cTx3;
     ctx.fillText('Reallohn Δ p.a.',lgX+14,lgY);
