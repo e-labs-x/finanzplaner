@@ -5832,12 +5832,12 @@ function vmRenderTotal(){
       return -1;
     }
 
-    canvas.addEventListener('mousemove',function(e){
+    canvas.onmousemove=function(e){
       var h=hitSeg(e);
       canvas.style.cursor=h>=0?'pointer':'default';
       if(h!==hovIdx){hovIdx=h;vmDonutHighlight(h);}
-    });
-    canvas.addEventListener('mouseleave',function(){hovIdx=-1;vmDonutHighlight(-1);});
+    };
+    canvas.onmouseleave=function(){hovIdx=-1;vmDonutHighlight(-1);};
 
     // Trendchart rechts
     if(hasTrend){
