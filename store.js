@@ -673,10 +673,8 @@ const DEFAULT_CURRENCIES = [
 ];
 
 const MIGRATIONS = {
-  4: (data) => {
-    if (!Array.isArray(data.currencies)) data.currencies = DEFAULT_CURRENCIES;
-    return data;
-  },
+  // Zukünftige Schema-Migrationen hier hinzufügen:
+  // 1: (data) => { /* Upgrade v1 → v2 */ return data; },
 };
 
 function migrateStore(data) {
@@ -2134,12 +2132,11 @@ const Calculator = {
     const monthlyReturn = Math.pow(1 + weightedReturn / 100, 1/12) - 1;
 
     const _now = new Date();
-    // Sparraten: savingsPlans ohne personId → Person 1; asset.monthlyPlan nach ownerId filtern
-    const monthlySavings = (personId === 'person_1'
-      ? (store.savingsPlans || [])
+    // Sparraten: savingsPlans nach personId filtern (kein personId → Person 1); asset.monthlyPlan nach ownerId filtern
+    const monthlySavings = ((store.savingsPlans || [])
+          .filter(sp => (sp.personId || 'person_1') === personId)
           .filter(sp => !sp.validUntil || new Date(sp.validUntil) > _now)
-          .reduce((s, sp) => s + sp.monthlyAmount, 0)
-      : 0)
+          .reduce((s, sp) => s + sp.monthlyAmount, 0))
       + (store.assets || [])
         .filter(a => a.status === 'aktiv' && a.monthlyPlan > 0)
         .filter(a => (a.ownerId || 'person_1') === personId || a.ownerId === 'joint')
@@ -2189,11 +2186,15 @@ const Calculator = {
         if (ageNow >= 18 && ageNow < 18 + kDauer) kinderAbzug += kKosten * inflFaktor;
       });
       kinderGesamtkosten += kinderAbzug;
-      // Erbimmobilie Verkauf: einmalig in Jahr erbInJahren
+      // Erbimmobilie: Verkauf einmalig in Jahr erbInJahren; Miete laufend ab erbInJahren
       let erbBonus = 0;
-      if (erb.enabled && erb.modus === 'verkauf') {
+      if (erb.enabled) {
         const erbJahr = erb.inJahren || 15;
-        if (i >= erbJahr * 12 && i < erbJahr * 12 + 1) erbBonus = erb.wert || 0;
+        if (erb.modus === 'verkauf') {
+          if (i >= erbJahr * 12 && i < erbJahr * 12 + 1) erbBonus = erb.wert || 0;
+        } else if (erb.modus === 'miete' && i >= erbJahr * 12) {
+          erbBonus = erb.miete || 0;
+        }
       }
       // Einmalige RV-Auszahlungen, die vor Rentenbeginn anfallen
       let einmaligBonus = 0;
