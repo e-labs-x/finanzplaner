@@ -456,9 +456,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* ── Navigation ── */
 function nav(id) {
+  var pg = document.getElementById('p-' + id);
+  // Bereits aktive Seite → nach oben scrollen
+  if(pg && pg.classList.contains('active')){ pg.scrollTo({top:0,behavior:'smooth'}); return; }
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   document.querySelectorAll('[data-p]').forEach(function(b) { b.classList.remove('active'); });
-  var pg = document.getElementById('p-' + id);
   if (pg) pg.classList.add('active');
   document.querySelectorAll('[data-p="' + id + '"]').forEach(function(b) { b.classList.add('active'); });
   var navId = MEHR_PAGES.indexOf(id) >= 0 ? 'mehr' : id;
