@@ -445,8 +445,18 @@ document.addEventListener('DOMContentLoaded', function() {
   renderEntries();
   applySB();
   if (window.innerWidth >= 768) nav('home');
+  var _resizeTimer;
+  function _redrawActiveCharts(){
+    if(document.getElementById('p-rente').classList.contains('active')){ rpSidebarHeight(); rpRenderMain(); }
+    if(document.getElementById('p-gehalt').classList.contains('active')) ghRenderRealWage();
+    if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
+  }
   window.addEventListener('resize', function(){
-    if(document.getElementById('p-rente').classList.contains('active')) rpSidebarHeight();
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(_redrawActiveCharts, 150);
+  });
+  window.addEventListener('orientationchange', function(){
+    setTimeout(_redrawActiveCharts, 350);
   });
   // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
   GHSync.installStorageHook();
