@@ -455,9 +455,16 @@ document.addEventListener('DOMContentLoaded', function() {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(_redrawActiveCharts, 150);
   });
-  window.addEventListener('orientationchange', function(){
-    setTimeout(_redrawActiveCharts, 350);
-  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', function(){
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(_redrawActiveCharts, 150);
+    });
+  } else {
+    window.addEventListener('orientationchange', function(){
+      setTimeout(_redrawActiveCharts, 350);
+    });
+  }
   // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
   GHSync.installStorageHook();
   GHSync.init();
