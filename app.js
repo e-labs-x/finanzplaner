@@ -752,6 +752,10 @@ function pickCat(id, name) {
   document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.toggle('sel', b.dataset.p === id); });
   document.getElementById('np-cat').textContent = name;
   updSave();
+  if(window.innerWidth<=767){
+    var target=document.getElementById('np-amt');
+    if(target) setTimeout(function(){ target.scrollIntoView({behavior:'smooth',block:'center'}); },80);
+  }
 }
 
 function buildObjSel() {
