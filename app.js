@@ -753,8 +753,8 @@ function pickCat(id, name) {
   document.getElementById('np-cat').textContent = name;
   updSave();
   if(window.innerWidth<=767){
-    var target=document.getElementById('np-amt');
-    if(target) setTimeout(function(){ target.scrollIntoView({behavior:'smooth',block:'center'}); },80);
+    var target=document.querySelector('.ei-numpad');
+    if(target) setTimeout(function(){ target.scrollIntoView({behavior:'smooth',block:'start'}); },80);
   }
 }
 
