@@ -7821,9 +7821,8 @@ function rp2ExportExcel(btn) {
   });
 })();
 
-/* ── Pull-to-Refresh (iOS PWA) ─────────────────────────────────────────── */
+/* ── Pull-to-Refresh ───────────────────────────────────────────────────── */
 (function(){
-  if(!window.matchMedia('(display-mode: standalone)').matches) return;
   var bar=document.getElementById('ptr-bar');
   var lbl=document.getElementById('ptr-label');
   if(!bar)return;
