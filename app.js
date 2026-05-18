@@ -4689,10 +4689,11 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
   var cPurple=cs.getPropertyValue('--purple').trim()||'oklch(57% 0.22 295)';
   var dpr=window.devicePixelRatio||1;
+  canvas.style.width='100%';
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||500;
   var H=250;
   canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  canvas.style.height=H+'px';
   var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
   var PAD={t:16,r:16,b:32,l:62};
   var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
@@ -4828,10 +4829,11 @@ function rpDrawStichtagChart(canvas,rows,retAge,hovIdx){
   var cGreen=cs.getPropertyValue('--green').trim()||'oklch(57% 0.2 150)';
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
   var dpr=window.devicePixelRatio||1;
+  canvas.style.width='100%';
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||500;
   var H=canvas.parentElement?canvas.parentElement.clientHeight||250:250;
   canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  canvas.style.height=H+'px';
   var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
   var PAD={t:22,r:16,b:32,l:62};
   var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
@@ -4900,10 +4902,11 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
   var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
   var dpr=window.devicePixelRatio||1;
+  canvas.style.width='100%';
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||500;
   var H=canvas.parentElement?canvas.parentElement.clientHeight||250:250;
   canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  canvas.style.height=H+'px';
   var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
   var PAD={t:16,r:16,b:32,l:62};
   var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
@@ -6608,11 +6611,12 @@ function ghDrawChart(canvas, pts){
   var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
 
+  canvas.style.width='100%';
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
   var H=284;
   var dpr=window.devicePixelRatio||1;
   canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  canvas.style.height=H+'px';
   var ctx=canvas.getContext('2d');
   ctx.scale(dpr,dpr);
 
@@ -6762,11 +6766,12 @@ function ghDrawLineChart(canvas, pts){
   var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
   var cSurf=cs.getPropertyValue('--surf').trim()||'#fff';
 
+  canvas.style.width='100%';
   var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
   var H=284;
   var dpr=window.devicePixelRatio||1;
   canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  canvas.style.height=H+'px';
   var ctx=canvas.getContext('2d');
   ctx.scale(dpr,dpr);
 
