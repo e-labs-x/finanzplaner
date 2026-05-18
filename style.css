@@ -907,6 +907,11 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .sync-dot.busy{background:var(--blue);animation:sync-pulse .8s infinite}
 .sync-dot.error{background:var(--red)}
 @keyframes sync-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes ptr-spin{to{transform:rotate(360deg)}}
+.ptr-bar{position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:8px;height:0;overflow:hidden;background:var(--surf);border-bottom:1px solid var(--brd);font-size:13px;font-weight:600;color:var(--tx3);transition:none}
+.ptr-bar.ptr-snap{transition:height .2s ease}
+.ptr-bar.ptr-ready{color:var(--blue)}
+.ptr-spinner{width:18px;height:18px;flex-shrink:0;animation:ptr-spin .8s linear infinite;opacity:.7}
 /* Mobile Sync-Badge auf Einstellungen-Button */
 .bn-sync-badge{position:absolute;top:4px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--amber);display:none}
 .bn-sync-badge.show{display:block}
