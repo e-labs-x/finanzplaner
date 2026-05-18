@@ -451,19 +451,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if(document.getElementById('p-gehalt').classList.contains('active')) ghRenderRealWage();
     if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
   }
-  window.addEventListener('resize', function(){
+  function _scheduleRedraw(){
     clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(_redrawActiveCharts, 150);
-  });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', function(){
-      clearTimeout(_resizeTimer);
-      _resizeTimer = setTimeout(_redrawActiveCharts, 150);
-    });
-  } else {
-    window.addEventListener('orientationchange', function(){
-      setTimeout(_redrawActiveCharts, 350);
-    });
+    _resizeTimer = setTimeout(_redrawActiveCharts, 100);
+  }
+  window.addEventListener('resize', _scheduleRedraw);
+  // ResizeObserver feuert nach abgeschlossenem Layout — zuverlässig auf iOS bei Rotation
+  if(window.ResizeObserver){
+    new ResizeObserver(_scheduleRedraw).observe(document.documentElement);
   }
   // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
   GHSync.installStorageHook();
