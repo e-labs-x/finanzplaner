@@ -7821,3 +7821,58 @@ function rp2ExportExcel(btn) {
   });
 })();
 
+/* ── Pull-to-Refresh (iOS PWA) ─────────────────────────────────────────── */
+(function(){
+  if(!window.matchMedia('(display-mode: standalone)').matches) return;
+  var bar=document.getElementById('ptr-bar');
+  var lbl=document.getElementById('ptr-label');
+  if(!bar)return;
+
+  var THRESHOLD=70;
+  var startY=0, pulling=false, triggered=false;
+
+  function getPage(){ return document.querySelector('.page.active'); }
+
+  document.addEventListener('touchstart',function(e){
+    var pg=getPage();
+    if(pg&&pg.scrollTop===0){
+      startY=e.touches[0].clientY;
+      pulling=true;
+      triggered=false;
+      bar.classList.remove('ptr-snap');
+    }
+  },{passive:true});
+
+  document.addEventListener('touchmove',function(e){
+    if(!pulling)return;
+    var dy=e.touches[0].clientY-startY;
+    if(dy<=0){pulling=false;bar.style.height='0';return;}
+    dy=Math.min(dy,THRESHOLD+30);
+    var h=Math.round(Math.min(dy*0.55,48));
+    bar.style.height=h+'px';
+    if(dy>=THRESHOLD){
+      bar.classList.add('ptr-ready');
+      lbl.textContent='Zum Laden loslassen';
+    } else {
+      bar.classList.remove('ptr-ready');
+      lbl.textContent='Herunterziehen zum Laden';
+    }
+  },{passive:true});
+
+  document.addEventListener('touchend',function(){
+    if(!pulling)return;
+    pulling=false;
+    if(bar.classList.contains('ptr-ready')&&!triggered){
+      triggered=true;
+      lbl.textContent='Wird geladen…';
+      bar.classList.add('ptr-snap');
+      bar.style.height='48px';
+      setTimeout(function(){ location.reload(); },400);
+    } else {
+      bar.classList.add('ptr-snap');
+      bar.style.height='0';
+      setTimeout(function(){ bar.classList.remove('ptr-snap','ptr-ready'); },220);
+    }
+  },{passive:true});
+})();
+
