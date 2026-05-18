@@ -6533,28 +6533,46 @@ function ghRenderRealWage(){
     requestAnimationFrame(function(){ ghDrawChart(canvas, chartPts); });
   }
 
-  // ── Tabelle (gleiche Werte wie Chart) ──
+  // ── Brutto-Daten je Jahr vorberechnen ──
+  var bruttoMap={};
+  history.forEach(function(h){
+    var sy=FP.Calculator.getSalaryYear(ghS.person||'person_1', h.year);
+    bruttoMap[h.year]={gross:sy.grossTotal, bonus:sy.bonusGross, total:FP.r2(sy.grossTotal+sy.bonusGross)};
+  });
+
+  // ── Tabelle ──
   el.innerHTML='<table class="gh-rw-table"><thead><tr>'+
-    '<th>Jahr</th><th>Ø Netto/Monat</th><th>Nominal p.a.</th><th>Reallohn p.a.</th><th>Inflation p.a.</th>'+
+    '<th>Jahr</th><th>Brutto Jahresgehalt</th><th>Bonus Brutto</th><th>Brutto inkl. Bonus</th>'+
+    '<th>Ø Netto/Monat</th><th>Nominal p.a.</th><th>Reallohn p.a.</th><th>Inflation p.a.</th>'+
     '</tr></thead><tbody>'+
     pts.slice().reverse().map(function(r){
       var ncCls=r.nomYoY>0?'gh-chg-pos':r.nomYoY<0?'gh-chg-neg':'';
       var rcCls=r.realYoY>0?'gh-chg-pos':r.realYoY<0?'gh-chg-neg':'';
+      var b=bruttoMap[r.year]||{gross:0,bonus:0,total:0};
       return '<tr>'+
         '<td style="font-weight:700">'+r.year+'</td>'+
+        '<td>'+eur(b.gross)+'</td>'+
+        '<td>'+(b.bonus?eur(b.bonus):'—')+'</td>'+
+        '<td style="font-weight:600">'+eur(b.total)+'</td>'+
         '<td>'+eur(r.monthlyNet)+'</td>'+
         '<td class="'+ncCls+'">'+(r.nomYoY>0?'+':'')+r.nomYoY.toFixed(1)+'%</td>'+
         '<td class="'+rcCls+'">'+(r.realYoY>0?'+':'')+r.realYoY.toFixed(1)+'%</td>'+
         '<td style="color:var(--tx3)">'+r.inflRate.toFixed(1)+'%</td>'+
         '</tr>';
     }).join('')+
-    // Basisjahr ohne YoY-Werte
-    '<tr style="color:var(--tx3)">'+
-      '<td style="font-weight:700">'+history[0].year+'</td>'+
-      '<td>'+eur(history[0].monthlyNet)+'</td>'+
-      '<td>Basisjahr</td><td>—</td>'+
-      '<td>'+(infl[history[0].year]||0).toFixed(1)+'%</td>'+
-    '</tr>'+
+    // Basisjahr
+    (function(){
+      var b0=bruttoMap[history[0].year]||{gross:0,bonus:0,total:0};
+      return '<tr style="color:var(--tx3)">'+
+        '<td style="font-weight:700">'+history[0].year+'</td>'+
+        '<td>'+eur(b0.gross)+'</td>'+
+        '<td>'+(b0.bonus?eur(b0.bonus):'—')+'</td>'+
+        '<td>'+eur(b0.total)+'</td>'+
+        '<td>'+eur(history[0].monthlyNet)+'</td>'+
+        '<td>Basisjahr</td><td>—</td>'+
+        '<td>'+(infl[history[0].year]||0).toFixed(1)+'%</td>'+
+      '</tr>';
+    })()+
     '</tbody></table>';
 }
 
