@@ -6398,6 +6398,8 @@ function vmSaveAsset(){
 ════════════════════════════════════════ */
 var ghS={year:new Date().getFullYear(),person:'person_1'};
 var ghEditMonth=null;
+var _ghChartMode='bar';
+var _ghShowAll=false;
 
 function ghInit(){
   ghS.year=new Date().getFullYear();
@@ -6504,8 +6506,32 @@ function ghRenderRealWage(){
     return {year:r.year,monthlyNet:r.monthlyNet,nomYoY:nomYoY,realYoY:realYoY,inflRate:inflRate};
   });
 
+  // ── Toggle-Buttons aktualisieren ──
+  var btnBar=document.getElementById('gh-mode-bar');
+  var btnLine=document.getElementById('gh-mode-line');
+  var btnAll=document.getElementById('gh-showall-btn');
+  var cs0=getComputedStyle(document.documentElement);
+  var _cBlue0=cs0.getPropertyValue('--blue').trim();
+  var _cAcc0=cs0.getPropertyValue('--on-accent').trim()||'#fff';
+  var _cTx20=cs0.getPropertyValue('--tx2').trim();
+  var _cSurf20=cs0.getPropertyValue('--surf2').trim();
+  if(btnBar){btnBar.style.background=_ghChartMode==='bar'?_cBlue0:'none';btnBar.style.color=_ghChartMode==='bar'?_cAcc0:_cTx20;}
+  if(btnLine){btnLine.style.background=_ghChartMode==='line'?_cBlue0:'none';btnLine.style.color=_ghChartMode==='line'?_cAcc0:_cTx20;}
+  if(btnAll){
+    btnAll.style.display=_ghChartMode==='bar'&&pts.length>10?'':'none';
+    btnAll.textContent=_ghShowAll?'Alle Jahre':'Letzte 10';
+    btnAll.style.background=_ghShowAll?_cBlue0:_cSurf20;
+    btnAll.style.color=_ghShowAll?_cAcc0:_cTx20;
+    btnAll.style.borderColor=_ghShowAll?_cBlue0:'';
+  }
+
   // ── Chart ──────────────────────────────
-  requestAnimationFrame(function(){ ghDrawChart(canvas, pts); });
+  var chartPts=(_ghChartMode==='bar'&&!_ghShowAll&&pts.length>10)?pts.slice(-10):pts;
+  if(_ghChartMode==='line'){
+    requestAnimationFrame(function(){ ghDrawLineChart(canvas, pts); });
+  } else {
+    requestAnimationFrame(function(){ ghDrawChart(canvas, chartPts); });
+  }
 
   // ── Tabelle (gleiche Werte wie Chart) ──
   el.innerHTML='<table class="gh-rw-table"><thead><tr>'+
@@ -6531,6 +6557,9 @@ function ghRenderRealWage(){
     '</tr>'+
     '</tbody></table>';
 }
+
+function ghSetMode(mode){ _ghChartMode=mode; ghRenderRealWage(); }
+function ghToggleShowAll(){ _ghShowAll=!_ghShowAll; ghRenderRealWage(); }
 
 function ghDrawChart(canvas, pts){
   if(!canvas||!pts.length)return;
@@ -6679,6 +6708,133 @@ function ghDrawChart(canvas, pts){
     var rect=canvas.getBoundingClientRect();
     var x=(e.clientX-rect.left)*(W/rect.width);
     var idx=Math.floor((x-PAD.l)/slotW);
+    draw((idx>=0&&idx<n)?idx:-1);
+  };
+  canvas.onmouseleave=function(){draw(-1);};
+  canvas.onclick=null;
+}
+
+function ghDrawLineChart(canvas, pts){
+  if(!canvas||pts.length<2)return;
+  var cs=getComputedStyle(document.documentElement);
+  var cTx=cs.getPropertyValue('--tx').trim()||'#1C1C1E';
+  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
+  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
+  var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
+  var cRealPos='#30a46c';
+  var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
+  var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
+  var cSurf=cs.getPropertyValue('--surf').trim()||'#fff';
+
+  var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
+  var H=284;
+  var dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  var PAD={t:36,r:16,b:32,l:50};
+  var cW=W-PAD.l-PAD.r;
+  var cH=H-PAD.t-PAD.b;
+  var n=pts.length;
+
+  var allVals=pts.map(function(p){return p.nomYoY;})
+    .concat(pts.map(function(p){return p.realYoY;}))
+    .concat(pts.map(function(p){return p.inflRate;}));
+  var maxV=Math.max.apply(null,allVals.map(Math.abs));
+  maxV=Math.max(maxV,3);
+  maxV=Math.ceil(maxV/2)*2+2;
+
+  function xOf(i){ return PAD.l+i*(cW/(n-1)); }
+  function toY(v){ return PAD.t+cH/2-(v/maxV)*(cH/2); }
+
+  function drawLine(series, color, dash){
+    ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.setLineDash(dash||[]);
+    ctx.beginPath();
+    series.forEach(function(v,i){ i===0?ctx.moveTo(xOf(i),toY(v)):ctx.lineTo(xOf(i),toY(v)); });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  function draw(hovIdx){
+    ctx.clearRect(0,0,W,H);
+
+    // Gitter
+    ctx.lineWidth=0.5;
+    [-maxV,-maxV/2,0,maxV/2,maxV].forEach(function(v){
+      var y=toY(v);
+      ctx.strokeStyle=cBrd;
+      ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
+      ctx.fillStyle=cTx3;ctx.font='12px Inter,system-ui,sans-serif';ctx.textAlign='right';
+      ctx.fillText((v>0?'+':'')+v.toFixed(0)+'%',PAD.l-5,y+4);
+    });
+    ctx.strokeStyle=cTx3;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,toY(0));ctx.lineTo(PAD.l+cW,toY(0));ctx.stroke();
+
+    // Linien
+    drawLine(pts.map(function(p){return p.nomYoY;}), cBlue);
+    drawLine(pts.map(function(p){return p.inflRate;}), cAmber, [4,3]);
+
+    // Reallohn: grüne/rote Segmente
+    for(var i=0;i<n-1;i++){
+      var v0=pts[i].realYoY, v1=pts[i+1].realYoY;
+      var col=(v0>=0&&v1>=0)?cRealPos:(v0<0&&v1<0)?cRed:cRealPos;
+      ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(xOf(i),toY(v0));ctx.lineTo(xOf(i+1),toY(v1));ctx.stroke();
+    }
+
+    // Datenpunkte
+    pts.forEach(function(p,i){
+      var r=i===hovIdx?6:3;
+      [[p.nomYoY,cBlue],[p.realYoY,p.realYoY>=0?cRealPos:cRed],[p.inflRate,cAmber]].forEach(function(pair){
+        ctx.fillStyle=pair[1];
+        ctx.beginPath();ctx.arc(xOf(i),toY(pair[0]),r,0,Math.PI*2);ctx.fill();
+      });
+    });
+
+    // X-Achse: jedes 2. Jahr
+    ctx.fillStyle=cTx3;ctx.font='13px Inter,system-ui,sans-serif';ctx.textAlign='center';
+    pts.forEach(function(p,i){
+      if(n<=12||i%2===0||i===n-1)
+        ctx.fillText(String(p.year),xOf(i),H-PAD.b+14);
+    });
+
+    // Hover-Info
+    if(hovIdx>=0&&hovIdx<n){
+      var p=pts[hovIdx];
+      var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
+              '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
+              '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
+      ctx.font='13px Inter,system-ui,sans-serif';
+      var tw=ctx.measureText(txt).width+20;
+      ctx.fillStyle=cSurf;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD.l,2,tw,22,4):ctx.rect(PAD.l,2,tw,22);ctx.fill();
+      ctx.fillStyle=cTx;ctx.textAlign='left';
+      ctx.fillText(txt,PAD.l+10,17);
+    }
+
+    // Legende
+    var lgY=H-8;
+    ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='left';
+    var lgX=PAD.l;
+    [[cBlue,'Nominal Δ p.a.',[]],[cRealPos,'Reallohn Δ p.a.',[]],[cAmber,'Inflation p.a.',[4,3]]].forEach(function(e){
+      ctx.strokeStyle=e[0];ctx.lineWidth=2;ctx.setLineDash(e[2]);
+      ctx.beginPath();ctx.moveTo(lgX,lgY-4);ctx.lineTo(lgX+12,lgY-4);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=e[0];ctx.beginPath();ctx.arc(lgX+6,lgY-4,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=cTx3;ctx.fillText(e[1],lgX+16,lgY);
+      lgX+=16+Math.round(ctx.measureText(e[1]).width)+16;
+    });
+  }
+
+  draw(-1);
+  canvas.style.cursor='default';
+  canvas.onmousemove=function(e){
+    var rect=canvas.getBoundingClientRect();
+    var x=(e.clientX-rect.left)*(W/rect.width);
+    var slotW=cW/(n-1);
+    var idx=Math.round((x-PAD.l)/slotW);
     draw((idx>=0&&idx<n)?idx:-1);
   };
   canvas.onmouseleave=function(){draw(-1);};
