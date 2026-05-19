@@ -2086,13 +2086,18 @@ function stTestApiKey(){
       if(d&&d.Information) throw new Error('Key ungültig oder Limit: '+d.Information.slice(0,80));
       var q=d&&d['Global Quote'];
       if(!q||!q['05. price']) throw new Error('Keine Antwort — Key prüfen');
-      var lines=['✓ Verbindung OK (AAPL: '+parseFloat(q['05. price']).toFixed(2)+')',''];
+      var aaplPrice=parseFloat(q['05. price']).toFixed(2);
+      var lines=['✓ Verbindung OK (AAPL: '+aaplPrice+')',''];
+      appLog('INFO','API-Test: Verbindung OK — AAPL '+aaplPrice);
       var assets=FP.Store.Assets.getActive().filter(function(a){return a.ticker;});
       if(!assets.length){status.style.color='var(--green)';status.innerHTML=lines[0];return;}
       // 1,5s Pause nach AAPL-Test bevor ETFs abgefragt werden
       setTimeout(function(){
       function testNext(i){
         if(i>=assets.length){
+          var ok=lines.filter(function(l){return l.indexOf('✓')===0;}).length-1;
+          var fail=lines.filter(function(l){return l.indexOf('✗')===0;}).length;
+          appLog(fail?'WARN':'INFO','API-Test abgeschlossen: '+ok+' OK'+(fail?' · '+fail+' fehlgeschlagen':''));
           status.style.color='var(--green)';
           status.innerHTML=lines.map(function(l){return l.replace(/</g,'&lt;');}).join('<br>');
           _renderLog(document.getElementById('st-log-output'));
