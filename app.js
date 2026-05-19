@@ -2110,8 +2110,10 @@ function stTestApiKey(){
       }, 1500); // Ende setTimeout nach AAPL
     })
     .catch(function(e){
+      var msg=e&&e.message?e.message:'CORS oder Netzwerk';
       status.style.color='var(--red)';
-      status.textContent='✗ Verbindungsfehler: '+(e&&e.message?e.message:'CORS oder Netzwerk');
+      status.textContent='✗ Verbindungsfehler: '+msg;
+      appLog('ERROR','API-Test fehlgeschlagen: '+msg);
     });
 }
 
