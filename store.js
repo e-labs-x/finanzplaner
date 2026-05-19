@@ -941,6 +941,7 @@ const Store = (() => {
       };
       _state.categories.push(full);
       _save();
+      appLog('KATEGORIE', 'Neu: ' + full.name + (full.parentId ? ' (Unterkategorie)' : ''));
       return full;
     },
 

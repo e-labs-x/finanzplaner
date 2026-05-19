@@ -203,6 +203,7 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       if (err.status === 404) { push(silent); return; }
+      appLog('ERROR', 'Sync Pull fehlgeschlagen: ' + (err&&err.message?err.message:'Unbekannt'));
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] pull:', err);
     });
@@ -288,6 +289,7 @@ var GHSync = (function() {
   function disconnect() {
     localStorage.removeItem(TOKEN_KEY);
     FP.Store.Settings.setGithubSync({ enabled: false, owner: null, lastSync: null });
+    appLog('SYNC', 'GitHub-Verbindung getrennt');
     ghsRenderUI();
     toast('GitHub-Verbindung getrennt');
   }
@@ -433,6 +435,7 @@ function ghsDisconnect() {
 
 function ghsToggleAuto(val) {
   FP.Store.Settings.setGithubSync({ autoSync: val });
+  appLog('SYNC', val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
   toast(val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
 }
 
@@ -2068,6 +2071,7 @@ function stRenderApiKey(){
 function stSaveApiKey(){
   var key=document.getElementById('st-av-key').value.trim();
   FP.Store.Settings.setApiKey('alphavantage',key);
+  appLog('EINST', key ? 'Alpha Vantage API-Key gespeichert' : 'Alpha Vantage API-Key entfernt');
   stRenderApiKey();
   toast(key?'API-Key gespeichert':'API-Key entfernt');
 }
@@ -2317,14 +2321,20 @@ function stTrashRestore(id){
 }
 function stTrashDelete(id){
   if(!confirm('Endgültig löschen? Das kann nicht rückgängig gemacht werden.'))return;
+  var entry=FP.Trash.getAll().find(function(e){return e.id===id;});
+  var name=entry&&entry.item&&entry.item.name?entry.item.name:id;
   FP.Trash.permanentDelete(id);
+  appLog('PAPIERKORB','Endgültig gelöscht: '+name);
   stRenderTrash();
   toast('Endgültig gelöscht');
 }
 function stTrashClear(){
-  if(!FP.Trash.getAll().length)return;
+  var items=FP.Trash.getAll();
+  if(!items.length)return;
   if(!confirm('Papierkorb leeren? Alle Einträge werden endgültig gelöscht.'))return;
+  var count=items.length;
   FP.Trash.clear();
+  appLog('PAPIERKORB','Papierkorb geleert: '+count+' Eintr'+(count===1?'ag':'äge')+' gelöscht');
   stRenderTrash();
   toast('Papierkorb geleert');
 }
@@ -3138,6 +3148,7 @@ function esppSaveSettings(){
   store.espp.settings.grenzsteuersatz =parseFloat(document.getElementById('espp-gst').value)||42;
   store.espp.settings.rabattFreibetrag=parseFloat(document.getElementById('espp-fb').value)||2000;
   FP.Store.save();
+  appLog('ESPP','Einstellungen gespeichert: Ticker '+store.espp.settings.ticker);
 }
 
 function esppOpenNew(){
@@ -3186,6 +3197,7 @@ function esppSaveZyklus(){
     store.espp.zyklen.push(data);
   }
   FP.Store.save();
+  appLog('ESPP', (id?'Zyklus bearbeitet':'Zyklus neu')+': '+hj+' '+jahr);
   closeM('m-espp');
   vmRender();
   toast('Zyklus gespeichert');
@@ -3210,6 +3222,7 @@ function esppFetchAktKurs(onDone){
       if(!price) throw new Error('Kein Kurs für '+ticker+' — Ticker prüfen');
       store.espp.settings.aktuellerKursUsd=price;
       FP.Store.save();
+      appLog('ESPP','✓ Kurs '+ticker+': $'+price.toFixed(2));
       var inp=document.getElementById('espp-aktkurs');
       if(inp) inp.value=price.toFixed(2);
       if(!onDone){vmRender();toast('✓ '+ticker+': $'+price.toFixed(2));}
@@ -3227,8 +3240,10 @@ function esppFetchAktKurs(onDone){
 function esppDelZyklus(id){
   confirmDialog('Zyklus wirklich löschen?','Löschen',function(){
     var store=esppEnsure();
+    var z=(store.espp.zyklen||[]).find(function(x){return x.id===id;});
     store.espp.zyklen=(store.espp.zyklen||[]).filter(function(z){return z.id!==id;});
     FP.Store.save();
+    appLog('ESPP','Zyklus gelöscht: '+(z?z.halbjahr+' '+z.jahr:id));
     vmRender();
     toast('Zyklus gelöscht');
   });
@@ -6304,6 +6319,7 @@ function vmSaveSnapshot(){
   var shares=asset?asset.shares:null;
   if(!date||!value){toast('Datum und Wert eingeben');return;}
   FP.Store.Assets.addSnapshot(vmSnapAsset,date,value,shares||null);
+  appLog('VERMÖGEN','Snapshot '+(asset?asset.name:vmSnapAsset)+': '+value.toFixed(2)+' € ('+date+')');
   closeM('m-snapshot');
   vmRender();
   toast('Wert gespeichert');
@@ -6918,6 +6934,7 @@ function ghSave(){
     netBonus:    netBonus,
     note:        document.getElementById('mg-note').value||''
   });
+  appLog('GEHALT','Gespeichert: '+ghEditMonth);
   closeM('m-gehalt');
   ghRender();
   toast('Gespeichert');
@@ -6928,6 +6945,7 @@ function ghCopyYear(){
   var d=FP.Store.Salary.get(ghS.person||'person_1',jan);
   if(!d||!d.grossSalary){toast('Bitte zuerst Januar erfassen');return;}
   var n=FP.Store.Salary.copyToYear(ghS.person||'person_1',jan);
+  appLog('GEHALT',n+' Monate übernommen ('+ghS.year+')');
   ghRender();
   toast(n+' Monate übernommen');
 }
@@ -7227,13 +7245,17 @@ function bgtSave(catId) {
   var val = parseFloat(inp.value);
   if (isNaN(val) || val < 0) { toast('Bitte einen gültigen Betrag eingeben'); return; }
   FP.Store.Settings.setCategoryBudget(catId, val);
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===catId;});
+  appLog('EINST','Budget '+(cat?cat.name:catId)+': '+val.toFixed(0)+' €/Monat');
   bgtState.editingCat = null;
   toast('Budget gespeichert');
   bgtRender();
 }
 
 function bgtRemove(catId) {
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===catId;});
   FP.Store.Settings.removeCategoryBudget(catId);
+  appLog('EINST','Budget '+(cat?cat.name:catId)+' entfernt');
   bgtState.editingCat = null;
   toast('Budget entfernt');
   bgtRender();
@@ -7269,6 +7291,8 @@ function bgtAddConfirm() {
   if (!catId) { toast('Bitte Kategorie wählen'); return; }
   if (isNaN(val) || val <= 0) { toast('Bitte einen Betrag eingeben'); return; }
   FP.Store.Settings.setCategoryBudget(catId, val);
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===catId;});
+  appLog('EINST','Budget hinzugefügt: '+(cat?cat.name:catId)+' '+val.toFixed(0)+' €/Monat');
   closeM('m-bgt-add');
   toast('Budget hinzugefügt');
   bgtRender();
