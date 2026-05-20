@@ -3056,9 +3056,21 @@ function esppCalc(z,s){
   res.nettoGwvEur=Math.round((res.gwvEur-res.steuerEur)*100)/100;
   var bewertungsKurs=s.aktuellerKursUsd||z.kaufkursUsd;
   res.depotWertEur=Math.round(res.anzahlAktien*bewertungsKurs/s.eurUsdKurs*100)/100;
+  // Steuerbasis Kursgewinn = Kaufkurs (Marktpreis bei Kauf), da GWV separat als Arbeitslohn versteuert
+  var kaufwertEur=Math.round(res.anzahlAktien*z.kaufkursUsd/s.eurUsdKurs*100)/100;
+  var erlösKurs=null;
   if(z.verkaufskursUsd&&z.verkaufskursUsd>0){
-    res.verkaufserloesEur=Math.round(res.anzahlAktien*z.verkaufskursUsd/s.eurUsdKurs*100)/100;
-    res.kursgewinnEur=Math.round((res.verkaufserloesEur-res.depotWertEur)*100)/100;
+    erlösKurs=z.verkaufskursUsd;
+    res.erlösTheoretisch=false;
+  } else if(s.aktuellerKursUsd){
+    erlösKurs=s.aktuellerKursUsd;
+    res.erlösTheoretisch=true;
+  }
+  if(erlösKurs){
+    res.erlösEur=Math.round(res.anzahlAktien*erlösKurs/s.eurUsdKurs*100)/100;
+    res.kursgewinnEur=Math.round((res.erlösEur-kaufwertEur)*100)/100;
+    res.abgeltungsteuerEur=Math.round(Math.max(0,res.kursgewinnEur)*0.26375*100)/100;
+    res.nettoErlösEur=Math.round((res.erlösEur-res.abgeltungsteuerEur)*100)/100;
   }
   return res;
 }
@@ -3111,12 +3123,22 @@ function esppRender(){
       var aktStr=c.anzahlAktien!=null?c.anzahlAktien:'–';
       var gwvStr=c.gwvEur!=null?eur(c.gwvEur):'–';
       var stStr=c.steuerEur!=null?(c.steuerEur===0?'<span style="color:var(--green);font-family:var(--mono)">0 €</span>':eur(c.steuerEur)):'–';
+      var erlösStr='–';
+      var nettoStr='–';
+      if(c.erlösEur!=null){
+        var pfx=c.erlösTheoretisch?'~':'';
+        var col=c.erlösTheoretisch?'var(--tx2)':'var(--tx)';
+        erlösStr='<span style="font-family:var(--mono);color:'+col+'">'+pfx+eur(c.erlösEur)+'</span>';
+        nettoStr='<span style="font-family:var(--mono);color:#30a46c">'+pfx+eur(c.nettoErlösEur)+'</span>';
+      }
       return '<tr>'+
         '<td>'+z.halbjahr+' '+z.jahr+'</td>'+
         '<td>'+kursStr+'</td>'+
         '<td>'+aktStr+'</td>'+
         '<td>'+gwvStr+'</td>'+
         '<td>'+stStr+'</td>'+
+        '<td>'+erlösStr+'</td>'+
+        '<td>'+nettoStr+'</td>'+
         '<td><span class="vm-espp-badge '+status+'">'+statusLbl+'</span></td>'+
         '<td style="white-space:nowrap">'+
           '<button onclick="esppEditZyklus(\''+z.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--tx3);cursor:pointer;margin-right:2px">✎</button>'+
@@ -3125,7 +3147,7 @@ function esppRender(){
       '</tr>';
     }).join('');
     tblHtml='<div style="overflow-x:auto"><table class="vm-espp-tbl">'+
-      '<thead><tr><th>Zyklus</th><th>Kaufkurs</th><th>Aktien</th><th>GWV</th><th>Steuer</th><th>Status</th><th></th></tr></thead>'+
+      '<thead><tr><th>Zyklus</th><th>Kaufkurs</th><th>Aktien</th><th>GWV</th><th>Steuer (GWV)</th><th>Erlös</th><th>Netto</th><th>Status</th><th></th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table></div>';
   }
 
@@ -3135,7 +3157,7 @@ function esppRender(){
     '<button class="av-heute" onclick="esppOpenNew()" style="font-size:12px;padding:5px 10px">+ Zyklus</button>'+
     '</div>'+
     settHtml+tblHtml+
-    '<div class="vm-espp-hint">GWV = Geldwerter Vorteil (Rabattgewinn bei Kauf, §8 Abs.3 EStG). Freibetrag 2.000 €/Jahr wird je zur Hälfte pro Zyklus angesetzt. Steuerangaben sind Schätzungen — Steuerberater konsultieren.</div>';
+    '<div class="vm-espp-hint">GWV = Geldwerter Vorteil (Rabattgewinn bei Kauf, §8 Abs.3 EStG). Steuer (GWV) = Einkommensteuer auf den Rabatt. Erlös = Brutto-Verkaufserlös in EUR. Netto = Erlös minus Abgeltungsteuer (26,375%) auf den Kursgewinn. ~ = theoretischer Wert zum aktuellen Kurs. Steuerangaben sind Schätzungen — Steuerberater konsultieren.</div>';
 }
 
 function esppSaveSettings(){
