@@ -3093,7 +3093,7 @@ function esppRender(){
   var apiKey=FP.Store.Settings.getApiKey('alphavantage');
   var settHtml='<div class="vm-espp-settings">'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Ticker</span>'+
-    '<input class="vm-espp-sinp wide" id="espp-ticker" type="text" value="'+(s.ticker||'')+'" placeholder="z.B. ULS" oninput="this.value=this.value.toUpperCase();esppSaveSettings()" style="text-transform:uppercase"></div>'+
+    '<input class="vm-espp-sinp wide" id="espp-ticker" type="text" value="'+(s.ticker||'')+'" placeholder="z.B. ULS" oninput="this.value=this.value.toUpperCase()" onchange="esppSaveSettings()" style="text-transform:uppercase"></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Aktueller Kurs USD</span>'+
     '<div style="display:flex;gap:6px;align-items:center">'+
     '<input class="vm-espp-sinp" id="espp-aktkurs" type="number" step="0.01" value="'+(s.aktuellerKursUsd||'')+'" placeholder="manuell" onchange="esppSaveSettings()">'+
@@ -3177,6 +3177,7 @@ function esppSaveSettings(){
   store.espp.settings.sparerpauschbetrag=parseFloat(document.getElementById('espp-spb').value)||0;
   FP.Store.save();
   appLog('ESPP','Einstellungen gespeichert: Ticker '+store.espp.settings.ticker);
+  esppRender();
 }
 
 function esppOpenNew(){
