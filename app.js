@@ -3019,7 +3019,8 @@ function stReset(){
 
 function esppEnsure(){
   var store=FP.Store.get();
-  if(!store.espp){store.espp={settings:{ticker:'',rabatt:15,eurUsdKurs:1.10,aktuellerKursUsd:null,grenzsteuersatz:42,rabattFreibetrag:2000},zyklen:[]};FP.Store.save();}
+  if(!store.espp){store.espp={settings:{ticker:'',rabatt:15,eurUsdKurs:1.10,aktuellerKursUsd:null,grenzsteuersatz:42,rabattFreibetrag:2000,sparerpauschbetrag:1000},zyklen:[]};FP.Store.save();}
+  if(store.espp.settings.sparerpauschbetrag==null) store.espp.settings.sparerpauschbetrag=1000;
   return store;
 }
 
@@ -3069,7 +3070,8 @@ function esppCalc(z,s){
   if(erlösKurs){
     res.erlösEur=Math.round(res.anzahlAktien*erlösKurs/s.eurUsdKurs*100)/100;
     res.kursgewinnEur=Math.round((res.erlösEur-kaufwertEur)*100)/100;
-    res.abgeltungsteuerEur=Math.round(Math.max(0,res.kursgewinnEur)*0.26375*100)/100;
+    var spb=s._spbProZyklus!=null?s._spbProZyklus:(s.sparerpauschbetrag||0);
+    res.abgeltungsteuerEur=Math.round(Math.max(0,res.kursgewinnEur-spb)*0.26375*100)/100;
     res.nettoErlösEur=Math.round((res.erlösEur-res.abgeltungsteuerEur)*100)/100;
   }
   return res;
@@ -3105,6 +3107,8 @@ function esppRender(){
     '<input class="vm-espp-sinp" id="espp-gst" type="number" step="1" value="'+s.grenzsteuersatz+'" onchange="esppSaveSettings()"></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Freibetrag §8 €/J</span>'+
     '<input class="vm-espp-sinp" id="espp-fb" type="number" step="100" value="'+s.rabattFreibetrag+'" onchange="esppSaveSettings()"></div>'+
+    '<div class="vm-espp-sf"><span class="vm-espp-slbl">Sparerpauschbetrag €/J</span>'+
+    '<input class="vm-espp-sinp" id="espp-spb" type="number" step="100" value="'+(s.sparerpauschbetrag!=null?s.sparerpauschbetrag:1000)+'" onchange="esppSaveSettings()"></div>'+
     '</div>';
 
   var tblHtml;
@@ -3115,7 +3119,8 @@ function esppRender(){
     var zyklenPerJahr={};
     zyklen.forEach(function(z){ zyklenPerJahr[z.jahr]=(zyklenPerJahr[z.jahr]||0)+1; });
     var rows=zyklen.map(function(z){
-      var sZ=Object.assign({},s,{_fbProZyklus:s.rabattFreibetrag/(zyklenPerJahr[z.jahr]||1)});
+      var anzZ=zyklenPerJahr[z.jahr]||1;
+      var sZ=Object.assign({},s,{_fbProZyklus:s.rabattFreibetrag/anzZ,_spbProZyklus:(s.sparerpauschbetrag||0)/anzZ});
       var c=esppCalc(z,sZ);
       var status=!z.kaufkursUsd?'laufend':(!z.verkaufskursUsd?'gekauft':'verkauft');
       var statusLbl={laufend:'Laufend',gekauft:'Gehalten',verkauft:'Verkauft'}[status];
@@ -3157,7 +3162,7 @@ function esppRender(){
     '<button class="av-heute" onclick="esppOpenNew()" style="font-size:12px;padding:5px 10px">+ Zyklus</button>'+
     '</div>'+
     settHtml+tblHtml+
-    '<div class="vm-espp-hint">GWV = Geldwerter Vorteil (Rabattgewinn bei Kauf, §8 Abs.3 EStG). Steuer (GWV) = Einkommensteuer auf den Rabatt. Erlös = Brutto-Verkaufserlös in EUR. Netto = Erlös minus Abgeltungsteuer (26,375%) auf den Kursgewinn. ~ = theoretischer Wert zum aktuellen Kurs. Steuerangaben sind Schätzungen — Steuerberater konsultieren.</div>';
+    '<div class="vm-espp-hint">GWV = Geldwerter Vorteil (Rabattgewinn bei Kauf, §8 Abs.3 EStG). Steuer (GWV) = Einkommensteuer auf den Rabatt, Freibetrag §8 wird anteilig je Zyklus angerechnet. Erlös = Brutto-Verkaufserlös in EUR. Netto = Erlös minus Abgeltungsteuer (26,375%) auf den Kursgewinn nach Sparerpauschbetrag (anteilig je Zyklus). ~ = theoretischer Wert zum aktuellen Kurs. Steuerangaben sind Schätzungen — Steuerberater konsultieren.</div>';
 }
 
 function esppSaveSettings(){
@@ -3168,7 +3173,8 @@ function esppSaveSettings(){
   if(ak) store.espp.settings.aktuellerKursUsd=parseFloat(ak.value)||null;
   store.espp.settings.rabatt          =parseFloat(document.getElementById('espp-rabatt').value)||15;
   store.espp.settings.grenzsteuersatz =parseFloat(document.getElementById('espp-gst').value)||42;
-  store.espp.settings.rabattFreibetrag=parseFloat(document.getElementById('espp-fb').value)||2000;
+  store.espp.settings.rabattFreibetrag   =parseFloat(document.getElementById('espp-fb').value)||2000;
+  store.espp.settings.sparerpauschbetrag=parseFloat(document.getElementById('espp-spb').value)||0;
   FP.Store.save();
   appLog('ESPP','Einstellungen gespeichert: Ticker '+store.espp.settings.ticker);
 }
