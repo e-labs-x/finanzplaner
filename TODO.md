@@ -55,6 +55,12 @@ Letzte Aktualisierung: 2026-05-20
 - [ ] **A3 (KI)** — „Frag deine Daten" im Such-Overlay: anonymisierte Kategorien-Aggregate, keine Einzelbuchungen/PII
 - [ ] Hinweis: A1 + A3 funktionieren nur innerhalb von Claude.ai (benötigen `window.claude.complete`)
 
+### ESPP — Einzahlung + effektiver Gewinn _(~1–2h)_
+- [ ] Beitragsprozentsatz als Einstellung pro Zyklus oder global speichern
+- [ ] Einzahlung automatisch aus Gehaltsdaten berechnen: `esppGetEinzahlung(hj, jahr, pct)` bereits vorhanden
+- [ ] Neue Spalte „Einzahlung" in der Zyklen-Tabelle
+- [ ] Neue Spalte „Gewinn" = Netto-Erlös minus Einzahlung (effektiver Ertrag)
+
 ### ESPP — Vorabpauschale automatisch berechnen _(~1–2h)_
 - [ ] Vorabpauschale für thesaurierende ETFs aus Vermögensdaten berechnen (ETF-Positionen × Basiszins × 0,7 × Teilfreistellung 30%)
 - [ ] Basiszins als jährlich aktualisierbares Feld in den Einstellungen
