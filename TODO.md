@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-05-12
+Letzte Aktualisierung: 2026-05-20
 
 ---
 
@@ -54,6 +54,12 @@ Letzte Aktualisierung: 2026-05-12
 - [ ] **A1 (KI)** — Monatsbriefing-Karte auf Übersicht: Button „Briefing generieren", cached in `store.insights[YYYY-MM]`, Fehler-Toast wenn nicht verfügbar
 - [ ] **A3 (KI)** — „Frag deine Daten" im Such-Overlay: anonymisierte Kategorien-Aggregate, keine Einzelbuchungen/PII
 - [ ] Hinweis: A1 + A3 funktionieren nur innerhalb von Claude.ai (benötigen `window.claude.complete`)
+
+### ESPP — Vorabpauschale automatisch berechnen _(~1–2h)_
+- [ ] Vorabpauschale für thesaurierende ETFs aus Vermögensdaten berechnen (ETF-Positionen × Basiszins × 0,7 × Teilfreistellung 30%)
+- [ ] Basiszins als jährlich aktualisierbares Feld in den Einstellungen
+- [ ] Berechneten Vorabpauschale-Betrag automatisch vom Sparerpauschbetrag abziehen → verbleibenden Betrag für ESPP-Berechnung nutzen
+- [ ] Hinweis: Vorabpauschale fällt nur an wenn ETF-Rendite > 0 und Basisertrag > 0
 
 ### E — Visualisierungs-Upgrades _(je ~1–2h, einzeln einschiebbar)_
 - [ ] **E1** — Sankey-Diagramm in Übersicht (Modus „Sankey"): Einkommen → Sparen/Ausgaben → Top-Kategorien, eigene SVG-Logik
