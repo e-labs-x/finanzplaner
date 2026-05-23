@@ -1953,10 +1953,11 @@ function obRenderDetail(id){
       '<div class="ob-detail-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.description?' · '+o.description:'')+(isArch?' · archiviert':'')+'</div>'+
       '<div class="ob-detail-total">'+eur(s.total)+'</div>'+
       '<div class="ob-detail-sub">'+s.txCount+' Buchungen gesamt</div>'+
-      '<div style="margin-top:14px">'+
+      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
         (isArch
           ? '<button class="st-btn" onclick="obRestore(\''+o.id+'\')">Wiederherstellen</button>'
-          : '<button class="st-btn danger" onclick="obArchive(\''+o.id+'\')">Archivieren</button>')+
+          : '<button class="st-btn primary" onclick="stEditObj(\''+o.id+'\')">Bearbeiten</button>'+
+            '<button class="st-btn danger" onclick="obArchive(\''+o.id+'\')">Archivieren</button>')+
       '</div>'+
     '</div>'+
     (cats.length?'<div class="ob-section"><div class="ob-section-hdr">Nach Kategorie</div>'+catRows+'</div>':'') +
