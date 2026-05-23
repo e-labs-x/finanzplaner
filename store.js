@@ -462,10 +462,20 @@ function parseDate(str) {
   if (!str) return null;
   // Format MM.YYYY (Monat.Jahr)
   const m1 = str.match(/^(\d{2})\.(\d{4})$/);
-  if (m1) return new Date(parseInt(m1[2]), parseInt(m1[1]) - 1, 1);
+  if (m1) {
+    const mon = parseInt(m1[1]), yr = parseInt(m1[2]);
+    if (mon < 1 || mon > 12 || yr < 1900 || yr > 2200) return null;
+    return new Date(yr, mon - 1, 1);
+  }
   // Format DD.MM.YYYY
   const m2 = str.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  if (m2) return new Date(parseInt(m2[3]), parseInt(m2[2]) - 1, parseInt(m2[1]));
+  if (m2) {
+    const day = parseInt(m2[1]), mon = parseInt(m2[2]), yr = parseInt(m2[3]);
+    if (mon < 1 || mon > 12 || day < 1 || day > 31 || yr < 1900 || yr > 2200) return null;
+    const d = new Date(yr, mon - 1, day);
+    if (d.getMonth() !== mon - 1) return null; // ungültiges Datum (z.B. 31.02.)
+    return d;
+  }
   return null;
 }
 
@@ -732,6 +742,11 @@ const Store = (() => {
       localStorage.setItem(LS_KEY, JSON.stringify(_state));
     } catch(e) {
       console.error('[Store] Fehler beim Speichern:', e);
+      // iOS Private Mode: localStorage.setItem() wirft SecurityError / QuotaExceededError
+      if (e.name === 'SecurityError' || e.name === 'QuotaExceededError' || String(e).includes('QuotaExceeded')) {
+        if (window.toast) toast('⚠ Daten konnten nicht gespeichert werden. Privater Modus oder Speicher voll.');
+        return;
+      }
       throw new Error('LocalStorage voll oder gesperrt.');
     }
     if (window.GHSync) try { GHSync.schedulePush(); } catch(e) {}
@@ -2081,7 +2096,8 @@ const Calculator = {
     };
 
     const person       = store.persons.find(pe => pe.id === personId);
-    const birthYear    = person?.birthDate ? parseInt(person.birthDate.split('.').pop()) : 1988;
+    const _rawYear  = person?.birthDate ? parseInt(person.birthDate.split('.').pop()) : NaN;
+    const birthYear = (_rawYear >= 1900 && _rawYear <= 2100) ? _rawYear : 1988;
     const currentYear  = new Date().getFullYear();
     const currentAge   = currentYear - birthYear;
     const yearsToRetire = p.targetRetirementAge - currentAge;

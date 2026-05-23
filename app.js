@@ -705,7 +705,7 @@ function buildCats() {
         var btn = document.createElement('button');
         btn.className = 'cat-btn' + (selCat === cat.id ? ' sel' : '');
         btn.dataset.p = cat.id;
-        btn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + cat.name + '</span>';
+        btn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + esc(cat.name) + '</span>';
         btn.onclick = function() { pickCat(cat.id, cat.name); };
         grid.appendChild(btn);
       });
@@ -729,7 +729,7 @@ function buildCats() {
 
       var hdr = document.createElement('div');
       hdr.className = 'cat-grp-hdr';
-      hdr.innerHTML = (ICONS[cat.id] || ICON_FALLBACK) + ' ' + cat.name;
+      hdr.innerHTML = (ICONS[cat.id] || ICON_FALLBACK) + ' ' + esc(cat.name);
       block.appendChild(hdr);
 
       var subGrid = document.createElement('div');
@@ -739,7 +739,7 @@ function buildCats() {
       var parentBtn = document.createElement('button');
       parentBtn.className = 'cat-btn cat-sub-btn' + (selCat === cat.id ? ' sel' : '');
       parentBtn.dataset.p = cat.id;
-      parentBtn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + cat.name + '</span>';
+      parentBtn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + esc(cat.name) + '</span>';
       parentBtn.onclick = function() { pickCat(cat.id, cat.name); };
       subGrid.appendChild(parentBtn);
 
@@ -747,7 +747,7 @@ function buildCats() {
         var btn = document.createElement('button');
         btn.className = 'cat-btn cat-sub-btn' + (selCat === sub.id ? ' sel' : '');
         btn.dataset.p = sub.id;
-        btn.innerHTML = '<span class="cat-ico">' + (ICONS[sub.id] || ICON_FALLBACK) + '</span><span>' + sub.name + '</span>';
+        btn.innerHTML = '<span class="cat-ico">' + (ICONS[sub.id] || ICON_FALLBACK) + '</span><span>' + esc(sub.name) + '</span>';
         btn.onclick = function() { pickCat(sub.id, cat.name + ' · ' + sub.name); };
         subGrid.appendChild(btn);
       });
@@ -984,11 +984,11 @@ function renderEntries() {
     var cat = cMap[tx.categoryId]; var obj = oMap[tx.objectId];
     var mo = tx.date.split('.'); var dateTx = MON[parseInt(mo[0])-1] + ' ' + mo[1];
     var grp = cat ? cat.group : 'freizeit';
-    var objTag = obj ? '<span class="pill pill-obj" style="gap:4px">' + (OBJ_ICONS[obj.type]||'') + ' ' + obj.name + '</span>' : '';
+    var objTag = obj ? '<span class="pill pill-obj" style="gap:4px">' + (OBJ_ICONS[obj.type]||'') + ' ' + esc(obj.name) + '</span>' : '';
     return '<div class="e-row">'
       + '<div class="e-bar" style="background:' + (cat ? cat.color : '#6B7280') + '"></div>'
       + '<div class="e-info">'
-      + '<div class="e-cat">' + (cat ? cat.name : '?') + '</div>'
+      + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + '</div>'
       + (tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
       + '<div class="e-meta"><span style="font-size:11px;color:var(--tx3)">' + dateTx + '</span>'
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
@@ -1431,7 +1431,7 @@ function avRenderKat(bc){
     var color=d.cat.color||'#6B7280';
     return '<div class="av-kat-row" onclick="avCatDetail(\''+d.cat.id+'\')">'+
       '<div class="av-kat-dot" style="background:'+color+'"></div>'+
-      '<div class="av-kat-name">'+d.cat.name+'</div>'+
+      '<div class="av-kat-name">'+esc(d.cat.name)+'</div>'+
       '<div class="av-row-bar-wrap"><div class="av-row-bar-track"><div class="av-row-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div></div>'+
       '<div class="av-kat-amt" style="color:'+(d.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(d.total))+'</div>'+
     '</div>';
@@ -1488,7 +1488,7 @@ function avRenderKatGruppen(bc){
         var cc=d.cat.color||'#6B7280';
         return '<div class="av-kat-sub" onclick="avCatDetail(\''+d.cat.id+'\')">'+
           '<div class="av-kat-dot" style="background:'+cc+'"></div>'+
-          '<div class="av-kat-name">'+d.cat.name+'</div>'+
+          '<div class="av-kat-name">'+esc(d.cat.name)+'</div>'+
           '<div class="av-row-bar-wrap"><div class="av-row-bar-track"><div class="av-row-bar-fill" style="width:'+cpct+'%;background:'+cc+'"></div></div></div>'+
           '<div class="av-kat-amt" style="color:'+(d.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(d.total))+'</div>'+
         '</div>';
@@ -1609,7 +1609,7 @@ function avRenderViz(bc){
     el.style.alignItems='flex-start';
     el.innerHTML='<div style="width:100%">'+items.slice(0,6).map(function(d){
       var w=(Math.abs(d.total)/total*100).toFixed(1);var op=avS.selCat&&avS.selCat!==d.cat.id?0.25:1;
-      return '<div class="av-bal-item" style="opacity:'+op+'"><div class="av-bal-lbl"><span style="color:var(--tx2)">'+d.cat.name+'</span><span style="color:var(--tx);font-weight:600">'+eur(Math.abs(d.total))+'</span></div><div class="av-bal-track"><div class="av-bal-fill" style="width:'+w+'%;background:'+(d.cat.color||'#6B7280')+'"></div></div></div>';
+      return '<div class="av-bal-item" style="opacity:'+op+'"><div class="av-bal-lbl"><span style="color:var(--tx2)">'+esc(d.cat.name)+'</span><span style="color:var(--tx);font-weight:600">'+eur(Math.abs(d.total))+'</span></div><div class="av-bal-track"><div class="av-bal-fill" style="width:'+w+'%;background:'+(d.cat.color||'#6B7280')+'"></div></div></div>';
     }).join('')+'</div>';
   }
 }
@@ -2319,7 +2319,7 @@ function stRenderTrash(){
     var daysLeft=Math.max(0,30-Math.floor((now-new Date(e.deletedAt).getTime())/86400000));
     return '<div class="st-row">'+
       '<div class="st-row-info">'+
-        '<div class="st-row-name" style="opacity:0.7">'+e.item.name+'</div>'+
+        '<div class="st-row-name" style="opacity:0.7">'+esc(e.item.name)+'</div>'+
         '<div class="st-row-sub">'+typeLabel[e.type]+' · noch '+daysLeft+' Tag'+(daysLeft===1?'':'e')+'</div>'+
       '</div>'+
       '<div class="st-row-actions">'+
@@ -2370,8 +2370,8 @@ function stRenderObjs(){
     var arch=o.status==='archiviert';
     return '<div class="st-row">'+
       '<div class="st-row-info">'+
-        '<div class="st-row-name" style="opacity:'+(arch?0.4:1)+'">'+(OBJ_ICONS[o.type]||o.icon||'')+'<span>'+o.name+'</span></div>'+
-        '<div class="st-row-sub">'+(typeLabel[o.type]||o.type)+(o.description?' · '+o.description:'')+(arch?' · archiviert':'')+'</div>'+
+        '<div class="st-row-name" style="opacity:'+(arch?0.4:1)+'">'+(OBJ_ICONS[o.type]||o.icon||'')+'<span>'+esc(o.name)+'</span></div>'+
+        '<div class="st-row-sub">'+(typeLabel[o.type]||o.type)+(o.description?' · '+esc(o.description):'')+(arch?' · archiviert':'')+'</div>'+
       '</div>'+
       '<div class="st-row-actions">'+
         '<button class="st-btn" onclick="stEditObj(\''+o.id+'\')" style="margin-right:6px">Bearbeiten</button>'+
@@ -2890,6 +2890,7 @@ function stImportAusgaben(input){
 
       function doImport(XLSX){
         var reader=new FileReader();
+        reader.onerror=function(){ toast('Fehler: Datei konnte nicht gelesen werden'); if(lbl){lbl.style.opacity='';lbl.innerHTML='📥 Importieren<input type="file" accept=".xlsx" style="display:none" onchange="stImportAusgaben(this)">';} };
         reader.onload=function(e){
           try{
             var wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
@@ -3366,10 +3367,10 @@ function fkRenderList(){
     var rows=list.map(function(fc){
       var cat=catMap[fc.categoryId];
       var obj=fc.objectId?objMap[fc.objectId]:null;
-      var meta=(cat?cat.name:'')+(obj?' · '+obj.name:'')+(fc.validFrom?' · ab '+fc.validFrom:'');
+      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(fc.validFrom?' · ab '+fc.validFrom:'');
       return '<div class="fk-row">'+
         '<div class="fk-row-info">'+
-          '<div class="fk-row-name">'+fc.name+'</div>'+
+          '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
           '<div class="fk-row-meta">'+meta+'</div>'+
         '</div>'+
         '<div class="fk-row-amt" style="color:'+g.color+'">'+eur(fc.amount)+'</div>'+
@@ -3589,7 +3590,7 @@ function rpRenderPersonToggle(){
   el.style.marginBottom='12px';
   el.innerHTML=persons.map(function(p){
     var isActive=rpS.person===p.id;
-    return '<button class="rp-sz-btn'+(isActive?' active':'')+'" style="flex:1;padding:8px 12px;border-radius:9px" onclick="rpSelectPerson(\''+p.id+'\')">'+p.name+(isActive?' ✎':'')+'</button>';
+    return '<button class="rp-sz-btn'+(isActive?' active':'')+'" style="flex:1;padding:8px 12px;border-radius:9px" onclick="rpSelectPerson(\''+p.id+'\')">'+esc(p.name)+(isActive?' ✎':'')+'</button>';
   }).join('');
 }
 
@@ -3663,7 +3664,7 @@ function rpRenderScenarios(){
   var el=document.getElementById('rp-sz-bar');
   if(!el)return;
   el.innerHTML=store.retirement.scenarios.map(function(s){
-    return '<button class="rp-sz-btn'+(s.id===rpS.scenarioId?' active':'')+'" onclick="rpSelectScenario(\''+s.id+'\')">'+s.name+'</button>';
+    return '<button class="rp-sz-btn'+(s.id===rpS.scenarioId?' active':'')+'" onclick="rpSelectScenario(\''+s.id+'\')">'+esc(s.name)+'</button>';
   }).join('');
 }
 
@@ -6248,7 +6249,7 @@ function vmRenderAssets(){
     return '<div class="vm-asset">'+
       '<div class="vm-asset-top">'+
         '<div>'+
-          '<div class="vm-asset-name">'+item.name+'</div>'+
+          '<div class="vm-asset-name">'+esc(item.name)+'</div>'+
           (isinHint?'<div style="margin-top:2px">'+isinHint+'</div>':'')+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:6px">'+
@@ -7325,7 +7326,7 @@ function bgtOpenAdd() {
   if (!unset.length) { toast('Alle Kategorien haben bereits ein Budget'); return; }
   var sel = document.getElementById('bgt-add-cat');
   if (sel) {
-    sel.innerHTML = unset.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+    sel.innerHTML = unset.map(function(c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
   }
   var inp = document.getElementById('bgt-add-val');
   if (inp) inp.value = '';
