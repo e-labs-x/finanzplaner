@@ -1500,6 +1500,11 @@ const BackupManager = {
           if (errors.length > 0) {
             return reject(new Error('Validierungsfehler: ' + errors.join(', ')));
           }
+          // GitHub-Sync-Einstellungen vom aktuellen Gerät beibehalten (nicht aus Backup überschreiben)
+          const currentGhSync = _state?.settings?.githubSync;
+          if (currentGhSync && migrated.settings) {
+            migrated.settings.githubSync = currentGhSync;
+          }
           // Backup vor dem Import
           BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
           localStorage.setItem(LS_KEY, JSON.stringify(migrated));
