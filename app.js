@@ -73,10 +73,18 @@ var GHSync = (function() {
       'Content-Type': 'application/json'
     }};
     if (body) opts.body = JSON.stringify(body);
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    if (controller) opts.signal = controller.signal;
+    var timer = controller ? setTimeout(function() { controller.abort(); }, 20000) : null;
     return fetch('https://api.github.com' + path, opts).then(function(r) {
+      if (timer) clearTimeout(timer);
       if (r.status === 404) { var e = new Error('Not Found'); e.status = 404; throw e; }
       if (!r.ok) return r.json().then(function(e2) { throw new Error(e2.message || r.status); });
       return r.status === 204 ? null : r.json();
+    }).catch(function(err) {
+      if (timer) clearTimeout(timer);
+      if (err && err.name === 'AbortError') { var te = new Error('Timeout'); te.isTimeout = true; throw te; }
+      throw err;
     });
   }
 
@@ -485,6 +493,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (amt || (note && note.value.trim())) {
       e.preventDefault();
       e.returnValue = '';
+    }
+  });
+  // Offline-Anzeige
+  if (!navigator.onLine) setSyncStatus('error', 'Offline');
+  window.addEventListener('offline', function() {
+    setSyncStatus('error', 'Offline');
+    toast('Du bist offline — Daten werden lokal gespeichert.');
+  });
+  window.addEventListener('online', function() {
+    if (window.GHSync && FP.Store.Settings.get().githubSync?.enabled) {
+      setSyncStatus('pending', 'Verbinde…');
+      GHSync.schedulePush();
+    } else {
+      setSyncStatus('off', '');
     }
   });
 });
@@ -2758,14 +2780,21 @@ function stDownload(){
   toast('Backup heruntergeladen');
 }
 
+var _XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+var _XLSX_SRI = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
+function _loadXLSX(onload, onerror) {
+  var s = document.createElement('script');
+  s.src = _XLSX_SRC; s.integrity = _XLSX_SRI; s.crossOrigin = 'anonymous';
+  s.onload = onload; s.onerror = onerror;
+  document.head.appendChild(s);
+}
 function stExportExcel(btn) {
   if (typeof XLSX === 'undefined') {
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-    s.onload  = function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } stExportExcel(btn); };
-    s.onerror = function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); };
-    document.head.appendChild(s);
+    _loadXLSX(
+      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } stExportExcel(btn); },
+      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); }
+    );
     return;
   }
 
@@ -2839,16 +2868,36 @@ function stExportExcel(btn) {
 function stImport(input){
   var file=input.files[0];
   if(!file)return;
-  FP.BackupManager.import(file).then(function(res){
-    input.value='';
-    appLog('BACKUP', 'Import erfolgreich · '+res.transactions+' Transaktionen · Datei: '+file.name);
-    toast('Import erfolgreich · '+res.transactions+' Transaktionen');
-    setTimeout(function(){location.reload();},1200);
-  }).catch(function(err){
-    input.value='';
-    appLog('ERROR', 'Import fehlgeschlagen: '+err.message);
-    toast('Fehler: '+err.message);
-  });
+  // Datei vorab lesen für Vorschau — erst nach Bestätigung wirklich importieren
+  var previewReader=new FileReader();
+  previewReader.onerror=function(){ toast('Fehler: Datei konnte nicht gelesen werden'); input.value=''; };
+  previewReader.onload=function(e){
+    try {
+      var raw=JSON.parse(e.target.result);
+      if(!raw._backup || raw._backup.format !== 'fpbackup'){
+        toast('Fehler: Keine gültige .fpbackup-Datei'); input.value=''; return;
+      }
+      var incomingStore=raw.store||raw;
+      var incomingTx=(incomingStore.transactions||[]).length;
+      var currentTx=FP.Store.Transactions.getAll().length;
+      var msg='Backup enthält '+incomingTx+' Transaktionen.\nAktuell vorhanden: '+currentTx+' — diese werden ersetzt.';
+      confirmDialog(msg,'Importieren',function(){
+        FP.BackupManager.import(file).then(function(res){
+          input.value='';
+          appLog('BACKUP','Import erfolgreich · '+res.transactions+' Transaktionen · Datei: '+file.name);
+          toast('Import erfolgreich · '+res.transactions+' Transaktionen');
+          setTimeout(function(){location.reload();},1200);
+        }).catch(function(err){
+          input.value='';
+          appLog('ERROR','Import fehlgeschlagen: '+err.message);
+          toast('Fehler: '+err.message);
+        });
+      });
+    } catch(err) {
+      toast('Fehler: Datei konnte nicht gelesen werden'); input.value='';
+    }
+  };
+  previewReader.readAsText(file);
 }
 
 /* ── Ausgaben-Import aus ausgaben_flat_v2.xlsx ── */
@@ -3009,11 +3058,7 @@ function stImportAusgaben(input){
   }
 
       if(typeof XLSX==='undefined'){
-        var s=document.createElement('script');
-        s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-        s.onload=function(){doImport(XLSX);};
-        s.onerror=function(){toast('Fehler: SheetJS konnte nicht geladen werden');if(lbl){lbl.style.opacity='';lbl.textContent='📥 Importieren';}};
-        document.head.appendChild(s);
+        _loadXLSX(function(){doImport(XLSX);},function(){toast('Fehler: SheetJS konnte nicht geladen werden');if(lbl){lbl.style.opacity='';lbl.textContent='📥 Importieren';}});
       } else {
         doImport(XLSX);
       }
@@ -7848,11 +7893,11 @@ function rp2RenderTxList(txs) {
 function rp2ExportExcel(btn) {
   if (typeof XLSX === 'undefined') {
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-    s.onload  = function() { if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel'; } rp2ExportExcel(null); };
-    s.onerror = function() { if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel'; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); };
-    document.head.appendChild(s);
+    var _svgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel';
+    _loadXLSX(
+      function() { if (btn) { btn.disabled = false; btn.innerHTML = _svgIcon; } rp2ExportExcel(null); },
+      function() { if (btn) { btn.disabled = false; btn.innerHTML = _svgIcon; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); }
+    );
     return;
   }
 
