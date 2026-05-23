@@ -2982,7 +2982,8 @@ function stImportAusgaben(input){
           var roh   =String(row[3]||'').trim();
           var katRaw=String(row[4]||'').trim();
           var objRaw=String(row[6]||'').trim();
-          var betrag=_xlsxParseAmount(row[7]);
+          // Betrag in H (col 7) wenn Objekt vorhanden, sonst in F (col 5)
+          var betrag=_xlsxParseAmount(row[7])||_xlsxParseAmount(row[5]);
 
           if(!jahr||!monat||!betrag){badData++;skipped++;return;}
 
