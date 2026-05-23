@@ -470,6 +470,14 @@ document.addEventListener('DOMContentLoaded', function() {
   GHSync.installStorageHook();
   GHSync.init();
   GHSync.startPolling();
+  // Warnung bei offenem Numpad (ungespeicherte Eingabe) — Browser/Desktop
+  window.addEventListener('beforeunload', function(e) {
+    var note = document.getElementById('np-note');
+    if (amt || (note && note.value.trim())) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 });
 
 /* ── Navigation ── */
@@ -906,9 +914,14 @@ function npToggleNotiz() {
 }
 
 /* ── Speichern ── */
+var _saving = false;
 function speichern() {
+  if (_saving) return;
   var a = getAmt();
   if (!a || !selCat) return;
+  _saving = true;
+  var btn = document.getElementById('np-save');
+  if (btn) btn.disabled = true;
   var cat = FP.Store.Categories.getAll().find(function(c) { return c.id === selCat; });
   var eurAmt = npCur === 'EUR' ? a : FP.Store.Currencies.toEUR(a, npCur);
   var finalAmt = isErstattet ? -eurAmt : eurAmt;
@@ -926,6 +939,7 @@ function speichern() {
   var convNote = npCur !== 'EUR' ? ' ('+a+' '+npCur+')' : '';
   toast(pfx + (cat ? cat.name : '') + '  ' + eur(eurAmt) + convNote);
   appLog('TX', (isErstattet?'Rückbuchung ':'Neu ') + (cat?cat.name:'') + ' ' + eur(finalAmt));
+  _saving = false;
   reset();
   renderEntries();
   // Auswertung live aktualisieren wenn sichtbar
@@ -3007,13 +3021,16 @@ function stImportAusgaben(input){
 }
 
 function stReset(){
-  confirmDialog('Wirklich alle Daten löschen? Ein Backup wird vorher automatisch erstellt.','Alles löschen',function(){
-    appLog('RESET', 'Alle Daten gelöscht — Backup wurde erstellt');
+  confirmDialog('Wirklich alle Daten löschen? Ein Backup wird heruntergeladen.','Alles löschen',function(){
     FP.BackupManager.download('Vor Reset');
+    // 3s warten damit Browser-Download starten kann, dann zweite Bestätigung
     setTimeout(function(){
-      localStorage.removeItem('finanzplaner_v3');
-      location.reload();
-    },800);
+      confirmDialog('Download läuft. Jetzt wirklich alle Daten löschen?','Endgültig löschen',function(){
+        appLog('RESET', 'Alle Daten gelöscht — Backup wurde erstellt');
+        localStorage.removeItem('finanzplaner_v3');
+        location.reload();
+      });
+    }, 3000);
   });
 }
 

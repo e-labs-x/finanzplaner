@@ -1498,6 +1498,10 @@ const BackupManager = {
       reader.onload = (e) => {
         try {
           const raw    = JSON.parse(e.target.result);
+          // Nur echte .fpbackup-Dateien akzeptieren
+          if (raw._backup?.format !== 'fpbackup') {
+            return reject(new Error('Ungültiges Format — nur .fpbackup-Dateien werden akzeptiert.'));
+          }
           const backupStoreVersion = raw._backup?.storeVersion;
           if (backupStoreVersion && backupStoreVersion > STORE_VERSION) {
             return reject(new Error(
@@ -1505,7 +1509,11 @@ const BackupManager = {
               `Bitte die aktuelle App-Version verwenden.`
             ));
           }
-          const data   = raw.store || raw; // Unterstützt auch direktes Store-JSON
+          const data   = raw.store || raw;
+          // Grundstruktur prüfen bevor Migration
+          if (!Array.isArray(data.transactions) || !Array.isArray(data.categories) || !Array.isArray(data.persons)) {
+            return reject(new Error('Backup-Datei beschädigt oder unvollständig — Grundstruktur fehlt.'));
+          }
           const migrated = migrateStore(data);
           const errors = validateStore(migrated);
           if (errors.length > 0) {
