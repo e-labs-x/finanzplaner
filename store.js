@@ -1501,10 +1501,13 @@ const BackupManager = {
             return reject(new Error('Validierungsfehler: ' + errors.join(', ')));
           }
           // GitHub-Sync-Einstellungen vom aktuellen Gerät beibehalten (nicht aus Backup überschreiben)
-          const currentGhSync = _state?.settings?.githubSync;
-          if (currentGhSync && migrated.settings) {
-            migrated.settings.githubSync = currentGhSync;
-          }
+          try {
+            const currentRaw = localStorage.getItem(LS_KEY);
+            if (currentRaw) {
+              const currentGhSync = JSON.parse(currentRaw)?.settings?.githubSync;
+              if (currentGhSync && migrated.settings) migrated.settings.githubSync = currentGhSync;
+            }
+          } catch(e) {}
           // Backup vor dem Import
           BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
           localStorage.setItem(LS_KEY, JSON.stringify(migrated));
