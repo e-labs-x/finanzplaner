@@ -470,6 +470,15 @@ document.addEventListener('DOMContentLoaded', function() {
   GHSync.installStorageHook();
   GHSync.init();
   GHSync.startPolling();
+  // Backup-Download-Trigger (store.js ist DOM-frei, daher Custom-Event)
+  window.addEventListener('fp:download', function(e) {
+    var blob = new Blob([e.detail.json], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = e.detail.filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
   // Warnung bei offenem Numpad (ungespeicherte Eingabe) — Browser/Desktop
   window.addEventListener('beforeunload', function(e) {
     var note = document.getElementById('np-note');
@@ -2412,16 +2421,7 @@ function stDeleteObj(id){
 
 var _stEditObjId = null;
 
-function stNewObj(){
-  _stEditObjId = null;
-  document.getElementById('mo-name').value='';
-  document.getElementById('mo-type').value='fahrzeug';
-  document.getElementById('mo-desc').value='';
-  document.getElementById('mo-ttl').textContent='Neues Objekt';
-  document.getElementById('mo-save-btn').textContent='Erstellen';
-  openM('m-obj');
-  setTimeout(function(){document.getElementById('mo-name').focus();},150);
-}
+function stNewObj(){ obNew(); }
 
 function stEditObj(id){
   var obj=FP.Store.Objects.getById(id);
@@ -2830,7 +2830,8 @@ function stExportExcel(btn) {
   XLSX.utils.book_append_sheet(wb, wsSp, 'Sparpläne');
 
   var date = new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
-  XLSX.writeFile(wb, 'Finanzplaner_Export_' + date + '.xlsx');
+  var time = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}).replace(':', '-');
+  XLSX.writeFile(wb, 'Finanzplaner_Export_' + date + '_' + time + '.xlsx');
   appLog('BACKUP', 'Excel-Export heruntergeladen');
   toast('Excel-Export heruntergeladen');
 }
@@ -4295,7 +4296,12 @@ function rpToggleSec(key) {
   if (arr)  { arr.classList.toggle('open', rpSecState[key]); }
 }
 
+var _rpQsTimer = null;
 function rpQuickSave() {
+  clearTimeout(_rpQsTimer);
+  _rpQsTimer = setTimeout(_rpQuickSaveNow, 300);
+}
+function _rpQuickSaveNow() {
   // Verknüpfte Alter auf aktuelles Rentenalter setzen, bevor DOM gelesen wird
   var _retAgeNow = parseInt((document.getElementById('rp-retage')||{}).value||'')||63;
   if(rpS.ruerupLinkedAge){

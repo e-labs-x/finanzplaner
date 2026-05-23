@@ -1486,24 +1486,17 @@ const BackupManager = {
     return backup;
   },
 
-  /** Download als .fpbackup Datei */
+  /** Download als .fpbackup Datei — DOM-Trigger über fp:download-Event (app.js) */
   download(label) {
-    const backup = BackupManager.create(label);
-    const json   = JSON.stringify(backup, null, 2);
-    const blob   = new Blob([json], { type: 'application/json' });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement('a');
-    const date   = new Date().toLocaleDateString('de-DE').replace(/\./g, '-');
-    const time   = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}).replace(':', '-');
-    a.href       = url;
-    a.download   = `Finanzplaner_Backup_${date}_${time}.fpbackup`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // Auto-Backup in LocalStorage
+    const backup   = BackupManager.create(label);
+    const json     = JSON.stringify(backup, null, 2);
+    const date     = new Date().toLocaleDateString('de-DE').replace(/\./g, '-');
+    const time     = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, '-');
+    const filename = `Finanzplaner_Backup_${date}_${time}.fpbackup`;
     BackupManager._saveAutoBackup(backup);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fp:download', { detail: { json, filename } }));
+    }
   },
 
   /** Import aus .fpbackup Datei */
