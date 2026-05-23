@@ -769,9 +769,12 @@ const Store = (() => {
       if (!_state.trash) _state.trash = [];
       if (!_state.categoryBudgets) _state.categoryBudgets = {};
       _suppressTouch = true;
-      _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
-      Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
-      _suppressTouch = false;
+      try {
+        _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
+        Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
+      } finally {
+        _suppressTouch = false;
+      }
       const errors = validateStore(_state);
       if (errors.length > 0) {
         console.warn('[Store] Validierungsfehler:', errors);
@@ -791,7 +794,12 @@ const Store = (() => {
 
   function get() {
     if (!_state) load();
-    if (!_state.espp) { _state.espp = { settings:{ticker:'',rabatt:15,eurUsdKurs:1.10,aktuellerKursUsd:null,grenzsteuersatz:42,rabattFreibetrag:2000}, zyklen:[] }; _save(); }
+    if (!_state.espp) {
+      _state.espp = { settings:{ticker:'',rabatt:15,eurUsdKurs:1.10,aktuellerKursUsd:null,grenzsteuersatz:42,rabattFreibetrag:2000}, zyklen:[] };
+      _suppressTouch = true;
+      _save();
+      _suppressTouch = false;
+    }
     return _state;
   }
 
@@ -807,7 +815,10 @@ const Store = (() => {
     var _n=new Date(); var ts=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0')+' '+String(_n.getHours()).padStart(2,'0')+':'+String(_n.getMinutes()).padStart(2,'0')+':'+String(_n.getSeconds()).padStart(2,'0');
     _state.log.unshift({ ts, level, msg: msg || '' });
     if (_state.log.length > 500) _state.log.length = 500;
+    var _prev = _suppressTouch;
+    _suppressTouch = true;
     _save();
+    _suppressTouch = _prev;
   }
 
   // ── Wiederkehrende Ausgaben buchen (v2.0) ──

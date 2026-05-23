@@ -53,6 +53,7 @@ var GHSync = (function() {
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
+  var _retrying     = false;
   var _origSetItem  = null;
   var _startupLock  = true;
   var _pendingPush  = false;
@@ -114,7 +115,7 @@ var GHSync = (function() {
 
   // Push: lokale Daten hochladen
   function push(silent) {
-    if (!_active() || _busy) return Promise.resolve();
+    if (!_active() || _busy || _retrying) return Promise.resolve();
     _busy = true;
     _setBusy(true);
     var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
@@ -146,13 +147,13 @@ var GHSync = (function() {
       _busy = false;
       _setBusy(false);
       // 422 = SHA veraltet (anderes Gerät hat zwischenzeitlich gepusht) → einmal neu versuchen
-      if (err.status === 422 && !push._retrying) {
-        push._retrying = true;
+      if (err.status === 422 && !_retrying) {
+        _retrying = true;
         setSyncStatus('pending', 'Wiederhole…');
-        setTimeout(function() { push._retrying = false; push(silent); }, 1500);
+        setTimeout(function() { _retrying = false; push(silent); }, 1500);
         return;
       }
-      push._retrying = false;
+      _retrying = false;
       setSyncStatus('error', 'Fehler');
       _syncingNow = true;
       FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
@@ -249,7 +250,7 @@ var GHSync = (function() {
   }
 
   function _checkRemote() {
-    if (!_active() || _busy) return;
+    if (!_active() || _busy || _cfg().autoSync === false) return;
     var localSHA = _cfg().lastCommitSHA;
     _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
       .then(function(commits) {
