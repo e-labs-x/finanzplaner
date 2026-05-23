@@ -768,8 +768,10 @@ const Store = (() => {
       _state = migrateStore(parsed);
       if (!_state.trash) _state.trash = [];
       if (!_state.categoryBudgets) _state.categoryBudgets = {};
+      _suppressTouch = true;
       _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
       Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
+      _suppressTouch = false;
       const errors = validateStore(_state);
       if (errors.length > 0) {
         console.warn('[Store] Validierungsfehler:', errors);

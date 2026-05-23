@@ -320,6 +320,8 @@ var GHSync = (function() {
             if (!commits || !commits[0]) { _releaseLock(); return; }
             var remoteSHA = commits[0].sha;
             if (remoteSHA !== localSHA) {
+              // Wenn Auto-Sync deaktiviert: kein automatisches Pull beim Start
+              if (_cfg().autoSync === false) { _releaseLock(); return; }
               // SHA-Mismatch: Dateiinhalt holen und lastModified vergleichen.
               // Nur wenn Remote wirklich neuer ist → pull. Sonst lokale Änderungen hochladen.
               _api('GET', '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE)
