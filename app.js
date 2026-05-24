@@ -456,9 +456,8 @@ var GHSync = (function() {
                     var rMod = ((rBackup.store || rBackup).meta || {}).lastModified || '';
                     var lMod = (FP.Store.get().meta || {}).lastModified || '';
                     if (lMod > rMod) {
-                      // Lokale Daten sind neuer → Konflikt-Dialog statt blindem Upload
-                      var lBackup = FP.BackupManager.create('Startup-Snapshot');
-                      _showConflict(lBackup, rBackup, remoteSHA);
+                      // Lokale Daten sind neuer → hochladen (422 beim Push triggert ggf. Konflikt-Dialog)
+                      _releaseLock();
                     } else {
                       doPull();
                     }
