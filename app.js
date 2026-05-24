@@ -53,13 +53,16 @@ var GHSync = (function() {
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
-  var _retrying     = false;
   var _origSetItem  = null;
   var _startupLock  = true;
   var _pendingPush  = false;
   var _justPushed   = false;
   var _syncingNow   = false;
   var _scheduleCount = 0;
+  var _dirtyLocal   = false;
+  var _conflictRemoteSHA    = null;
+  var _conflictRemoteBackup = null;
+  var _conflictLocalBackup  = null;
 
   function _token() { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
@@ -123,7 +126,7 @@ var GHSync = (function() {
 
   // Push: lokale Daten hochladen
   function push(silent) {
-    if (!_active() || _busy || _retrying) return Promise.resolve();
+    if (!_active() || _busy) return Promise.resolve();
     _busy = true;
     _setBusy(true);
     var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
@@ -139,6 +142,7 @@ var GHSync = (function() {
     }).then(function(putResult) {
       _busy = false;
       _setBusy(false);
+      _dirtyLocal = false;
       var now = new Date().toISOString();
       var newSHA = putResult && putResult.commit ? putResult.commit.sha : null;
       _justPushed = true;
@@ -152,16 +156,21 @@ var GHSync = (function() {
       if (!silent) toast('↑ Sync abgeschlossen');
       _maybeDailyBackup(backup, content);
     }).catch(function(err) {
-      _busy = false;
-      _setBusy(false);
-      // 422 = SHA veraltet (anderes Gerät hat zwischenzeitlich gepusht) → einmal neu versuchen
-      if (err.status === 422 && !_retrying) {
-        _retrying = true;
-        setSyncStatus('pending', 'Wiederhole…');
-        setTimeout(function() { _retrying = false; push(silent); }, 1500);
+      if (err.status === 422) {
+        // SHA veraltet — Remote hat sich geändert → Konflikt-Dialog statt blindem Überschreiben
+        setSyncStatus('pending', 'Konflikt erkannt…');
+        _api('GET', path).then(function(file) {
+          if (!file || !file.content) { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); return; }
+          try {
+            var rBackup = JSON.parse(_dec(file.content));
+            var lBackup = FP.BackupManager.create('Konflikt-Snapshot');
+            _showConflict(lBackup, rBackup, file.sha);
+          } catch(e) { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); }
+        }).catch(function() { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); });
         return;
       }
-      _retrying = false;
+      _busy = false;
+      _setBusy(false);
       setSyncStatus('error', 'Fehler');
       _syncingNow = true;
       FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
@@ -169,6 +178,93 @@ var GHSync = (function() {
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[GHSync] push:', err);
     });
+  }
+
+  // ── Konflikt-Auflösung ───────────────────────────────────────────────────
+
+  function _mergeBackups(localBackup, remoteBackup) {
+    var rStore = JSON.parse(JSON.stringify(remoteBackup.store || remoteBackup));
+    var lStore = localBackup.store || localBackup;
+    var txIds = new Set((rStore.transactions || []).map(function(t) { return t.id; }));
+    (lStore.transactions || []).forEach(function(tx) {
+      if (!txIds.has(tx.id)) rStore.transactions.push(tx);
+    });
+    return Object.assign({}, remoteBackup, { store: rStore });
+  }
+
+  function _showConflict(localBackup, remoteBackup, remoteSHA) {
+    _conflictLocalBackup  = localBackup;
+    _conflictRemoteBackup = remoteBackup;
+    _conflictRemoteSHA    = remoteSHA;
+    var lStore = localBackup.store  || localBackup;
+    var rStore = remoteBackup.store || remoteBackup;
+    var fmt = function(iso) {
+      if (!iso) return '—';
+      try { return new Date(iso).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+      catch(e) { return iso.slice(0, 16); }
+    };
+    document.getElementById('conf-local-tx').textContent    = (lStore.transactions || []).length + ' Transaktionen';
+    document.getElementById('conf-local-date').textContent  = fmt((lStore.meta || {}).lastModified);
+    document.getElementById('conf-remote-tx').textContent   = (rStore.transactions || []).length + ' Transaktionen';
+    document.getElementById('conf-remote-date').textContent = fmt((rStore.meta || {}).lastModified);
+    openM('m-conflict');
+  }
+
+  function conflictChoose(choice) {
+    closeM('m-conflict');
+    _busy = false;
+    _startupLock = false;
+    setSyncStatus('pending', 'Arbeite…');
+    var path    = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+    var rSHA    = _conflictRemoteSHA;
+    var lBackup = _conflictLocalBackup;
+    var rBackup = _conflictRemoteBackup;
+
+    function _afterPush(r) {
+      var now = new Date().toISOString();
+      var newSHA = r && r.commit ? r.commit.sha : null;
+      _syncingNow = true;
+      FP.Store.Settings.setGithubSync({ lastSync: now, lastCommitSHA: newSHA });
+      FP.Store.appLog('SYNC', choice === 'merge' ? '⊕ Konflikt: Daten zusammengeführt' : '↑ Konflikt: Lokale Daten hochgeladen');
+      _syncingNow = false;
+      _dirtyLocal = false;
+      ghsRenderUI();
+      setSyncStatus('synced', 'Synchronisiert');
+      toast(choice === 'merge' ? '⊕ Daten zusammengeführt und hochgeladen' : '↑ Deine Daten wurden hochgeladen');
+    }
+
+    if (choice === 'local' || choice === 'merge') {
+      var backupToUse = choice === 'merge' ? _mergeBackups(lBackup, rBackup) : lBackup;
+      var content = _enc(JSON.stringify(backupToUse));
+      var msg = (choice === 'merge' ? 'Merge ' : 'Sync ') + new Date().toISOString().slice(0, 16);
+      _api('GET', path).catch(function() { return null; }).then(function(f) {
+        var body = { message: msg, content: content };
+        if (f && f.sha) body.sha = f.sha;
+        return _api('PUT', path, body);
+      }).then(_afterPush).catch(function(err) {
+        setSyncStatus('error', 'Fehler');
+        toast('Fehler: ' + err.message);
+        console.error('[GHSync] conflict push:', err);
+      });
+    } else if (choice === 'remote') {
+      var blob = new Blob([JSON.stringify(rBackup)], { type: 'application/json' });
+      var f = new File([blob], 'conflict.fpbackup');
+      FP.BackupManager.import(f).then(function() {
+        try {
+          var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
+          if (!s.settings) s.settings = {};
+          if (!s.settings.githubSync) s.settings.githubSync = {};
+          s.settings.githubSync.lastSync      = new Date().toISOString();
+          s.settings.githubSync.lastCommitSHA = rSHA;
+          s.settings.githubSync.enabled       = true;
+          s.settings.githubSync.owner         = _owner();
+          s.settings.githubSync.autoSync      = _cfg().autoSync !== false;
+          _origSetItem(LS_KEY_STORE, JSON.stringify(s));
+        } catch(e) {}
+        toast('↓ GitHub-Daten geladen — App wird neu gestartet');
+        setTimeout(function() { location.reload(); }, 1200);
+      }).catch(function(err) { toast('Fehler beim Laden: ' + err.message); });
+    }
   }
 
   // Pull: Remote-Daten laden und anwenden
@@ -244,6 +340,7 @@ var GHSync = (function() {
   function schedulePush() {
     _scheduleCount++;
     if (_syncingNow) return;
+    _dirtyLocal = true;
     if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
@@ -265,8 +362,21 @@ var GHSync = (function() {
         if (!commits || !commits[0]) return;
         var remoteSHA = commits[0].sha;
         if (remoteSHA !== localSHA) {
-          toast('Neuere Daten auf GitHub — wird geladen…');
-          setTimeout(function(){ pull(false, remoteSHA); }, 400);
+          if (_dirtyLocal) {
+            // Lokale ungespeicherte Änderungen + Remote ist neuer → Konflikt-Dialog
+            var filePath = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
+            _api('GET', filePath).then(function(file) {
+              if (!file || !file.content) { pull(false, remoteSHA); return; }
+              try {
+                var rBackup = JSON.parse(_dec(file.content));
+                var lBackup = FP.BackupManager.create('Konflikt-Snapshot');
+                _showConflict(lBackup, rBackup, remoteSHA);
+              } catch(e) { pull(false, remoteSHA); }
+            }).catch(function() { pull(false, remoteSHA); });
+          } else {
+            toast('Neuere Daten auf GitHub — wird geladen…');
+            setTimeout(function(){ pull(false, remoteSHA); }, 400);
+          }
         }
       }).catch(function(){});
   }
@@ -286,6 +396,7 @@ var GHSync = (function() {
         'busy: '         + _busy           + '<br>' +
         'justPushed: '   + _justPushed     + '&nbsp;&nbsp;' +
         'pending: '      + _pendingPush    + '<br>' +
+        'dirtyLocal: '   + _dirtyLocal     + '&nbsp;&nbsp;' +
         'scheduleCalls: '+ _scheduleCount;
     }, 1000);
   }
@@ -345,8 +456,9 @@ var GHSync = (function() {
                     var rMod = ((rBackup.store || rBackup).meta || {}).lastModified || '';
                     var lMod = (FP.Store.get().meta || {}).lastModified || '';
                     if (lMod > rMod) {
-                      // Lokale Daten sind neuer → hochladen statt überschreiben
-                      _releaseLock();
+                      // Lokale Daten sind neuer → Konflikt-Dialog statt blindem Upload
+                      var lBackup = FP.BackupManager.create('Startup-Snapshot');
+                      _showConflict(lBackup, rBackup, remoteSHA);
                     } else {
                       doPull();
                     }
@@ -363,7 +475,7 @@ var GHSync = (function() {
     }
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────

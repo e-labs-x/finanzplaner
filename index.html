@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260518g">
+<link rel="stylesheet" href="style.css?v=20260524g">
 </head>
 <body>
 
@@ -1362,8 +1362,34 @@
 </div>
 
 
-<script src="store.js?v=20260524f"></script>
-<script src="app.js?v=20260524f"></script>
+<!-- Modal: Synchronisierungs-Konflikt -->
+<div class="modal-bg" id="m-conflict">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Synchronisierungs-Konflikt</div>
+    <p style="font-size:13px;color:var(--tx2);margin:0 0 16px">Ein anderes Gerät hat Änderungen hochgeladen. Was soll gespeichert werden?</p>
+    <div class="conf-grid">
+      <div class="conf-col">
+        <div class="conf-col-lbl">Deine Daten (lokal)</div>
+        <div class="conf-val" id="conf-local-tx">—</div>
+        <div class="conf-date" id="conf-local-date">—</div>
+      </div>
+      <div class="conf-col">
+        <div class="conf-col-lbl">GitHub-Daten (remote)</div>
+        <div class="conf-val" id="conf-remote-tx">—</div>
+        <div class="conf-date" id="conf-remote-date">—</div>
+      </div>
+    </div>
+    <div class="modal-acts" style="flex-direction:column">
+      <button class="btn btn-p" onclick="GHSync.conflictChoose('local')">↑ Meine Daten hochladen</button>
+      <button class="btn btn-p" onclick="GHSync.conflictChoose('remote')">↓ GitHub-Daten laden</button>
+      <button class="btn" onclick="GHSync.conflictChoose('merge')">⊕ Zusammenführen (Transaktionen beider Versionen)</button>
+    </div>
+  </div>
+</div>
+
+<script src="store.js?v=20260524g"></script>
+<script src="app.js?v=20260524g"></script>
 
 </body>
 </html>
