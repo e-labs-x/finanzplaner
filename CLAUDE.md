@@ -111,6 +111,12 @@ Nach ~1 Min ist die Live-URL aktualisiert.
 ```
 Ohne das können Browser alte Versionen der JS/CSS-Dateien cachen und Fixes greifen nicht.
 
+**WICHTIG — Service Worker:** Bei jedem Deploy auch `CACHE_NAME` in `sw.js` auf die neue Version setzen:
+```js
+const CACHE_NAME = 'fp-YYYYMMDD';  // muss mit ?v=YYYYMMDD übereinstimmen
+```
+Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu lädt.
+
 **Version bumpen** (bei neuen Meilensteinen): `<title>`, `FP_VERSION` in store.js, `<div class="sb-ver">` in index.html.
 
 ---

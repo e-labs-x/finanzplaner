@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finanzplaner — Berechnungs-Tests</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; background: #f8f9fa; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #666; font-size: 13px; margin: 0 0 24px; }
+  button#run { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; cursor: pointer; }
+  button#run:hover { background: #1d4ed8; }
+  button#run:disabled { background: #93c5fd; cursor: default; }
+  #results { margin-top: 24px; }
+  .summary { font-weight: 700; font-size: 15px; margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; }
+  .summary.ok  { background: #dcfce7; color: #166534; }
+  .summary.err { background: #fee2e2; color: #991b1b; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: #e5e7eb; font-weight: 600; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .fail { color: #dc2626; font-weight: 600; }
+  .err-msg { font-size: 11px; color: #dc2626; margin-top: 3px; font-family: monospace; word-break: break-all; }
+  #notice { font-size: 12px; color: #888; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Finanzplaner — Berechnungs-Tests</h1>
+<p class="sub">Prüft ob Kernberechnungen und Datenverwaltung korrekt funktionieren.<br>
+Eigene Daten werden nicht verändert — Tests laufen auf einem isolierten Standard-Datensatz.</p>
+
+<button id="run" onclick="runTests()">Tests ausführen</button>
+<div id="results"></div>
+<p id="notice"></p>
+
+<script src="store.js?v=20260524g"></script>
+<script>
+'use strict';
+
+var _results = [];
+var _savedLS = null;
+
+// ── Hilfsfunktionen ──────────────────────────────────────────────────────────
+
+function assert(cond, msg) {
+  if (!cond) throw new Error(msg || 'Assertion fehlgeschlagen');
+}
+function assertNum(v, label) {
+  if (typeof v !== 'number' || isNaN(v)) throw new Error(label + ' ist kein Number — erhalten: ' + JSON.stringify(v));
+}
+function assertGte(v, min, label) {
+  assertNum(v, label);
+  if (v < min) throw new Error(label + ' = ' + v + ', erwartet ≥ ' + min);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Async-fähiger Test-Wrapper
+async function test(name, category, fn) {
+  try {
+    await fn();
+    _results.push({ name: name, category: category, ok: true });
+  } catch(e) {
+    _results.push({ name: name, category: category, ok: false, err: e.message });
+  }
+}
+
+// ── Store-Setup ──────────────────────────────────────────────────────────────
+
+function setupTestStore() {
+  _savedLS = localStorage.getItem('finanzplaner_v3');
+  localStorage.removeItem('finanzplaner_v3');
+  FP.Store.load(); // lädt Default-Store (person_1 = Person 1, person_2 = Partner)
+
+  // Minimal-Gehalt damit calcRente sinnvoll rechnet
+  FP.Store.Salary.set('person_1', '01.2026', { grossSalary: 4500, netSalary: 3000 });
+  FP.Store.Salary.set('person_1', '02.2026', { grossSalary: 4500, netSalary: 3000 });
+  FP.Store.Salary.set('person_1', '03.2026', { grossSalary: 4500, netSalary: 3000 });
+}
+
+function restoreRealStore() {
+  if (_savedLS !== null) localStorage.setItem('finanzplaner_v3', _savedLS);
+  else localStorage.removeItem('finanzplaner_v3');
+}
+
+// ── Test-Runner ──────────────────────────────────────────────────────────────
+
+async function runTests() {
+  _results = [];
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('notice').textContent = '';
+  document.getElementById('run').disabled = true;
+
+  try {
+    setupTestStore();
+
+    // ── 1. Store-CRUD ─────────────────────────────────────────────────────────
+
+    await test('Transaktion hinzufügen erhöht Anzahl', 'Store-CRUD', function() {
+      var vorher = FP.Store.Transactions.getAll().length;
+      FP.Store.Transactions.add({ amount: 42.50, date: '05.2026', categoryId: 'cat_restaurant' });
+      var nachher = FP.Store.Transactions.getAll().length;
+      assert(nachher === vorher + 1, 'Erwartet +1, bekam +' + (nachher - vorher));
+    });
+
+    await test('Transaktion in Papierkorb verschieben', 'Store-CRUD', function() {
+      var tx = FP.Store.Transactions.add({ amount: 9.99, date: '05.2026', categoryId: 'cat_kaffee' });
+      var vorher = FP.Store.Transactions.getAll().length;
+      FP.Store.Transactions.remove(tx.id);
+      var nachher = FP.Store.Transactions.getAll().length;
+      assert(nachher === vorher - 1, 'Transaktion nicht aus Liste entfernt');
+      assert(FP.Trash.getAll().some(function(e) { return e.item.id === tx.id; }), 'Nicht im Papierkorb gelandet');
+    });
+
+    await test('Kategorie anlegen und wiederfinden', 'Store-CRUD', function() {
+      var cat = FP.Store.Categories.add({ name: 'Test-Kategorie-XYZ', parentId: null });
+      assert(FP.Store.Categories.getAll().some(function(c) { return c.id === cat.id; }), 'Kategorie nicht in Liste');
+    });
+
+    await test('Objekt anlegen', 'Store-CRUD', function() {
+      var obj = FP.Store.Objects.add({ name: 'Test-Auto', type: 'auto' });
+      assert(obj && obj.id, 'Kein Objekt zurückgegeben');
+      assert(FP.Store.Objects.getAll().some(function(o) { return o.id === obj.id; }), 'Objekt nicht in Liste');
+    });
+
+    await test('Gehalt-Datenpunkt korrekt gespeichert', 'Store-CRUD', function() {
+      var data = FP.Store.Salary.get('person_1', '01.2026');
+      assert(data !== null, 'Keine Gehaltsdaten für 01.2026');
+      assert(data.grossSalary === 4500, 'grossSalary falsch: ' + data.grossSalary);
+      assert(data.netSalary === 3000, 'netSalary falsch: ' + data.netSalary);
+    });
+
+    // ── 2. Datenvalidierung ───────────────────────────────────────────────────
+
+    await test('Store-Struktur vollständig', 'Validierung', function() {
+      var s = FP.Store.get();
+      assert(Array.isArray(s.transactions), 'transactions fehlt');
+      assert(Array.isArray(s.categories),   'categories fehlt');
+      assert(Array.isArray(s.persons),      'persons fehlt');
+      assert(typeof s.salary === 'object',  'salary fehlt');
+      assert(s.meta && typeof s.meta.version === 'number', 'meta.version fehlt');
+    });
+
+    await test('Person 1 hat Geburtsjahr', 'Validierung', function() {
+      var p = FP.Store.get().persons.find(function(x) { return x.id === 'person_1'; });
+      assert(p, 'person_1 nicht gefunden');
+      assert(p.birthDate && p.birthDate.length > 0, 'birthDate leer');
+      var year = parseInt(p.birthDate.split('.').pop());
+      assert(year >= 1900 && year <= 2010, 'Geburtsjahr unplausibel: ' + year);
+    });
+
+    await test('System-Kategorien vorhanden', 'Validierung', function() {
+      var cats = FP.Store.Categories.getAll();
+      assert(cats.length >= 10, 'Zu wenige System-Kategorien: ' + cats.length);
+      assert(cats.some(function(c) { return c.id === 'cat_lebensmittel'; }), 'cat_lebensmittel fehlt');
+      assert(cats.some(function(c) { return c.id === 'cat_restaurant'; }),   'cat_restaurant fehlt');
+    });
+
+    // ── 3. Backup-Zyklus ──────────────────────────────────────────────────────
+
+    await test('Backup hat korrektes Format', 'Backup', function() {
+      var backup = FP.BackupManager.create('Test');
+      assert(backup._backup && backup._backup.format === 'fpbackup', 'Format falsch');
+      assert(backup.store, 'store-Block fehlt');
+      assert(Array.isArray(backup.store.transactions), 'transactions im Backup fehlt');
+    });
+
+    await test('Backup-Roundtrip: Daten überleben Export und Import', 'Backup', async function() {
+      // Transaktion mit erkennbarem Betrag anlegen
+      FP.Store.Transactions.add({ amount: 777.77, date: '04.2026', categoryId: 'cat_sonstiges', note: 'Roundtrip-Test' });
+      var backup   = FP.BackupManager.create('Roundtrip');
+      var txAnzahl = backup.store.transactions.length;
+
+      var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+      var file = new File([blob], 'test.fpbackup');
+      var res  = await FP.BackupManager.import(file);
+
+      assert(res.ok, 'Import lieferte ok=false');
+      FP.Store.load(); // _state nach Import neu einlesen
+      var txNach = FP.Store.Transactions.getAll().length;
+      assert(txNach === txAnzahl, 'Tx-Anzahl nach Import: ' + txNach + ' (erwartet: ' + txAnzahl + ')');
+      assert(
+        FP.Store.Transactions.getAll().some(function(tx) {
+          return tx.amount === 777.77 && tx.note === 'Roundtrip-Test';
+        }),
+        'Roundtrip-Transaktion nicht wiedergefunden'
+      );
+    });
+
+    // ── 4. Rentenberechnung ───────────────────────────────────────────────────
+
+    await test('calcRente gibt vollständiges Ergebnis zurück', 'Rentenberechnung', function() {
+      var r = FP.Calculator.calcRente('person_1', null);
+      assert(r !== null, 'calcRente gab null zurück — retirement.profiles[person_1] fehlt?');
+      var alleFelder = ['personId','currentAge','yearsToRetire','targetRetirementAge',
+                        'punkteBeiRente','gesetzlicheMonatsrenteBrutto','gesetzlicheMonatsrente',
+                        'gesamtEinkommen','depotAtRetire','luecke','zugangsfaktor'];
+      var numFelder  = alleFelder.filter(function(k) { return k !== 'personId' && k !== 'scenario'; });
+      alleFelder.forEach(function(k) { assert(k in r, 'Feld fehlt: ' + k); });
+      numFelder.forEach(function(k) { assertNum(r[k], k); });
+    });
+
+    await test('Rentenberechnung: alle Werte nicht-negativ', 'Rentenberechnung', function() {
+      var r = FP.Calculator.calcRente('person_1', null);
+      assertGte(r.punkteBeiRente,               0, 'punkteBeiRente');
+      assertGte(r.gesetzlicheMonatsrenteBrutto, 0, 'gesetzlicheMonatsrenteBrutto');
+      assertGte(r.gesetzlicheMonatsrente,       0, 'gesetzlicheMonatsrente');
+      assertGte(r.gesamtEinkommen,              0, 'gesamtEinkommen');
+      assertGte(r.depotAtRetire,                0, 'depotAtRetire');
+      assertGte(r.luecke,                       0, 'luecke');
+      assertGte(r.zugangsfaktor,                0, 'zugangsfaktor');
+    });
+
+    await test('Rentenberechnung: Alter plausibel', 'Rentenberechnung', function() {
+      var r = FP.Calculator.calcRente('person_1', null);
+      assert(r.currentAge > 0 && r.currentAge < 120, 'currentAge unplausibel: ' + r.currentAge);
+      assert(r.targetRetirementAge >= 55 && r.targetRetirementAge <= 75,
+        'targetRetirementAge unplausibel: ' + r.targetRetirementAge);
+    });
+
+    await test('Rentenberechnung: Brutto ≥ Netto (Steuern und Abgaben)', 'Rentenberechnung', function() {
+      var r = FP.Calculator.calcRente('person_1', null);
+      assert(
+        r.gesetzlicheMonatsrenteBrutto >= r.gesetzlicheMonatsrente,
+        'Brutto (' + r.gesetzlicheMonatsrenteBrutto + ') < Netto (' + r.gesetzlicheMonatsrente + ')'
+      );
+    });
+
+    await test('Höheres Gehalt → höhere gesetzliche Rente', 'Rentenberechnung', function() {
+      // Niedrige Gehälter setzen
+      FP.Store.Salary.set('person_1', '06.2025', { grossSalary: 1500, netSalary: 1200 });
+      var rNiedrig = FP.Calculator.calcRente('person_1', null);
+
+      // Gleichen Monat mit hohem Gehalt überschreiben
+      FP.Store.Salary.set('person_1', '06.2025', { grossSalary: 9000, netSalary: 6000 });
+      var rHoch = FP.Calculator.calcRente('person_1', null);
+
+      assert(
+        rHoch.gesetzlicheMonatsrenteBrutto >= rNiedrig.gesetzlicheMonatsrenteBrutto,
+        'Höheres Gehalt ergab niedrigere Rente: ' +
+        rNiedrig.gesetzlicheMonatsrenteBrutto + ' → ' + rHoch.gesetzlicheMonatsrenteBrutto
+      );
+    });
+
+  } finally {
+    restoreRealStore();
+    renderResults();
+    document.getElementById('run').disabled = false;
+  }
+}
+
+function renderResults() {
+  var passed = _results.filter(function(r) { return r.ok; }).length;
+  var failed  = _results.length - passed;
+  var html = '';
+
+  html += '<div class="summary ' + (failed === 0 ? 'ok' : 'err') + '">';
+  html += failed === 0
+    ? '✓ Alle ' + passed + ' Tests bestanden'
+    : '✗ ' + failed + ' von ' + _results.length + ' Tests fehlgeschlagen';
+  html += '</div>';
+
+  html += '<table><tr><th style="width:45%">Test</th><th>Kategorie</th><th>Ergebnis</th></tr>';
+  _results.forEach(function(r) {
+    html += '<tr>';
+    html += '<td>' + esc(r.name);
+    if (r.err) html += '<div class="err-msg">' + esc(r.err) + '</div>';
+    html += '</td>';
+    html += '<td>' + esc(r.category) + '</td>';
+    html += '<td class="' + (r.ok ? 'pass' : 'fail') + '">' + (r.ok ? '✓ OK' : '✗ FAIL') + '</td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+
+  document.getElementById('results').innerHTML = html;
+  document.getElementById('notice').textContent =
+    'Deine eigenen Daten wurden nicht verändert — Tests liefen auf einem isolierten Datensatz.';
+}
+</script>
+</body>
+</html>

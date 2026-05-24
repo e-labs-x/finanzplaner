@@ -1390,6 +1390,15 @@
 
 <script src="store.js?v=20260524g"></script>
 <script src="app.js?v=20260524g"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').catch(function(e) {
+      console.warn('[SW] Registrierung fehlgeschlagen:', e);
+    });
+  });
+}
+</script>
 
 </body>
 </html>
