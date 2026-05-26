@@ -3469,6 +3469,7 @@ function fkInit(){ fkRender(); }
 function fkRender(){
   fkRenderStats();
   fkRenderList();
+  fkRenderCoverage();
 }
 
 function fkRenderStats(){
@@ -3545,6 +3546,55 @@ function fkRenderList(){
       '</div>'+rows+
       '</div>';
   }).join('');
+}
+
+function _fkYearFromStr(mmyyyy){
+  if(!mmyyyy)return null;
+  var p=mmyyyy.split('.');
+  return p.length===2?parseInt(p[1]):null;
+}
+function _fkCoversYear(entry,year){
+  var from=_fkYearFromStr(entry.validFrom);
+  if(!from||from>year)return false;
+  if(!entry.validUntil)return true;
+  var until=_fkYearFromStr(entry.validUntil);
+  return !until||until>=year;
+}
+function fkCoverageYearChange(){ fkRenderCoverage(); }
+function fkRenderCoverage(){
+  var el=document.getElementById('fk-coverage');
+  var sel=document.getElementById('fk-year-sel');
+  if(!el||!sel)return;
+  var all=FP.Store.Recurring.getAll();
+  if(!all.length){el.innerHTML='';sel.innerHTML='';return;}
+  var curYear=new Date().getFullYear();
+  var minYear=curYear;
+  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
+  var prevVal=sel.value;
+  var opts='';
+  for(var y=curYear;y>=minYear;y--) opts+='<option value="'+y+'">'+y+'</option>';
+  sel.innerHTML=opts;
+  var keep=parseInt(prevVal);
+  sel.value=(keep>=minYear&&keep<=curYear)?String(keep):String(curYear);
+  var year=parseInt(sel.value);
+  var sorted=all.slice().sort(function(a,b){
+    var ca=_fkCoversYear(a,year)?1:0;
+    var cb=_fkCoversYear(b,year)?1:0;
+    if(ca!==cb)return ca-cb;
+    return a.name.localeCompare(b.name);
+  });
+  var html=sorted.map(function(r){
+    var ok=_fkCoversYear(r,year);
+    var range=(r.validFrom||'?')+(r.validUntil?' – '+r.validUntil:' – heute');
+    return '<div class="fk-cov-row">'+
+      '<div class="fk-cov-ic '+(ok?'ok':'miss')+'">'+(ok?'✓':'✗')+'</div>'+
+      '<div>'+
+        '<div class="fk-cov-name">'+esc(r.name)+'</div>'+
+        '<div class="fk-cov-range">'+esc(range)+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  el.innerHTML='<div class="fk-group" style="margin-top:10px">'+html+'</div>';
 }
 
 function fkOpenNew(){
