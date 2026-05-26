@@ -3533,7 +3533,15 @@ function fkOpenSplit(id){
   document.getElementById('mfks-id').value=id;
   document.getElementById('mfks-ttl').textContent='Betrag ändern: '+fc.name;
   document.getElementById('mfks-amount').value=fc.amount;
-  document.getElementById('mfks-from').value=FP.currentMonthStr();
+  // Bei historischen Einträgen: Vorschlag innerhalb des gültigen Zeitraums
+  var defFrom=FP.currentMonthStr();
+  if(fc.validUntil&&_fkToMonths(fc.validUntil)<_fkToMonths(defFrom)){
+    var p=fc.validFrom.split('.');
+    var nm=parseInt(p[0])+1,ny=parseInt(p[1]);
+    if(nm>12){nm=1;ny++;}
+    defFrom=(nm<10?'0':'')+nm+'.'+ny;
+  }
+  document.getElementById('mfks-from').value=defFrom;
   openM('m-fk-split');
   setTimeout(function(){document.getElementById('mfks-amount').focus();},150);
 }
@@ -3547,6 +3555,9 @@ function fkSplitSave(){
   if(!fc){toast('Eintrag nicht gefunden');return;}
   if(_fkToMonths(fromStr)<=_fkToMonths(fc.validFrom)){
     toast('Datum muss nach dem Start-Monat des Eintrags liegen');return;
+  }
+  if(fc.validUntil&&_fkToMonths(fromStr)>_fkToMonths(fc.validUntil)){
+    toast('Datum liegt nach Ende des Eintrags ('+fc.validUntil+')');return;
   }
   FP.Store.Recurring.update(id,{validUntil:_fkPrevMonth(fromStr)});
   FP.Store.Recurring.add({name:fc.name,amount:amount,type:fc.type,
@@ -3641,7 +3652,7 @@ function fkRenderList(){
       if(fromYear===year&&fc.validFrom!=='01.'+year) period='ab '+fc.validFrom;
       if(untilYear===year&&fc.validUntil!=='12.'+year) period+=(period?' · ':'')+'bis '+fc.validUntil;
       var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(period?' · <em>'+period+'</em>':'');
-      var canSplit=!fc.validUntil||_fkToMonths(fc.validUntil)>=curMonthN;
+      var canSplit=true; // immer anzeigen — Validierung erfolgt in fkSplitSave
       return '<div class="fk-row">'+
         '<div class="fk-row-info">'+
           '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
