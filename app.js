@@ -3553,12 +3553,33 @@ function _fkYearFromStr(mmyyyy){
   var p=mmyyyy.split('.');
   return p.length===2?parseInt(p[1]):null;
 }
+function _fkToMonths(mmyyyy){
+  if(!mmyyyy)return null;
+  var p=mmyyyy.split('.');
+  if(p.length!==2)return null;
+  return parseInt(p[1])*12+parseInt(p[0]);
+}
 function _fkCoversYear(entry,year){
   var from=_fkYearFromStr(entry.validFrom);
   if(!from||from>year)return false;
   if(!entry.validUntil)return true;
   var until=_fkYearFromStr(entry.validUntil);
   return !until||until>=year;
+}
+function _fkHasOverlap(entry,all){
+  var startA=_fkToMonths(entry.validFrom);
+  if(!startA)return false;
+  var far=(new Date().getFullYear()+50)*12;
+  var endA=entry.validUntil?_fkToMonths(entry.validUntil):far;
+  var nameLo=entry.name.toLowerCase();
+  return all.some(function(other){
+    if(other.id===entry.id)return false;
+    if(other.name.toLowerCase()!==nameLo)return false;
+    var startB=_fkToMonths(other.validFrom);
+    if(!startB)return false;
+    var endB=other.validUntil?_fkToMonths(other.validUntil):far;
+    return startA<=endB&&startB<=endA;
+  });
 }
 function fkCoverageYearChange(){ fkRenderCoverage(); }
 function fkRenderCoverage(){
@@ -3578,18 +3599,28 @@ function fkRenderCoverage(){
   sel.value=(keep>=minYear&&keep<=curYear)?String(keep):String(curYear);
   var year=parseInt(sel.value);
   var sorted=all.slice().sort(function(a,b){
+    var oa=_fkHasOverlap(a,all)?1:0;
+    var ob=_fkHasOverlap(b,all)?1:0;
     var ca=_fkCoversYear(a,year)?1:0;
     var cb=_fkCoversYear(b,year)?1:0;
-    if(ca!==cb)return ca-cb;
+    // Überschneidungen zuerst, dann fehlende, dann OK
+    var rankA=oa?0:(ca?2:1);
+    var rankB=ob?0:(cb?2:1);
+    if(rankA!==rankB)return rankA-rankB;
     return a.name.localeCompare(b.name);
   });
   var html=sorted.map(function(r){
     var ok=_fkCoversYear(r,year);
+    var overlap=_fkHasOverlap(r,all);
     var range=(r.validFrom||'?')+(r.validUntil?' – '+r.validUntil:' – heute');
+    var icon=overlap?'<div class="fk-cov-ic warn">⚠</div>'
+             :(ok?'<div class="fk-cov-ic ok">✓</div>'
+                 :'<div class="fk-cov-ic miss">✗</div>');
+    var badge=overlap?'<span class="fk-cov-badge">Überschneidung</span>':'';
     return '<div class="fk-cov-row">'+
-      '<div class="fk-cov-ic '+(ok?'ok':'miss')+'">'+(ok?'✓':'✗')+'</div>'+
+      icon+
       '<div>'+
-        '<div class="fk-cov-name">'+esc(r.name)+'</div>'+
+        '<div class="fk-cov-name">'+esc(r.name)+badge+'</div>'+
         '<div class="fk-cov-range">'+esc(range)+'</div>'+
       '</div>'+
     '</div>';

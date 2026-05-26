@@ -1,14 +1,14 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20260525c';
+const CACHE_NAME = 'fp-20260525d';
 
 const SHELL = [
   './',
   './index.html',
-  './style.css?v=20260525c',
-  './store.js?v=20260525c',
-  './app.js?v=20260525c',
+  './style.css?v=20260525d',
+  './store.js?v=20260525d',
+  './app.js?v=20260525d',
 ];
 
 // Beim Installieren: App-Shell vorläufig cachen
