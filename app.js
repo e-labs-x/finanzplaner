@@ -3463,14 +3463,87 @@ function esppDelZyklus(id){
 ════════════════════════════════════════ */
 var FK_TYPE_LABEL={fixed:'Fix',variable:'Variabel',savings:'Rücklage'};
 var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--purple)'};
-var _fkCovYear=new Date().getFullYear();
+var _fkNavYear=new Date().getFullYear();
 
 function fkInit(){ fkRender(); }
 
 function fkRender(){
   fkRenderStats();
   fkRenderList();
-  fkRenderCoverage();
+  var lbl=document.getElementById('fk-nav-year');
+  if(lbl)lbl.textContent=_fkNavYear;
+}
+
+function fkYearShift(dir){
+  var all=FP.Store.Recurring.getAll();
+  var curYear=new Date().getFullYear();
+  var minYear=curYear;
+  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
+  _fkNavYear=Math.min(curYear,Math.max(minYear,_fkNavYear+dir));
+  fkRender();
+}
+
+function fkCopyToNextYear(){
+  var nextYear=_fkNavYear+1;
+  var curYear=new Date().getFullYear();
+  if(nextYear>curYear+1){toast('Kann nicht weiter als '+(curYear+1)+' voraus kopieren');return;}
+  var allEntries=FP.Store.Recurring.getAll();
+  var activeNow=allEntries.filter(function(r){return _fkCoversYear(r,_fkNavYear);});
+  var copied=0;
+  activeNow.forEach(function(r){
+    if(_fkCoversYear(r,nextYear))return;
+    var exists=allEntries.some(function(o){return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,nextYear);});
+    if(exists)return;
+    FP.Store.Recurring.add({name:r.name,amount:r.amount,type:r.type,
+      categoryId:r.categoryId,objectId:r.objectId,validFrom:'01.'+nextYear,validUntil:null});
+    copied++;
+  });
+  if(copied>0){
+    FP.Store.generateRecurringTransactions({retroactive:true});
+    _fkNavYear=nextYear;
+    fkRender();
+    toast(copied+' Einträge ins Jahr '+nextYear+' kopiert');
+  } else {
+    toast('Alle Einträge laufen bereits ins '+nextYear+' weiter');
+  }
+}
+
+function fkPrevMonth(mmyyyy){
+  var p=mmyyyy.split('.');
+  var m=parseInt(p[0]),y=parseInt(p[1]);
+  if(m===1){m=12;y--;}else m--;
+  return(m<10?'0':'')+m+'.'+y;
+}
+
+function fkOpenSplit(id){
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc)return;
+  document.getElementById('mfks-id').value=id;
+  document.getElementById('mfks-ttl').textContent='Betrag ändern: '+fc.name;
+  document.getElementById('mfks-amount').value=fc.amount;
+  document.getElementById('mfks-from').value=FP.currentMonthStr();
+  openM('m-fk-split');
+  setTimeout(function(){document.getElementById('mfks-amount').focus();},150);
+}
+
+function fkSplitSave(){
+  var id=document.getElementById('mfks-id').value;
+  var fromStr=document.getElementById('mfks-from').value.trim();
+  var amount=parseFloat(document.getElementById('mfks-amount').value);
+  if(!fromStr||!amount||amount<=0){toast('Betrag und Monat eingeben');return;}
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc){toast('Eintrag nicht gefunden');return;}
+  if(_fkToMonths(fromStr)<=_fkToMonths(fc.validFrom)){
+    toast('Datum muss nach dem Start-Monat des Eintrags liegen');return;
+  }
+  FP.Store.Recurring.update(id,{validUntil:fkPrevMonth(fromStr)});
+  FP.Store.Recurring.add({name:fc.name,amount:amount,type:fc.type,
+    categoryId:fc.categoryId,objectId:fc.objectId,
+    validFrom:fromStr,validUntil:fc.validUntil||null});
+  FP.Store.generateRecurringTransactions({retroactive:true});
+  closeM('m-fk-split');
+  fkRender();
+  toast('Betrag geändert ab '+fromStr);
 }
 
 function fkRenderStats(){
@@ -3500,14 +3573,16 @@ function fkRenderStats(){
 function fkRenderList(){
   var el=document.getElementById('fk-list');
   if(!el)return;
-  var items=FP.Store.Recurring.getActive();
+  var year=_fkNavYear;
+  var all=FP.Store.Recurring.getAll();
+  var items=all.filter(function(r){return _fkCoversYear(r,year);});
   var cats=FP.Store.Categories.getAll();
   var objs=FP.Store.Objects.getAll();
   var catMap={};cats.forEach(function(c){catMap[c.id]=c;});
   var objMap={};objs.forEach(function(o){objMap[o.id]=o;});
 
   if(!items.length){
-    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Fixkosten vorhanden. Tippe auf + Hinzufügen.</div></div>';
+    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Einträge für '+year+'. Navigiere zum Vorjahr und klicke "Kopieren →".</div></div>';
     return;
   }
 
@@ -3521,62 +3596,40 @@ function fkRenderList(){
     {key:'savings',  lbl:'Rücklage', color:'var(--purple)'},
   ];
 
-  var activeHtml=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
+  var curMonthN=_fkToMonths(FP.currentMonthStr());
+  el.innerHTML=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
     var list=groups[g.key];
     var total=FP.r2(list.reduce(function(s,fc){return s+fc.amount;},0));
     var rows=list.map(function(fc){
       var cat=catMap[fc.categoryId];
       var obj=fc.objectId?objMap[fc.objectId]:null;
-      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(fc.validFrom?' · ab '+fc.validFrom:'');
-      return '<div class="fk-row">'+
+      var fromYear=_fkYearFromStr(fc.validFrom);
+      var untilYear=fc.validUntil?_fkYearFromStr(fc.validUntil):null;
+      var period='';
+      if(fromYear===year&&fc.validFrom!=='01.'+year) period='ab '+fc.validFrom;
+      if(untilYear===year) period+=(period?' · ':'')+'bis '+fc.validUntil;
+      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(period?' · <em>'+period+'</em>':'');
+      var canSplit=!fc.validUntil||_fkToMonths(fc.validUntil)>=curMonthN;
+      var expired=fc.validUntil&&_fkToMonths(fc.validUntil)<curMonthN;
+      return '<div class="fk-row'+(expired?' fk-row-expired':'')+'">'+
         '<div class="fk-row-info">'+
           '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
           '<div class="fk-row-meta">'+meta+'</div>'+
         '</div>'+
-        '<div class="fk-row-amt" style="color:'+g.color+'">'+eur(fc.amount)+'</div>'+
+        '<div class="fk-row-amt" style="color:'+(expired?'var(--tx3)':g.color)+'">'+eur(fc.amount)+'</div>'+
         '<div class="fk-row-actions">'+
+          (canSplit?'<button class="fk-row-btn" onclick="fkOpenSplit(\''+fc.id+'\')" title="Betrag ändern">↕</button>':'')+
           '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
           '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
         '</div>'+
-        '</div>';
+      '</div>';
     }).join('');
     return '<div class="fk-group">'+
       '<div class="fk-group-hdr">'+
         '<span class="fk-group-lbl" style="color:'+g.color+'">'+g.lbl+'</span>'+
         '<span class="fk-group-total">'+eur(total)+'/Monat</span>'+
-      '</div>'+rows+
-      '</div>';
+      '</div>'+rows+'</div>';
   }).join('');
-
-  // Abgelaufene Einträge (validUntil gesetzt)
-  var expired=FP.Store.Recurring.getAll().filter(function(fc){return !!fc.validUntil;});
-  var expiredHtml='';
-  if(expired.length){
-    var expRows=expired.map(function(fc){
-      var cat=catMap[fc.categoryId];
-      var obj=fc.objectId?objMap[fc.objectId]:null;
-      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')
-               +(fc.validFrom?' · '+fc.validFrom:'')+' – '+fc.validUntil;
-      return '<div class="fk-row fk-row-expired">'+
-        '<div class="fk-row-info">'+
-          '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
-          '<div class="fk-row-meta">'+meta+'</div>'+
-        '</div>'+
-        '<div class="fk-row-amt" style="color:var(--tx3)">'+eur(fc.amount)+'</div>'+
-        '<div class="fk-row-actions">'+
-          '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
-          '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
-        '</div>'+
-        '</div>';
-    }).join('');
-    expiredHtml='<div class="fk-group" style="margin-top:10px">'+
-      '<div class="fk-group-hdr">'+
-        '<span class="fk-group-lbl" style="color:var(--tx3)">Abgelaufen</span>'+
-        '<span class="fk-group-total" style="color:var(--tx3)">'+expired.length+' Eintrag'+(expired.length===1?'':'einträge')+'</span>'+
-      '</div>'+expRows+'</div>';
-  }
-
-  el.innerHTML=activeHtml+expiredHtml;
 }
 
 function _fkYearFromStr(mmyyyy){
@@ -3597,71 +3650,6 @@ function _fkCoversYear(entry,year){
   var until=_fkYearFromStr(entry.validUntil);
   return !until||until>=year;
 }
-function _fkHasOverlap(entry,all){
-  var startA=_fkToMonths(entry.validFrom);
-  if(!startA)return false;
-  var far=(new Date().getFullYear()+50)*12;
-  var endA=entry.validUntil?_fkToMonths(entry.validUntil):far;
-  var nameLo=entry.name.toLowerCase();
-  return all.some(function(other){
-    if(other.id===entry.id)return false;
-    if(other.name.toLowerCase()!==nameLo)return false;
-    var startB=_fkToMonths(other.validFrom);
-    if(!startB)return false;
-    var endB=other.validUntil?_fkToMonths(other.validUntil):far;
-    return startA<=endB&&startB<=endA;
-  });
-}
-function fkCoverageShift(dir){
-  var all=FP.Store.Recurring.getAll();
-  var curYear=new Date().getFullYear();
-  var minYear=curYear;
-  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
-  _fkCovYear=Math.min(curYear,Math.max(minYear,_fkCovYear+dir));
-  fkRenderCoverage();
-}
-function fkRenderCoverage(){
-  var el=document.getElementById('fk-coverage');
-  var lbl=document.getElementById('fk-year-lbl');
-  if(!el||!lbl)return;
-  var all=FP.Store.Recurring.getAll();
-  if(!all.length){el.innerHTML='';return;}
-  var curYear=new Date().getFullYear();
-  var minYear=curYear;
-  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
-  _fkCovYear=Math.min(curYear,Math.max(minYear,_fkCovYear));
-  lbl.textContent=_fkCovYear;
-  var year=_fkCovYear;
-  var sorted=all.slice().sort(function(a,b){
-    var oa=_fkHasOverlap(a,all)?1:0;
-    var ob=_fkHasOverlap(b,all)?1:0;
-    var ca=_fkCoversYear(a,year)?1:0;
-    var cb=_fkCoversYear(b,year)?1:0;
-    // Überschneidungen zuerst, dann fehlende, dann OK
-    var rankA=oa?0:(ca?2:1);
-    var rankB=ob?0:(cb?2:1);
-    if(rankA!==rankB)return rankA-rankB;
-    return a.name.localeCompare(b.name);
-  });
-  var html=sorted.map(function(r){
-    var ok=_fkCoversYear(r,year);
-    var overlap=_fkHasOverlap(r,all);
-    var range=(r.validFrom||'?')+(r.validUntil?' – '+r.validUntil:' – heute');
-    var icon=overlap?'<div class="fk-cov-ic warn">⚠</div>'
-             :(ok?'<div class="fk-cov-ic ok">✓</div>'
-                 :'<div class="fk-cov-ic miss">✗</div>');
-    var badge=overlap?'<span class="fk-cov-badge">Überschneidung</span>':'';
-    return '<div class="fk-cov-row">'+
-      icon+
-      '<div>'+
-        '<div class="fk-cov-name">'+esc(r.name)+badge+'</div>'+
-        '<div class="fk-cov-range">'+esc(range)+'</div>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-  el.innerHTML='<div class="fk-group" style="margin-top:10px">'+html+'</div>';
-}
-
 function fkOpenNew(){
   document.getElementById('mfk-id').value='';
   document.getElementById('mfk-ttl').textContent='Vorlage hinzufügen';

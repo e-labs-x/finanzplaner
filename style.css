@@ -950,6 +950,7 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .fk-section-hdr{display:flex;align-items:center;justify-content:space-between}
 .fk-section-title{font-size:14px;font-weight:700;color:var(--tx)}
 .fk-only-badge{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-lt,oklch(from var(--purple) l c h / .12));border-radius:4px;padding:1px 5px;margin-left:6px}
+.fk-year-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .fk-row-expired{opacity:.55}
 .fk-cov-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--brd)}
 .fk-cov-row:last-child{border-bottom:none}
