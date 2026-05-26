@@ -3554,6 +3554,7 @@ function fkOpenNew(){
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
   document.getElementById('mfk-from').value=FP.currentMonthStr();
+  document.getElementById('mfk-until').value='';
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -3569,6 +3570,7 @@ function fkOpenEdit(id){
   document.getElementById('mfk-amount').value=fc.amount;
   document.getElementById('mfk-type').value=fc.type;
   document.getElementById('mfk-from').value=fc.validFrom||FP.currentMonthStr();
+  document.getElementById('mfk-until').value=fc.validUntil||'';
   fkFillCatSelect(fc.categoryId);
   fkFillObjSelect(fc.objectId);
   openM('m-fk');
@@ -3617,6 +3619,7 @@ function fkSave(){
     categoryId:newCategoryId,
     objectId:newObjectId,
     validFrom:document.getElementById('mfk-from').value.trim()||FP.currentMonthStr(),
+    validUntil:document.getElementById('mfk-until').value.trim()||null,
   };
   if(id){
     FP.Store.Recurring.update(id,data);

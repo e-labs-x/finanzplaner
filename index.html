@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525a">
+<link rel="stylesheet" href="style.css?v=20260525b">
 </head>
 <body>
 
@@ -1197,7 +1197,10 @@
     </div>
     <div class="fg"><label class="fl">Kategorie</label><select class="fs" id="mfk-cat"></select></div>
     <div class="fg"><label class="fl">Objekt (optional)</label><select class="fs" id="mfk-obj"><option value="">— kein Objekt —</option></select></div>
-    <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfk-from" type="text" placeholder="z.B. 01.2024" maxlength="7"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfk-from" type="text" placeholder="z.B. 01.2024" maxlength="7"></div>
+      <div class="fg"><label class="fl">Gültig bis (MM.YYYY)</label><input class="fi" id="mfk-until" type="text" placeholder="leer = unbegrenzt" maxlength="7"></div>
+    </div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-fk')">Abbrechen</button>
       <button class="btn btn-p" onclick="fkSave()">Speichern</button>
@@ -1388,8 +1391,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260525a"></script>
-<script src="app.js?v=20260525a"></script>
+<script src="store.js?v=20260525b"></script>
+<script src="app.js?v=20260525b"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
