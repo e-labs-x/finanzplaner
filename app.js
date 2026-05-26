@@ -3494,8 +3494,12 @@ function fkCopyToNextYear(){
     if(_fkCoversYear(r,nextYear))return;
     var exists=allEntries.some(function(o){return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,nextYear);});
     if(exists)return;
+    // Quell-Eintrag schließen, damit er nicht ins Folgejahr durchsickert
+    if(!r.validUntil) FP.Store.Recurring.update(r.id,{validUntil:'12.'+_fkNavYear});
+    // Neuer Eintrag: in historischen Jahren ebenfalls mit validUntil schließen
+    var newUntil=(nextYear<curYear)?('12.'+nextYear):null;
     FP.Store.Recurring.add({name:r.name,amount:r.amount,type:r.type,
-      categoryId:r.categoryId,objectId:r.objectId,validFrom:'01.'+nextYear,validUntil:null});
+      categoryId:r.categoryId,objectId:r.objectId,validFrom:'01.'+nextYear,validUntil:newUntil});
     copied++;
   });
   if(copied>0){
@@ -3575,7 +3579,19 @@ function fkRenderList(){
   if(!el)return;
   var year=_fkNavYear;
   var all=FP.Store.Recurring.getAll();
-  var items=all.filter(function(r){return _fkCoversYear(r,year);});
+  var items=all.filter(function(r){
+    if(!_fkCoversYear(r,year))return false;
+    // Wenn Eintrag in diesem Jahr endet und ein Nachfolger (gleicher Name) auch dieses Jahr abdeckt
+    // → ausblenden (der Nachfolger zeigt den Zeitraum bereits als meta-Info)
+    if(r.validUntil&&_fkYearFromStr(r.validUntil)===year){
+      var hasSuccessor=all.some(function(o){
+        return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,year)&&
+               _fkToMonths(o.validFrom)>_fkToMonths(r.validFrom||'01.0000');
+      });
+      if(hasSuccessor)return false;
+    }
+    return true;
+  });
   var cats=FP.Store.Categories.getAll();
   var objs=FP.Store.Objects.getAll();
   var catMap={};cats.forEach(function(c){catMap[c.id]=c;});
@@ -3610,7 +3626,8 @@ function fkRenderList(){
       if(untilYear===year) period+=(period?' · ':'')+'bis '+fc.validUntil;
       var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(period?' · <em>'+period+'</em>':'');
       var canSplit=!fc.validUntil||_fkToMonths(fc.validUntil)>=curMonthN;
-      var expired=fc.validUntil&&_fkToMonths(fc.validUntil)<curMonthN;
+      // Grau nur wenn der Eintrag im angezeigten Jahr selbst endet (nicht weil er historisch ist)
+      var expired=fc.validUntil&&_fkYearFromStr(fc.validUntil)===year&&_fkToMonths(fc.validUntil)<curMonthN;
       return '<div class="fk-row'+(expired?' fk-row-expired':'')+'">'+
         '<div class="fk-row-info">'+
           '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
@@ -3656,7 +3673,7 @@ function fkOpenNew(){
   document.getElementById('mfk-name').value='';
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
-  document.getElementById('mfk-from').value=FP.currentMonthStr();
+  document.getElementById('mfk-from').value='01.'+_fkNavYear;
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -3713,13 +3730,17 @@ function fkSave(){
   if(!name||!amount){toast('Name und Betrag eingeben');return;}
   var newObjectId=document.getElementById('mfk-obj').value||null;
   var newCategoryId=document.getElementById('mfk-cat').value;
+  var curYear=new Date().getFullYear();
+  // Neuer Eintrag in historischem Jahr → validUntil automatisch auf 12.Jahr setzen
+  var autoUntil=(!id&&_fkNavYear<curYear)?('12.'+_fkNavYear):null;
   var data={
     name:name,
     amount:amount,
     type:document.getElementById('mfk-type').value,
     categoryId:newCategoryId,
     objectId:newObjectId,
-    validFrom:document.getElementById('mfk-from').value.trim()||FP.currentMonthStr(),
+    validFrom:document.getElementById('mfk-from').value.trim()||('01.'+_fkNavYear),
+    validUntil:autoUntil,
   };
   if(id){
     FP.Store.Recurring.update(id,data);
