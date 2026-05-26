@@ -950,23 +950,6 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 .fk-section-hdr{display:flex;align-items:center;justify-content:space-between}
 .fk-section-title{font-size:14px;font-weight:700;color:var(--tx)}
 .fk-only-badge{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-lt,oklch(from var(--purple) l c h / .12));border-radius:4px;padding:1px 5px;margin-left:6px}
-.fk-year-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.fk-row-expired{opacity:.55}
-.fk-cov-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--brd)}
-.fk-cov-row:last-child{border-bottom:none}
-.fk-cov-ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.fk-cov-ic.ok{background:oklch(91% .1 142);color:oklch(36% .15 142)}
-.fk-cov-ic.miss{background:oklch(93% .08 25);color:oklch(44% .2 25)}
-.fk-cov-ic.warn{background:oklch(93% .12 80);color:oklch(42% .18 65)}
-@media(prefers-color-scheme:dark){
-  .fk-cov-ic.ok{background:oklch(28% .1 142);color:oklch(78% .15 142)}
-  .fk-cov-ic.miss{background:oklch(28% .08 25);color:oklch(78% .18 25)}
-  .fk-cov-ic.warn{background:oklch(28% .1 80);color:oklch(80% .15 65)}
-}
-.fk-cov-name{font-size:13px;font-weight:600;color:var(--tx);display:flex;align-items:center;gap:6px}
-.fk-cov-range{font-size:11px;color:var(--tx3);margin-top:1px}
-.fk-cov-badge{font-size:10px;font-weight:600;color:oklch(42% .18 65);background:oklch(93% .12 80);border-radius:4px;padding:1px 5px}
-@media(prefers-color-scheme:dark){.fk-cov-badge{color:oklch(80% .15 65);background:oklch(28% .1 80)}}
 
 /* ════════════════════════════════════════
    RENTENPLANUNG TAB
