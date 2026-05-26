@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260526c">
+<link rel="stylesheet" href="style.css?v=20260526d">
 </head>
 <body>
 
@@ -576,9 +576,16 @@
       <div class="pg">
         <div class="fk-wrap">
           <div class="fk-stat-row" id="fk-stats"></div>
-          <div class="fk-section-hdr">
-            <span class="fk-section-title">Wiederkehrende Fixkosten</span>
-            <button class="av-heute" onclick="fkOpenNew()" style="font-size:12px;padding:5px 10px">+ Hinzufügen</button>
+          <div class="fk-year-bar">
+            <div class="cf-year-nav">
+              <button class="cf-nav-btn" onclick="fkYearShift(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+              <span id="fk-nav-year">2026</span>
+              <button class="cf-nav-btn" onclick="fkYearShift(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="av-heute" onclick="fkCopyToNextYear()" style="font-size:12px;padding:5px 10px">Kopieren →</button>
+              <button class="av-heute" onclick="fkOpenNew()" style="font-size:12px;padding:5px 10px">+ Hinzufügen</button>
+            </div>
           </div>
           <div id="fk-list"></div>
         </div>
@@ -1205,6 +1212,22 @@
   </div>
 </div>
 
+<!-- Modal: Betrag ändern (Split) -->
+<div class="modal-bg" id="m-fk-split">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl" id="mfks-ttl">Betrag ändern</div>
+    <input type="hidden" id="mfks-id">
+    <div class="fg"><label class="fl">Neuer Betrag (€/Monat)</label><input class="fi" id="mfks-amount" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
+    <div class="fg"><label class="fl">Gültig ab (MM.YYYY)</label><input class="fi" id="mfks-from" type="text" placeholder="z.B. 07.2024" maxlength="7"></div>
+    <p style="font-size:12px;color:var(--tx3);margin:0 0 4px">Der bisherige Eintrag läuft bis zum Vormonat weiter.</p>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeM('m-fk-split')">Abbrechen</button>
+      <button class="btn btn-p" onclick="fkSplitSave()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Snapshot erfassen -->
 <div class="modal-bg" id="m-snapshot">
   <div class="modal-box">
@@ -1388,8 +1411,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260526c"></script>
-<script src="app.js?v=20260526c"></script>
+<script src="store.js?v=20260526d"></script>
+<script src="app.js?v=20260526d"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

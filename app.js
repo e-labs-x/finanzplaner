@@ -3466,9 +3466,106 @@ var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--pu
 
 function fkInit(){ fkRender(); }
 
+var _fkNavYear = new Date().getFullYear();
+
+function _fkYearFromStr(mmyyyy){
+  if(!mmyyyy)return null;
+  var p=mmyyyy.split('.');
+  return p.length===2?parseInt(p[1]):null;
+}
+function _fkToMonths(mmyyyy){
+  if(!mmyyyy)return null;
+  var p=mmyyyy.split('.');
+  if(p.length!==2)return null;
+  return parseInt(p[1])*12+parseInt(p[0]);
+}
+function _fkCoversYear(entry,year){
+  var from=_fkYearFromStr(entry.validFrom);
+  if(!from||from>year)return false;
+  if(!entry.validUntil)return true;
+  return _fkYearFromStr(entry.validUntil)>=year;
+}
+function _fkPrevMonth(mmyyyy){
+  var p=mmyyyy.split('.');
+  var m=parseInt(p[0]),y=parseInt(p[1]);
+  if(m===1){m=12;y--;}else m--;
+  return(m<10?'0':'')+m+'.'+y;
+}
+
+function fkYearShift(dir){
+  var all=FP.Store.Recurring.getAll();
+  var curYear=new Date().getFullYear();
+  var minYear=curYear;
+  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
+  _fkNavYear=Math.max(minYear,Math.min(curYear,_fkNavYear+dir));
+  fkRender();
+}
+
+function fkCopyToNextYear(){
+  var nextYear=_fkNavYear+1;
+  var curYear=new Date().getFullYear();
+  if(nextYear>curYear){toast('Kann nicht über '+curYear+' hinaus kopieren');return;}
+  var allEntries=FP.Store.Recurring.getAll();
+  var activeNow=allEntries.filter(function(r){return _fkCoversYear(r,_fkNavYear);});
+  var copied=0;
+  activeNow.forEach(function(r){
+    var alreadyCovered=allEntries.some(function(o){return o.name===r.name&&_fkCoversYear(o,nextYear);});
+    if(alreadyCovered)return;
+    // Quell-Eintrag schließen damit er nicht ins Folgejahr durchsickert
+    if(!r.validUntil) FP.Store.Recurring.update(r.id,{validUntil:'12.'+_fkNavYear});
+    // Neuen Eintrag anlegen; in historischen Jahren ebenfalls begrenzen
+    var newUntil=(nextYear<curYear)?('12.'+nextYear):null;
+    FP.Store.Recurring.add({name:r.name,amount:r.amount,type:r.type,
+      categoryId:r.categoryId,objectId:r.objectId,
+      validFrom:'01.'+nextYear,validUntil:newUntil});
+    copied++;
+  });
+  if(copied>0){
+    FP.Store.generateRecurringTransactions({retroactive:true});
+    _fkNavYear=nextYear;
+    fkRender();
+    toast(copied+' Einträge ins Jahr '+nextYear+' kopiert');
+  } else {
+    toast('Alle Einträge sind bereits in '+nextYear+' vorhanden');
+  }
+}
+
+function fkOpenSplit(id){
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc)return;
+  document.getElementById('mfks-id').value=id;
+  document.getElementById('mfks-ttl').textContent='Betrag ändern: '+fc.name;
+  document.getElementById('mfks-amount').value=fc.amount;
+  document.getElementById('mfks-from').value=FP.currentMonthStr();
+  openM('m-fk-split');
+  setTimeout(function(){document.getElementById('mfks-amount').focus();},150);
+}
+
+function fkSplitSave(){
+  var id=document.getElementById('mfks-id').value;
+  var fromStr=document.getElementById('mfks-from').value.trim();
+  var amount=parseFloat(document.getElementById('mfks-amount').value);
+  if(!fromStr||!amount||amount<=0){toast('Betrag und Monat eingeben');return;}
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc){toast('Eintrag nicht gefunden');return;}
+  if(_fkToMonths(fromStr)<=_fkToMonths(fc.validFrom)){
+    toast('Datum muss nach dem Start-Monat des Eintrags liegen');return;
+  }
+  FP.Store.Recurring.update(id,{validUntil:_fkPrevMonth(fromStr)});
+  FP.Store.Recurring.add({name:fc.name,amount:amount,type:fc.type,
+    categoryId:fc.categoryId,objectId:fc.objectId,
+    validFrom:fromStr,validUntil:fc.validUntil||null});
+  FP.Store.generateRecurringTransactions({retroactive:true});
+  closeM('m-fk-split');
+  fkRender();
+  toast('Betrag geändert ab '+fromStr);
+}
+
 function fkRender(){
   fkRenderStats();
   fkRenderList();
+  var lbl=document.getElementById('fk-nav-year');
+  if(lbl)lbl.textContent=_fkNavYear;
 }
 
 function fkRenderStats(){
@@ -3498,14 +3595,28 @@ function fkRenderStats(){
 function fkRenderList(){
   var el=document.getElementById('fk-list');
   if(!el)return;
-  var items=FP.Store.Recurring.getActive();
+  var year=_fkNavYear;
+  var all=FP.Store.Recurring.getAll();
+  // Einträge für dieses Jahr — ältere Split-Version ausblenden wenn Nachfolger vorhanden
+  var items=all.filter(function(r){
+    if(!_fkCoversYear(r,year))return false;
+    if(r.validUntil&&_fkYearFromStr(r.validUntil)===year){
+      var hasSuccessor=all.some(function(o){
+        return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,year)&&
+               _fkToMonths(o.validFrom)>_fkToMonths(r.validFrom||'01.0000');
+      });
+      if(hasSuccessor)return false;
+    }
+    return true;
+  });
+
   var cats=FP.Store.Categories.getAll();
   var objs=FP.Store.Objects.getAll();
   var catMap={};cats.forEach(function(c){catMap[c.id]=c;});
   var objMap={};objs.forEach(function(o){objMap[o.id]=o;});
 
   if(!items.length){
-    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Fixkosten vorhanden. Tippe auf + Hinzufügen.</div></div>';
+    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Einträge für '+year+'. Tippe auf "Kopieren →" oder "+ Hinzufügen".</div></div>';
     return;
   }
 
@@ -3519,13 +3630,21 @@ function fkRenderList(){
     {key:'savings',  lbl:'Rücklage', color:'var(--purple)'},
   ];
 
+  var curMonthN=_fkToMonths(FP.currentMonthStr());
   el.innerHTML=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
     var list=groups[g.key];
     var total=FP.r2(list.reduce(function(s,fc){return s+fc.amount;},0));
     var rows=list.map(function(fc){
       var cat=catMap[fc.categoryId];
       var obj=fc.objectId?objMap[fc.objectId]:null;
-      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(fc.validFrom?' · ab '+fc.validFrom:'');
+      // Zeitraum innerhalb des Jahres anzeigen wenn Eintrag nicht das ganze Jahr abdeckt
+      var period='';
+      var fromYear=_fkYearFromStr(fc.validFrom);
+      var untilYear=fc.validUntil?_fkYearFromStr(fc.validUntil):null;
+      if(fromYear===year&&fc.validFrom!=='01.'+year) period='ab '+fc.validFrom;
+      if(untilYear===year&&fc.validUntil!=='12.'+year) period+=(period?' · ':'')+'bis '+fc.validUntil;
+      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+(period?' · <em>'+period+'</em>':'');
+      var canSplit=!fc.validUntil||_fkToMonths(fc.validUntil)>=curMonthN;
       return '<div class="fk-row">'+
         '<div class="fk-row-info">'+
           '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
@@ -3533,17 +3652,17 @@ function fkRenderList(){
         '</div>'+
         '<div class="fk-row-amt" style="color:'+g.color+'">'+eur(fc.amount)+'</div>'+
         '<div class="fk-row-actions">'+
+          (canSplit?'<button class="fk-row-btn" onclick="fkOpenSplit(\''+fc.id+'\')" title="Betrag ändern">↕</button>':'')+
           '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
           '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
         '</div>'+
-        '</div>';
+      '</div>';
     }).join('');
     return '<div class="fk-group">'+
       '<div class="fk-group-hdr">'+
         '<span class="fk-group-lbl" style="color:'+g.color+'">'+g.lbl+'</span>'+
         '<span class="fk-group-total">'+eur(total)+'/Monat</span>'+
-      '</div>'+rows+
-      '</div>';
+      '</div>'+rows+'</div>';
   }).join('');
 }
 
@@ -3553,7 +3672,7 @@ function fkOpenNew(){
   document.getElementById('mfk-name').value='';
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
-  document.getElementById('mfk-from').value=FP.currentMonthStr();
+  document.getElementById('mfk-from').value='01.'+_fkNavYear;
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -3610,14 +3729,17 @@ function fkSave(){
   if(!name||!amount){toast('Name und Betrag eingeben');return;}
   var newObjectId=document.getElementById('mfk-obj').value||null;
   var newCategoryId=document.getElementById('mfk-cat').value;
+  var curYear=new Date().getFullYear();
   var data={
     name:name,
     amount:amount,
     type:document.getElementById('mfk-type').value,
     categoryId:newCategoryId,
     objectId:newObjectId,
-    validFrom:document.getElementById('mfk-from').value.trim()||FP.currentMonthStr(),
+    validFrom:document.getElementById('mfk-from').value.trim()||('01.'+_fkNavYear),
   };
+  // Neuer Eintrag in historischem Jahr → automatisch auf Jahresende begrenzen
+  if(!id&&_fkNavYear<curYear) data.validUntil='12.'+_fkNavYear;
   if(id){
     FP.Store.Recurring.update(id,data);
     // Bestehende Transaktionen synchronisieren (objectId / categoryId geändert)
