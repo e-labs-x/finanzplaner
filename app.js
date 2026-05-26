@@ -3493,11 +3493,8 @@ function _fkPrevMonth(mmyyyy){
 }
 
 function fkYearShift(dir){
-  var all=FP.Store.Recurring.getAll();
   var curYear=new Date().getFullYear();
-  var minYear=curYear;
-  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
-  _fkNavYear=Math.max(minYear,Math.min(curYear,_fkNavYear+dir));
+  _fkNavYear=Math.max(2010,Math.min(curYear,_fkNavYear+dir));
   fkRender();
 }
 
