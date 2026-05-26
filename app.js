@@ -3521,7 +3521,7 @@ function fkRenderList(){
     {key:'savings',  lbl:'Rücklage', color:'var(--purple)'},
   ];
 
-  el.innerHTML=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
+  var activeHtml=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
     var list=groups[g.key];
     var total=FP.r2(list.reduce(function(s,fc){return s+fc.amount;},0));
     var rows=list.map(function(fc){
@@ -3547,6 +3547,36 @@ function fkRenderList(){
       '</div>'+rows+
       '</div>';
   }).join('');
+
+  // Abgelaufene Einträge (validUntil gesetzt)
+  var expired=FP.Store.Recurring.getAll().filter(function(fc){return !!fc.validUntil;});
+  var expiredHtml='';
+  if(expired.length){
+    var expRows=expired.map(function(fc){
+      var cat=catMap[fc.categoryId];
+      var obj=fc.objectId?objMap[fc.objectId]:null;
+      var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')
+               +(fc.validFrom?' · '+fc.validFrom:'')+' – '+fc.validUntil;
+      return '<div class="fk-row fk-row-expired">'+
+        '<div class="fk-row-info">'+
+          '<div class="fk-row-name">'+esc(fc.name)+'</div>'+
+          '<div class="fk-row-meta">'+meta+'</div>'+
+        '</div>'+
+        '<div class="fk-row-amt" style="color:var(--tx3)">'+eur(fc.amount)+'</div>'+
+        '<div class="fk-row-actions">'+
+          '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
+          '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
+        '</div>'+
+        '</div>';
+    }).join('');
+    expiredHtml='<div class="fk-group" style="margin-top:10px">'+
+      '<div class="fk-group-hdr">'+
+        '<span class="fk-group-lbl" style="color:var(--tx3)">Abgelaufen</span>'+
+        '<span class="fk-group-total" style="color:var(--tx3)">'+expired.length+' Eintrag'+(expired.length===1?'':'einträge')+'</span>'+
+      '</div>'+expRows+'</div>';
+  }
+
+  el.innerHTML=activeHtml+expiredHtml;
 }
 
 function _fkYearFromStr(mmyyyy){
