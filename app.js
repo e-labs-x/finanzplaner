@@ -3463,6 +3463,7 @@ function esppDelZyklus(id){
 ════════════════════════════════════════ */
 var FK_TYPE_LABEL={fixed:'Fix',variable:'Variabel',savings:'Rücklage'};
 var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--purple)'};
+var _fkCovYear=new Date().getFullYear();
 
 function fkInit(){ fkRender(); }
 
@@ -3581,23 +3582,26 @@ function _fkHasOverlap(entry,all){
     return startA<=endB&&startB<=endA;
   });
 }
-function fkCoverageYearChange(){ fkRenderCoverage(); }
-function fkRenderCoverage(){
-  var el=document.getElementById('fk-coverage');
-  var sel=document.getElementById('fk-year-sel');
-  if(!el||!sel)return;
+function fkCoverageShift(dir){
   var all=FP.Store.Recurring.getAll();
-  if(!all.length){el.innerHTML='';sel.innerHTML='';return;}
   var curYear=new Date().getFullYear();
   var minYear=curYear;
   all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
-  var prevVal=sel.value;
-  var opts='';
-  for(var y=curYear;y>=minYear;y--) opts+='<option value="'+y+'">'+y+'</option>';
-  sel.innerHTML=opts;
-  var keep=parseInt(prevVal);
-  sel.value=(keep>=minYear&&keep<=curYear)?String(keep):String(curYear);
-  var year=parseInt(sel.value);
+  _fkCovYear=Math.min(curYear,Math.max(minYear,_fkCovYear+dir));
+  fkRenderCoverage();
+}
+function fkRenderCoverage(){
+  var el=document.getElementById('fk-coverage');
+  var lbl=document.getElementById('fk-year-lbl');
+  if(!el||!lbl)return;
+  var all=FP.Store.Recurring.getAll();
+  if(!all.length){el.innerHTML='';return;}
+  var curYear=new Date().getFullYear();
+  var minYear=curYear;
+  all.forEach(function(r){var y=_fkYearFromStr(r.validFrom);if(y&&y<minYear)minYear=y;});
+  _fkCovYear=Math.min(curYear,Math.max(minYear,_fkCovYear));
+  lbl.textContent=_fkCovYear;
+  var year=_fkCovYear;
   var sorted=all.slice().sort(function(a,b){
     var oa=_fkHasOverlap(a,all)?1:0;
     var ob=_fkHasOverlap(b,all)?1:0;
