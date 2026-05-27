@@ -179,6 +179,43 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 7. **E** — Visualisierungs-Upgrades (Sankey, Heatmap, Waterfall)
 8. **G** — Reports & Export (PDF, Steuer-Helfer)
 9. **H** — Smart-Input (Natural-Language, Autovervollständigung)
+10. **I** — Bank-Integration (Enable Banking + Cloudflare Worker)
+
+---
+
+## Bank-Integration — Detailplan (Feature I)
+
+**Ziel:** Kontostände + Wertpapierpositionen automatisch aus Banken abrufen.
+**Anzeige:** Vermögens-Tab + Fixkosten-Tab (Kontostand-Kontext).
+**Kosten:** 0€ (Enable Banking kostenlos persönlich, Cloudflare Worker Free Tier).
+
+**Banken:** ING, 1822direkt, BMW Bank, Finanzen.net Zero → Enable Banking (PSD2/OAuth)
+**Fidelity ESPP:** CSV-Import aus NetBenefits (kein EU-API-Zugang möglich)
+
+**Architektur:**
+- Kontostände werden als Asset-Snapshots gespeichert (renutzt `Assets.addSnapshot()`)
+- Cloudflare Worker hält Enable Banking Client-Secret sicher
+- Tokens in `localStorage('fp_bank_tokens')` — getrennt vom Store-JSON
+
+**Voraussetzungen (vor Session 1 anlegen):**
+- Enable Banking Developer-Account: enablebanking.com (kostenlos, ~5 Min)
+- Cloudflare Account: cloudflare.com (kostenlos, Workers aktivieren)
+
+**Session 1 — Cloudflare Worker + OAuth** (~2h)
+- Worker: Enable Banking OAuth-Flow + Saldo-Endpunkt
+- Erster Test mit ING
+
+**Session 2 — Store-Integration** (~2h)
+- `store.js`: neues Feld `bankConnections`
+- `BankSync.pull()` → holt Salden → schreibt `Assets.addSnapshot()`
+
+**Session 3 — Vermögens-Tab UI** (~2h)
+- Bereich "Verknüpfte Konten" + Sync-Button + letzter Sync-Zeitstempel
+- OAuth Connect-Flow (öffnet Bank-Login in neuem Tab)
+
+**Session 4 — Fidelity CSV + Fixkosten** (~1h)
+- CSV-Import-Dialog für Fidelity NetBenefits (Drag & Drop)
+- Fixkosten-Tab: ING-Kontostand als Kontext-Indikator
 
 ---
 
