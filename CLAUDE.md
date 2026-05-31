@@ -168,18 +168,27 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 ---
 
-## Feature-Backlog (Reihenfolge)
+## Feature-Backlog
 
-1. **Kategorien/Fixkosten** — UX-Überarbeitung (Eingabe-Flow vereinfachen)
-2. **F** — Themes (Slate+Indigo, Warm Sand, Mono + Akzentfarbe + Dichte)
-3. **B** — Cashflow-Forecast (Kalender-Grid, Liquiditätslinie)
-4. **C** — Ziel-Tracking/Goals (CRUD, Fortschrittsbalken)
-5. **Auszahlplan** — Entnahmeplanung Rente (Strategie noch offen, Daten vorhanden)
-6. **A** — Insights (Anomalie-Pillen, Monatsbriefing)
-7. **E** — Visualisierungs-Upgrades (Sankey, Heatmap, Waterfall)
-8. **G** — Reports & Export (PDF, Steuer-Helfer)
-9. **H** — Smart-Input (Natural-Language, Autovervollständigung)
-10. **I** — Bank-Integration (Enable Banking + Cloudflare Worker)
+### Abgeschlossen
+- ~~GHSync-Umbau~~ — erledigt 24.05.2026
+- ~~Best-Practices-Audit (33/33)~~ — erledigt 24.05.2026
+- ~~Fixkosten-Jahresansicht~~ — erledigt 26.05.2026
+
+### Offen (Reihenfolge)
+
+| #  | Feature                  | Beschreibung                                               |
+|----|--------------------------|------------------------------------------------------------|
+| —  | Kategorien/Fixkosten     | UX-Überarbeitung (Eingabe-Flow vereinfachen)               |
+| F  | Themes                   | Slate+Indigo, Warm Sand, Mono + Akzentfarbe + Dichte-Modus |
+| B  | Cashflow-Forecast        | Kalender-Grid, Liquiditätslinie                            |
+| C  | Ziel-Tracking / Goals    | CRUD, Fortschrittsbalken                                   |
+| —  | Auszahlplan              | Entnahmeplanung Rente (eigene Session nötig)               |
+| A  | Insights                 | Anomalie-Pillen, Monatsbriefing                            |
+| E  | Visualisierungs-Upgrades | Sankey, Heatmap, Waterfall                                 |
+| G  | Reports & Export         | PDF, Steuer-Helfer                                         |
+| H  | Smart-Input              | Natural-Language, Autovervollständigung                    |
+| I  | Bank-Integration         | Enable Banking + Cloudflare Worker                         |
 
 ---
 
@@ -223,5 +232,5 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 - Rentenwert-Wachstum nach Rentenantritt (Rentenanpassung) — diskutiert, nicht implementiert
 - `expectedReturn`, `sonstigeEinkommen` — tote Store-Felder, harmlos, bewusst übersprungen
-- Durchschnittsentgelt + BBG-RV nicht in Sidebar editierbar → in `jaehrliche_pruefung.md`
+- Durchschnittsentgelt + BBG-RV nicht in Sidebar editierbar → in `jaehrliche_pruefung.md` dokumentiert
 - Auszahlplan-Strategie noch nicht final definiert (Glidepath-Variante, Eimer-Strategie)
