@@ -816,8 +816,12 @@ function hmDrawSparkline(data) {
 function buildCats() {
   var panel = document.getElementById('cats-panel');
   panel.innerHTML = '';
-  var allCats = FP.Store.Categories.getVisible().filter(function(c) { return c.showInInput !== false; });
-  var mainCats = allCats.filter(function(c) { return !c.parentId; });
+  var allCats = FP.Store.Categories.getVisible();
+  var mainCats = allCats.filter(function(c) {
+    if (c.parentId) return false;
+    if (c.showInInput !== false) return true;
+    return FP.Store.Categories.getSubs(c.id).some(function(s) { return s.showInInput !== false; });
+  });
 
   SECS.forEach(function(sec) {
     var grp = mainCats.filter(function(c) { return c.group === sec.k; });
@@ -831,9 +835,9 @@ function buildCats() {
     lbl.textContent = sec.lbl;
     wrap.appendChild(lbl);
 
-    // Leaf-Kategorien (ohne Kinder) in eigenem Grid
+    // Leaf-Kategorien (ohne Kinder, selbst sichtbar) in eigenem Grid
     var leafCats = grp.filter(function(c) {
-      return FP.Store.Categories.getSubs(c.id).length === 0;
+      return FP.Store.Categories.getSubs(c.id).length === 0 && c.showInInput !== false;
     });
     var parentCats = grp.filter(function(c) {
       return FP.Store.Categories.getSubs(c.id).length > 0;
@@ -865,7 +869,7 @@ function buildCats() {
 
     // Gruppen-Blöcke (mit Kindern) — full-width, ohne Grid-Mixing
     parentCats.forEach(function(cat) {
-      var subs = FP.Store.Categories.getSubs(cat.id);
+      var subs = FP.Store.Categories.getSubs(cat.id).filter(function(s) { return s.showInInput !== false; });
       var block = document.createElement('div');
       block.className = 'cat-grp-block';
 
@@ -877,13 +881,15 @@ function buildCats() {
       var subGrid = document.createElement('div');
       subGrid.className = 'cat-sub-grid';
 
-      // Erster Button = Parent selbst (mit eigenem Namen + Icon)
-      var parentBtn = document.createElement('button');
-      parentBtn.className = 'cat-btn cat-sub-btn' + (selCat === cat.id ? ' sel' : '');
-      parentBtn.dataset.p = cat.id;
-      parentBtn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + esc(cat.name) + '</span>';
-      parentBtn.onclick = function() { pickCat(cat.id, cat.name); };
-      subGrid.appendChild(parentBtn);
+      // Erster Button = Parent selbst — nur wenn in Eingabe sichtbar
+      if (cat.showInInput !== false) {
+        var parentBtn = document.createElement('button');
+        parentBtn.className = 'cat-btn cat-sub-btn' + (selCat === cat.id ? ' sel' : '');
+        parentBtn.dataset.p = cat.id;
+        parentBtn.innerHTML = '<span class="cat-ico">' + (ICONS[cat.id] || ICON_FALLBACK) + '</span><span>' + esc(cat.name) + '</span>';
+        parentBtn.onclick = function() { pickCat(cat.id, cat.name); };
+        subGrid.appendChild(parentBtn);
+      }
 
       subs.forEach(function(sub) {
         var btn = document.createElement('button');
