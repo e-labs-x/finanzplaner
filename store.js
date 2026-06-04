@@ -1031,10 +1031,11 @@ const Store = (() => {
 
   // ── Objekte ──
   const Objects = {
-    getAll()       { return _state.objects; },
-    getActive()    { return _state.objects.filter(o => o.status === 'aktiv'); },
-    getArchived()  { return _state.objects.filter(o => o.status === 'archiviert'); },
-    getById(id)    { return _state.objects.find(o => o.id === id); },
+    getAll()          { return _state.objects; },
+    getActive()       { return _state.objects.filter(o => o.status === 'aktiv'); },
+    getInputVisible() { return _state.objects.filter(o => o.status === 'aktiv' && !o.hideFromInput); },
+    getArchived()     { return _state.objects.filter(o => o.status === 'archiviert'); },
+    getById(id)       { return _state.objects.find(o => o.id === id); },
 
     add(obj) {
       const full = {

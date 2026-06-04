@@ -937,7 +937,7 @@ function pickCat(id, name) {
 function buildObjSel() {
   var sel = document.getElementById('np-obj');
   sel.innerHTML = '<option value="">Objekt…</option>';
-  FP.Store.Objects.getActive().forEach(function(o) {
+  FP.Store.Objects.getInputVisible().forEach(function(o) {
     var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.name; sel.appendChild(opt);
   });
 }
@@ -2036,6 +2036,16 @@ function obRestore(id){
   toast('Wiederhergestellt');
 }
 
+function obToggleHideInput(id){
+  var o=FP.Store.Objects.getById(id);
+  if(!o)return;
+  FP.Store.Objects.update(id,{hideFromInput:!o.hideFromInput});
+  obRenderDetail(id);
+  obRenderGrid();
+  buildObjSel();
+  toast(o.hideFromInput?'Wieder in Eingabe sichtbar':'Aus Eingabe ausgeblendet');
+}
+
 function obRender(){
   if(obS.selectedId)obRenderDetail(obS.selectedId);
   else              obRenderGrid();
@@ -2062,7 +2072,7 @@ function obRenderGrid(){
       return '<div class="ob-card" onclick="obSelect(\''+o.id+'\')">'+
         '<div class="ob-card-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
         '<div class="ob-card-name">'+o.name+'</div>'+
-        '<div class="ob-card-type">'+(OB_TYPE_LABEL[o.type]||o.type)+'</div>'+
+        '<div class="ob-card-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.hideFromInput?' · ausgeblendet':'')+'</div>'+
         '<div class="ob-card-total">'+eur(total)+'</div>'+
         '<div class="ob-card-cnt">'+cnt+' Buchungen</div>'+
         '</div>';
@@ -2110,18 +2120,20 @@ function obRenderDetail(id){
   }).join('');
 
   var isArch=o.status==='archiviert';
+  var isHidden=!!o.hideFromInput;
   el.innerHTML=
     '<div class="ob-back" onclick="obBack()">‹ Alle Objekte</div>'+
     '<div class="ob-detail-hdr">'+
       '<div class="ob-detail-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
       '<div class="ob-detail-name">'+o.name+'</div>'+
-      '<div class="ob-detail-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.description?' · '+o.description:'')+(isArch?' · archiviert':'')+'</div>'+
+      '<div class="ob-detail-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.description?' · '+o.description:'')+(isArch?' · archiviert':'')+(isHidden?' · Eingabe ausgeblendet':'')+'</div>'+
       '<div class="ob-detail-total">'+eur(s.total)+'</div>'+
       '<div class="ob-detail-sub">'+s.txCount+' Buchungen gesamt</div>'+
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
         (isArch
           ? '<button class="st-btn" onclick="obRestore(\''+o.id+'\')">Wiederherstellen</button>'
           : '<button class="st-btn primary" onclick="stEditObj(\''+o.id+'\')">Bearbeiten</button>'+
+            '<button class="st-btn" onclick="obToggleHideInput(\''+o.id+'\')">'+(isHidden?'In Eingabe zeigen':'Aus Eingabe ausblenden')+'</button>'+
             '<button class="st-btn danger" onclick="obArchive(\''+o.id+'\')">Archivieren</button>')+
       '</div>'+
     '</div>'+
