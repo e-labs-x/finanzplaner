@@ -2007,10 +2007,64 @@ function avInit(){
 /* ════════════════════════════════════════
    OBJEKTE TAB
 ════════════════════════════════════════ */
-var obS={selectedId:null};
+var obS={selectedId:null,viewMode:'grid',sortBy:'default'};
 var OB_TYPE_LABEL={fahrzeug:'Fahrzeug',reise:'Reise',projekt:'Projekt',person:'Person',geraet:'Gerät',sonstiges:'Sonstiges'};
+var OB_ICON_GRID='<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1.5"/><rect x="9" y="0" width="6" height="6" rx="1.5"/><rect x="0" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>';
+var OB_ICON_LIST='<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect x="0" y="2" width="15" height="2" rx="1"/><rect x="0" y="6.5" width="15" height="2" rx="1"/><rect x="0" y="11" width="15" height="2" rx="1"/></svg>';
 
 function obInit(){obS.selectedId=null;obRender();}
+function obSetView(m){obS.viewMode=m;obRenderGrid();}
+function obSetSort(by){obS.sortBy=by;obRenderGrid();}
+
+function obSortList(list){
+  var by=obS.sortBy;
+  if(by==='name') return list.slice().sort(function(a,b){return a.name.localeCompare(b.name,'de');});
+  if(by==='type') return list.slice().sort(function(a,b){return (OB_TYPE_LABEL[a.type]||a.type).localeCompare(OB_TYPE_LABEL[b.type]||b.type,'de');});
+  if(by==='amount') return list.slice().sort(function(a,b){
+    var sa=FP.Calculator.getObjectSummary(a.id); var sb=FP.Calculator.getObjectSummary(b.id);
+    return (sb?sb.total:0)-(sa?sa.total:0);
+  });
+  if(by==='date') return list.slice().sort(function(a,b){
+    // MM.YYYY → YYYY.MM für Vergleich
+    var da=(a.startDate||'01.2000').split('.').reverse().join('.');
+    var db=(b.startDate||'01.2000').split('.').reverse().join('.');
+    return db.localeCompare(da);
+  });
+  return list;
+}
+
+function obGridHtml(list){
+  return list.map(function(o){
+    var s=FP.Calculator.getObjectSummary(o.id);
+    var total=s?s.total:0; var cnt=s?s.txCount:0;
+    return '<div class="ob-card" onclick="obSelect(\''+o.id+'\')">'+
+      '<div class="ob-card-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
+      '<div class="ob-card-name">'+esc(o.name)+'</div>'+
+      '<div class="ob-card-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.hideFromInput?' · ausgeblendet':'')+'</div>'+
+      '<div class="ob-card-total">'+eur(total)+'</div>'+
+      '<div class="ob-card-cnt">'+cnt+' Buchungen</div>'+
+      '</div>';
+  }).join('');
+}
+
+function obListHtml(list){
+  return list.map(function(o){
+    var s=FP.Calculator.getObjectSummary(o.id);
+    var total=s?s.total:0; var cnt=s?s.txCount:0;
+    return '<div class="ob-list-item" onclick="obSelect(\''+o.id+'\')">'+
+      '<div class="ob-list-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
+      '<div class="ob-list-info">'+
+        '<div class="ob-list-name">'+esc(o.name)+(o.hideFromInput?' <span class="ob-hidden-badge">verborgen</span>':'')+'</div>'+
+        '<div class="ob-list-sub">'+(OB_TYPE_LABEL[o.type]||o.type)+'</div>'+
+      '</div>'+
+      '<div class="ob-list-right">'+
+        '<div class="ob-list-amt">'+eur(total)+'</div>'+
+        '<div class="ob-list-cnt">'+cnt+' Buchungen</div>'+
+      '</div>'+
+      '<div class="ob-list-chev">›</div>'+
+      '</div>';
+  }).join('');
+}
 
 function obNew(){
   _stEditObjId = null;
@@ -2058,31 +2112,36 @@ function obRenderGrid(){
   var active=objs.filter(function(o){return o.status!=='archiviert';});
   var arch=objs.filter(function(o){return o.status==='archiviert';});
 
-  var header='<div class="ob-hdr"><span class="ob-hdr-title">Objekte</span><button class="st-btn primary" onclick="obNew()">+ Neu</button></div>';
+  var sortOpts=['default:Reihenfolge','name:Name A–Z','type:Typ','amount:Betrag ↓','date:Datum ↓'];
+  var sortSel='<select class="ob-sort-sel" onchange="obSetSort(this.value)">'+
+    sortOpts.map(function(s){var p=s.split(':');return '<option value="'+p[0]+'"'+(obS.sortBy===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+'</select>';
+  var viewToggle='<div class="ob-view-toggle">'+
+    '<button class="ob-view-btn'+(obS.viewMode==='grid'?' active':'')+'" onclick="obSetView(\'grid\')" title="Kacheln">'+OB_ICON_GRID+'</button>'+
+    '<button class="ob-view-btn'+(obS.viewMode==='list'?' active':'')+'" onclick="obSetView(\'list\')" title="Liste">'+OB_ICON_LIST+'</button>'+
+    '</div>';
+  var header='<div class="ob-hdr"><span class="ob-hdr-title">Objekte</span>'+
+    '<div class="ob-hdr-right">'+sortSel+viewToggle+
+    '<button class="st-btn primary" onclick="obNew()">+ Neu</button></div></div>';
 
   if(!active.length&&!arch.length){
     el.innerHTML=header+'<div class="ph"><div class="ph-ico">'+OBJ_ICONS.fahrzeug+'</div><div class="ph-title">Noch keine Objekte</div><div class="ph-sub">Fahrzeuge, Reisen, Projekte — tippe auf + Neu</div></div>';
     return;
   }
 
-  var gridHtml=function(list){
-    return list.map(function(o){
-      var s=FP.Calculator.getObjectSummary(o.id);
-      var total=s?s.total:0;var cnt=s?s.txCount:0;
-      return '<div class="ob-card" onclick="obSelect(\''+o.id+'\')">'+
-        '<div class="ob-card-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
-        '<div class="ob-card-name">'+o.name+'</div>'+
-        '<div class="ob-card-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.hideFromInput?' · ausgeblendet':'')+'</div>'+
-        '<div class="ob-card-total">'+eur(total)+'</div>'+
-        '<div class="ob-card-cnt">'+cnt+' Buchungen</div>'+
-        '</div>';
-    }).join('');
+  var sorted=obSortList(active);
+  var sortedArch=obSortList(arch);
+  var isList=obS.viewMode==='list';
+
+  var renderSection=function(list){
+    return isList
+      ? '<div class="ob-list">'+obListHtml(list)+'</div>'
+      : '<div class="ob-grid">'+obGridHtml(list)+'</div>';
   };
 
-  var html=header+'<div class="ob-grid">'+gridHtml(active)+'</div>';
+  var html=header+renderSection(sorted);
   if(arch.length){
-    html+='<div style="font-size:12px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Archiviert</div>'+
-      '<div class="ob-grid" style="opacity:.5">'+gridHtml(arch)+'</div>';
+    html+='<div class="ob-sec-lbl">Archiviert</div>'+
+      '<div style="opacity:.5">'+renderSection(sortedArch)+'</div>';
   }
   el.innerHTML=html;
 }
