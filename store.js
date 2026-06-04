@@ -749,7 +749,8 @@ const Store = (() => {
       }
       throw new Error('LocalStorage voll oder gesperrt.');
     }
-    if (window.GHSync) try { GHSync.schedulePush(); } catch(e) {}
+    // Nur bei echten User-Änderungen pushen — System-Saves (suppressTouch) nicht markieren
+    if (!_suppressTouch && window.GHSync) try { GHSync.schedulePush(); } catch(e) {}
   }
 
   function _patchSystemCategories() {

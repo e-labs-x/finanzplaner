@@ -196,6 +196,8 @@ var GHSync = (function() {
     _conflictLocalBackup  = localBackup;
     _conflictRemoteBackup = remoteBackup;
     _conflictRemoteSHA    = remoteSHA;
+    _pendingPush  = false;  // 15s-Timer darf nicht pushen während Dialog offen ist
+    _startupLock  = false;  // Startup-Lock freigeben
     var lStore = localBackup.store  || localBackup;
     var rStore = remoteBackup.store || remoteBackup;
     var fmt = function(iso) {
@@ -442,8 +444,9 @@ var GHSync = (function() {
             if (remoteSHA !== localSHA) {
               // Wenn Auto-Sync deaktiviert: kein automatisches Pull beim Start
               if (_cfg().autoSync === false) { _releaseLock(); setSyncStatus('synced', 'Synchronisiert'); return; }
-              // SHA-Mismatch: Dateiinhalt holen und lastModified vergleichen.
-              // Nur wenn Remote wirklich neuer ist → pull. Sonst lokale Änderungen hochladen.
+              // SHA-Mismatch: Remote-Datei laden und entscheiden
+              // Regel: echte lokale Änderungen (_pendingPush) → Konflikt-Dialog zeigen
+              //        keine lokalen Änderungen → sicher pullen (kein Datenverlust möglich)
               _api('GET', '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE)
                 .then(function(file) {
                   var doPull = function() {
@@ -453,12 +456,11 @@ var GHSync = (function() {
                   if (!file || !file.content) { doPull(); return; }
                   try {
                     var rBackup = JSON.parse(_dec(file.content));
-                    var rMod = ((rBackup.store || rBackup).meta || {}).lastModified || '';
-                    var lMod = (FP.Store.get().meta || {}).lastModified || '';
-                    if (lMod > rMod) {
-                      // Lokale Daten sind neuer → hochladen (422 beim Push triggert ggf. Konflikt-Dialog)
-                      _releaseLock();
+                    if (_pendingPush) {
+                      // Gerät hat echte ungespeicherte Änderungen → Konflikt-Dialog
+                      _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, remoteSHA);
                     } else {
+                      // Keine eigenen Änderungen → Remote-Daten sicher laden
                       doPull();
                     }
                   } catch(e) {
