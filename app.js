@@ -560,6 +560,7 @@ function azsToggleAuto(val) {
 document.addEventListener('DOMContentLoaded', function() {
   AzureSync.installStorageHook();
   FP.Store.load();
+  FP.Store.cleanupRecurringDuplicates();
   FP.Store.generateRecurringTransactions({ retroactive: true });
   setHeute();
   buildCats();

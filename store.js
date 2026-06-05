@@ -833,6 +833,46 @@ const Store = (() => {
     try { _save(); } finally { _suppressTouch = _prev; }
   }
 
+  // MM.YYYY → numerischer Vergleichswert (Jahr*12+Monat)
+  function _mmyyyyToNum(mmyyyy) {
+    if (!mmyyyy) return 0;
+    const [mm, yyyy] = mmyyyy.split('.');
+    return parseInt(yyyy) * 12 + parseInt(mm);
+  }
+
+  // Entfernt bereits gebuchte Duplikat-Transaktionen: pro Name+Monat bleibt nur die
+  // Transaktion der neuesten Vorlage (höchste validFrom). Betrifft nur source='recurring'.
+  function cleanupRecurringDuplicates() {
+    if (!_state) return 0;
+    const recMap = {};
+    (_state.recurring || []).forEach(r => { recMap[r.id] = r; });
+
+    const groups = {};
+    (_state.transactions || []).forEach(tx => {
+      if (tx.source !== 'recurring') return;
+      const key = (tx.rawName || '') + '_' + tx.date;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tx);
+    });
+
+    const toDelete = new Set();
+    Object.values(groups).forEach(grp => {
+      if (grp.length <= 1) return;
+      grp.sort((a, b) => {
+        const ra = recMap[a.recurringId], rb = recMap[b.recurringId];
+        return _mmyyyyToNum(ra && ra.validFrom) - _mmyyyyToNum(rb && rb.validFrom);
+      });
+      grp.slice(0, -1).forEach(tx => toDelete.add(tx.id));
+    });
+
+    if (toDelete.size > 0) {
+      _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
+      _save();
+      appLog('recurring_cleanup', toDelete.size + ' Duplikat-Buchungen bereinigt');
+    }
+    return toDelete.size;
+  }
+
   // ── Wiederkehrende Ausgaben buchen (v2.0) ──
   // Ersetzt generateFixcostTransactions.
   // Bucht alle aktiven recurring-Vorlagen für fehlende Monate.
@@ -848,15 +888,26 @@ const Store = (() => {
         .map(tx => `${tx.recurringId}_${tx.date}`)
     );
 
+    const activeRec = _state.recurring.filter(rec => rec.type !== 'savings');
+
     const toAdd = [];
-    _state.recurring
-      .filter(rec => rec.type !== 'savings')   // Rücklagen nicht auto-buchen
-      .forEach(rec => {
+    activeRec.forEach(rec => {
         const months = monthRange(
           retroactive ? rec.validFrom : currentMonthStr(),
           rec.validUntil
         );
+        const recFromNum = _mmyyyyToNum(rec.validFrom || '01.0000');
         months.forEach(month => {
+          const monthNum = _mmyyyyToNum(month);
+          // Nur buchen wenn keine neuere Vorlage mit gleichem Namen diesen Monat abdeckt
+          const hasNewerVersion = activeRec.some(other => {
+            if (other.id === rec.id || other.name !== rec.name) return false;
+            const otherFromNum = _mmyyyyToNum(other.validFrom || '01.0000');
+            if (otherFromNum > monthNum) return false;
+            if (other.validUntil && _mmyyyyToNum(other.validUntil) < monthNum) return false;
+            return otherFromNum > recFromNum;
+          });
+          if (hasNewerVersion) return;
           const key = `${rec.id}_${month}`;
           if (!existing.has(key)) {
             toAdd.push({
@@ -878,7 +929,7 @@ const Store = (() => {
     if (toAdd.length > 0) {
       _state.transactions.push(...toAdd);
       _save();
-      if (toAdd.length > 0) appLog('recurring_booked', toAdd.length + ' Transaktionen gebucht');
+      appLog('recurring_booked', toAdd.length + ' Transaktionen gebucht');
     }
     return toAdd.length;
   }
@@ -1455,6 +1506,7 @@ const Store = (() => {
     Trash,
     generateRecurringTransactions,
     generateFixcostTransactions,  // backward compat alias
+    cleanupRecurringDuplicates,
   };
 })();
 
