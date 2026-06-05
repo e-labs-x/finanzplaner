@@ -248,6 +248,10 @@ var AzureSync = (function() {
     _conflictRemoteETag   = remoteETag;
     _pendingPush  = false;
     _startupLock  = false;
+    // Sync-Lock halten solange der Dialog offen ist — verhindert dass ein paralleler
+    // push() (durch laufende Eingabe / Timer) die noch unentschiedenen Remote-Daten
+    // überschreibt. Freigabe erfolgt in conflictChoose() (_busy = false).
+    _busy = true;
     var lStore = localBackup.store  || localBackup;
     var rStore = remoteBackup.store || remoteBackup;
     var fmt = function(iso) {
@@ -384,15 +388,17 @@ var AzureSync = (function() {
       var remoteETag = r.headers.get('ETag');
       if (!remoteETag || remoteETag === localETag) return;
       if (_dirtyLocal) {
+        // _busy bleibt true von hier bis _showConflict (hält den Lock über den GET +
+        // JSON-Parse). Nur die Fallback-Pfade (kein Konflikt → pull) geben ihn frei,
+        // damit pull() laufen kann.
         _busy = true;
         _fetch('GET').then(function(r2) {
           if (!r2.ok) { _busy = false; pull(false, remoteETag); return; }
           var eTag = r2.headers.get('ETag');
-          _busy = false;
           return r2.json().then(function(rBackup) {
             _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
           });
-        }).catch(function() { pull(false, remoteETag); });
+        }).catch(function() { _busy = false; pull(false, remoteETag); });
       } else {
         toast('Neuere Daten auf Azure — wird geladen…');
         setTimeout(function(){ pull(false, remoteETag); }, 400);
@@ -452,13 +458,16 @@ var AzureSync = (function() {
         }
         // ETag-Mismatch: echte lokale Änderungen → Konflikt, sonst sicher pullen
         if (_pendingPush) {
+          // Lock von GET bis _showConflict halten (siehe _checkRemote). Fallback-Pfade
+          // (kein Konflikt → pull) geben _busy frei, damit pull() laufen kann.
+          _busy = true;
           _fetch('GET').then(function(r2) {
-            if (!r2.ok) { pull(false, remoteETag); return; }
+            if (!r2.ok) { _busy = false; pull(false, remoteETag); return; }
             var eTag = r2.headers.get('ETag');
             return r2.json().then(function(rBackup) {
               _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
             });
-          }).catch(function() { pull(false, remoteETag); });
+          }).catch(function() { _busy = false; pull(false, remoteETag); });
         } else {
           toast('Neuere Daten auf Azure — wird geladen…');
           setTimeout(function(){ pull(false, remoteETag); }, 500);
@@ -560,8 +569,10 @@ function azsToggleAuto(val) {
 document.addEventListener('DOMContentLoaded', function() {
   AzureSync.installStorageHook();
   FP.Store.load();
-  FP.Store.cleanupRecurringDuplicates();
-  FP.Store.generateRecurringTransactions({ retroactive: true });
+  // silent: beim Start dürfen Bereinigung/Generierung lastModified nicht verändern und
+  // keinen Push triggern (K2) — sonst gilt das Gerät fälschlich als "neuer".
+  FP.Store.cleanupRecurringDuplicates({ silent: true });
+  FP.Store.generateRecurringTransactions({ retroactive: true, silent: true });
   setHeute();
   buildCats();
   buildObjSel();

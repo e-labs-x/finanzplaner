@@ -842,7 +842,7 @@ const Store = (() => {
 
   // Entfernt bereits gebuchte Duplikat-Transaktionen: pro Name+Monat bleibt nur die
   // Transaktion der neuesten Vorlage (höchste validFrom). Betrifft nur source='recurring'.
-  function cleanupRecurringDuplicates() {
+  function cleanupRecurringDuplicates(opts = {}) {
     if (!_state) return 0;
     const recMap = {};
     (_state.recurring || []).forEach(r => { recMap[r.id] = r; });
@@ -878,8 +878,16 @@ const Store = (() => {
 
     if (toDelete.size > 0) {
       _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
-      _save();
-      appLog('recurring_cleanup', toDelete.size + ' Buchungen bereinigt (Duplikate + außerhalb Zeitraum)');
+      // silent (Start): lastModified NICHT bumpen und keinen Push triggern — sonst gilt
+      // jedes Gerät beim Start als "neuer" und löst falsche Sync-Konflikte aus.
+      const _prevSuppress = _suppressTouch;
+      if (opts.silent === true) _suppressTouch = true;
+      try {
+        _save();
+        appLog('recurring_cleanup', toDelete.size + ' Buchungen bereinigt (Duplikate + außerhalb Zeitraum)');
+      } finally {
+        _suppressTouch = _prevSuppress;
+      }
     }
     return toDelete.size;
   }
@@ -890,7 +898,7 @@ const Store = (() => {
   // Rücklagen (type:'savings') werden NICHT auto-gebucht — nur auf Anforderung.
   function generateRecurringTransactions(options = {}) {
     if (!_state) return;
-    const { retroactive = false } = options;
+    const { retroactive = false, silent = false } = options;
     if (!_state.recurring) _state.recurring = [];
 
     const existing = new Set(
@@ -941,8 +949,15 @@ const Store = (() => {
 
     if (toAdd.length > 0) {
       _state.transactions.push(...toAdd);
-      _save();
-      appLog('recurring_booked', toAdd.length + ' Transaktionen gebucht');
+      // silent (Start): lastModified NICHT bumpen und keinen Push triggern (siehe cleanupRecurringDuplicates).
+      const _prevSuppress = _suppressTouch;
+      if (silent) _suppressTouch = true;
+      try {
+        _save();
+        appLog('recurring_booked', toAdd.length + ' Transaktionen gebucht');
+      } finally {
+        _suppressTouch = _prevSuppress;
+      }
     }
     return toAdd.length;
   }
