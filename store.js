@@ -850,7 +850,8 @@ const Store = (() => {
     const groups = {};
     (_state.transactions || []).forEach(tx => {
       if (tx.source !== 'recurring') return;
-      const key = (tx.rawName || '') + '_' + tx.date;
+      // objectId einbeziehen: TRV-Hausgeld und MIM-Hausgeld sind verschiedene Serien
+      const key = (tx.rawName || '') + '_' + (tx.objectId || '') + '_' + tx.date;
       if (!groups[key]) groups[key] = [];
       groups[key].push(tx);
     });
@@ -902,6 +903,8 @@ const Store = (() => {
           // Nur buchen wenn keine neuere Vorlage mit gleichem Namen diesen Monat abdeckt
           const hasNewerVersion = activeRec.some(other => {
             if (other.id === rec.id || other.name !== rec.name) return false;
+            // Nur gleiche Objekt-Serie vergleichen — TRV ≠ MIM
+            if ((other.objectId || null) !== (rec.objectId || null)) return false;
             const otherFromNum = _mmyyyyToNum(other.validFrom || '01.0000');
             if (otherFromNum > monthNum) return false;
             if (other.validUntil && _mmyyyyToNum(other.validUntil) < monthNum) return false;
