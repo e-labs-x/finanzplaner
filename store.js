@@ -711,7 +711,7 @@ function validateStore(data) {
     if (!tx.id)         errors.push(`tx[${i}]: id fehlt`);
     if (!tx.date)       errors.push(`tx[${i}]: date fehlt`);
     if (!tx.categoryId) errors.push(`tx[${i}]: categoryId fehlt`);
-    if (typeof tx.amount !== 'number') errors.push(`tx[${i}]: amount kein Number`);
+    if (typeof tx.amount !== 'number' || !isFinite(tx.amount)) errors.push(`tx[${i}]: amount kein gültiger Number (NaN/Infinity)`);
   });
 
   return errors;
@@ -1903,7 +1903,9 @@ const Calculator = {
         const total = store.transactions
           .filter(tx => tx.date === dateStr && tx.categoryId === categoryId)
           .reduce((s, tx) => s + tx.amount, 0);
-        if (total > 0) points.push({ date: dateStr, month: m, year: yr, total: r2(total) });
+        // N5: auch Monate mit Netto ≤ 0 (erstattungslastig) behalten — sonst verzerren
+        // sie Durchschnitt/Jahressumme. Nur echte Null-Monate (keine Buchung) weglassen.
+        if (total !== 0) points.push({ date: dateStr, month: m, year: yr, total: r2(total) });
       }
     }
     return points;

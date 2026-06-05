@@ -1364,9 +1364,12 @@ function avBC(){
   var bc={};
   store.transactions.forEach(function(tx){
     if(avMonths().indexOf(tx.date)<0)return;
-    var cat=cats[tx.categoryId];if(!cat)return;
-    if(!bc[tx.categoryId])bc[tx.categoryId]={cat:cat,total:0,count:0};
-    bc[tx.categoryId].total+=tx.amount;bc[tx.categoryId].count++;
+    // M3: gelöschte categoryId nicht still verschlucken — als "Ohne Kategorie" sammeln,
+    // sonst weicht die Übersichts-Summe von Budget/Reports ab.
+    var cat=cats[tx.categoryId]||{id:'_uncat',name:'Ohne Kategorie',color:'var(--cat-slate)'};
+    var key=cat.id;
+    if(!bc[key])bc[key]={cat:cat,total:0,count:0};
+    bc[key].total+=tx.amount;bc[key].count++;
   });
   return bc;
 }
@@ -7788,9 +7791,10 @@ function cfGetData() {
         inc += store.salary[pid][ds].netSalary || 0;
       }
     });
+    // H6: alle Buchungen netto (Erstattungen mindern die Ausgabe) statt nur amount>0
     var exp = store.transactions
-      .filter(function(t) { return t.date === ds && t.amount > 0; })
-      .reduce(function(s, t) { return s + t.amount; }, 0);
+      .filter(function(t) { return t.date === ds; })
+      .reduce(function(s, t) { return s + Number(t.amount); }, 0);
     months.push({ m: m, ds: ds, inc: inc, exp: exp, net: inc - exp });
   }
   return months;
@@ -8153,7 +8157,8 @@ function rp2Render() {
 
   if (emptyEl) emptyEl.style.display = 'none';
 
-  var total  = txs.reduce(function(s, tx) { return s + Math.abs(tx.amount); }, 0);
+  // H6: netto summieren (Erstattungen mindern die Ausgabe) — konsistent mit Übersicht/Budget
+  var total  = txs.reduce(function(s, tx) { return s + Number(tx.amount); }, 0);
   var months = rp2CountMonths(txs);
   var avg    = months > 0 ? total / months : 0;
   rp2SetKpi(total, txs.length, avg);
@@ -8191,7 +8196,7 @@ function rp2BuildByMonth(txs) {
     var d = rp2TxISO(tx);
     if (!d) return;
     var key = d.substring(0, 7);
-    byMonth[key] = (byMonth[key] || 0) + Math.abs(tx.amount);
+    byMonth[key] = (byMonth[key] || 0) + Number(tx.amount); // H6: netto
   });
   return byMonth;
 }
@@ -8199,7 +8204,7 @@ function rp2BuildByMonth(txs) {
 function rp2RenderBreakdown(txs) {
   var byMonth = rp2BuildByMonth(txs);
   var keys = Object.keys(byMonth).sort().reverse();
-  var total = txs.reduce(function(s, tx) { return s + Math.abs(tx.amount); }, 0);
+  var total = txs.reduce(function(s, tx) { return s + Number(tx.amount); }, 0); // H6: netto
 
   var html = '<table class="cf-tbl"><thead><tr><th>Monat</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>';
   keys.forEach(function(k) {
