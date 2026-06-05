@@ -4884,17 +4884,7 @@ function rpSaveGkvMindest(val){
 
 /* ── Helper: Ausgaben 12-Monats-Avg ── */
 function rpCalcAusgabenAvg() {
-  var store=FP.Store.get();
-  var now=new Date();
-  var total=0,months=0;
-  for(var mi=0;mi<12;mi++){
-    var d=new Date(now.getFullYear(),now.getMonth()-mi,1);
-    var ds=String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
-    var monthTotal=0;
-    store.transactions.forEach(function(tx){if(tx.date===ds)monthTotal+=tx.amount;});
-    if(monthTotal!==0){total+=monthTotal;months++;}
-  }
-  return months>0?Math.round(Math.max(0,total)/months):0;
+  return FP.Calculator.getAusgabenAvg();
 }
 
 /* ── Sidebar: live info updaten ohne full re-render ── */

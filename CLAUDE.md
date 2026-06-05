@@ -188,7 +188,7 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 | E  | Visualisierungs-Upgrades | Sankey, Heatmap, Waterfall                                 |
 | G  | Reports & Export         | PDF, Steuer-Helfer                                         |
 | H  | Smart-Input              | Natural-Language, Autovervollständigung                    |
-| I  | Bank-Integration         | Enable Banking + Cloudflare Worker                         |
+| I  | Bank-Integration         | Enable Banking + Azure Function                            |
 
 ---
 
@@ -196,22 +196,22 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 **Ziel:** Kontostände + Wertpapierpositionen automatisch aus Banken abrufen.
 **Anzeige:** Vermögens-Tab + Fixkosten-Tab (Kontostand-Kontext).
-**Kosten:** 0€ (Enable Banking kostenlos persönlich, Cloudflare Worker Free Tier).
+**Kosten:** 0€ (Enable Banking kostenlos persönlich, Azure Functions Free Tier).
 
 **Banken:** ING, 1822direkt, BMW Bank, Finanzen.net Zero → Enable Banking (PSD2/OAuth)
 **Fidelity ESPP:** CSV-Import aus NetBenefits (kein EU-API-Zugang möglich)
 
 **Architektur:**
 - Kontostände werden als Asset-Snapshots gespeichert (renutzt `Assets.addSnapshot()`)
-- Cloudflare Worker hält Enable Banking Client-Secret sicher
+- Azure Function hält Enable Banking Client-Secret sicher (gleicher Azure Account wie Sync)
 - Tokens in `localStorage('fp_bank_tokens')` — getrennt vom Store-JSON
 
 **Voraussetzungen (vor Session 1 anlegen):**
 - Enable Banking Developer-Account: enablebanking.com (kostenlos, ~5 Min)
-- Cloudflare Account: cloudflare.com (kostenlos, Workers aktivieren)
+- Azure Account: bereits vorhanden (finanzplanersync)
 
-**Session 1 — Cloudflare Worker + OAuth** (~2h)
-- Worker: Enable Banking OAuth-Flow + Saldo-Endpunkt
+**Session 1 — Azure Function + OAuth** (~2h)
+- Function: Enable Banking OAuth-Flow + Saldo-Endpunkt
 - Erster Test mit ING
 
 **Session 2 — Store-Integration** (~2h)
