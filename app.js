@@ -103,10 +103,18 @@ var AzureSync = (function() {
       if (r.status === 403) throw new Error('SAS-Token ungültig oder abgelaufen (403)');
       if (r.status !== 200 && r.status !== 404) throw new Error('Verbindung fehlgeschlagen: HTTP ' + r.status);
       localStorage.setItem(TOKEN_KEY, sasToken);
+      var remoteETag = r.headers.get('ETag');
       FP.Store.Settings.setAzureSync({ enabled: true, blobUrl: blobUrl, lastSync: null, lastETag: null, autoSync: true });
       azsRenderUI();
-      toast('Azure verbunden — lade Daten hoch…');
-      return push(false);
+      if (r.status === 200) {
+        // Azure hat bereits Daten → zuerst laden, nicht überschreiben
+        toast('Azure verbunden — lade vorhandene Daten…');
+        return pull(false, remoteETag);
+      } else {
+        // Blob existiert noch nicht → eigene Daten hochladen
+        toast('Azure verbunden — lade Daten hoch…');
+        return push(false);
+      }
     }).catch(function(err) {
       setSyncStatus('off', '');
       toast('Fehler: ' + err.message);

@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260605a">
+<link rel="stylesheet" href="style.css?v=20260605b">
 </head>
 <body>
 
@@ -1398,21 +1398,21 @@
         <div class="conf-date" id="conf-local-date">—</div>
       </div>
       <div class="conf-col">
-        <div class="conf-col-lbl">GitHub-Daten (remote)</div>
+        <div class="conf-col-lbl">Azure-Daten (remote)</div>
         <div class="conf-val" id="conf-remote-tx">—</div>
         <div class="conf-date" id="conf-remote-date">—</div>
       </div>
     </div>
     <div class="modal-acts" style="flex-direction:column">
-      <button class="btn btn-p" onclick="GHSync.conflictChoose('local')">↑ Meine Daten hochladen</button>
-      <button class="btn btn-p" onclick="GHSync.conflictChoose('remote')">↓ GitHub-Daten laden</button>
-      <button class="btn" onclick="GHSync.conflictChoose('merge')">⊕ Zusammenführen (Transaktionen beider Versionen)</button>
+      <button class="btn btn-p" onclick="AzureSync.conflictChoose('local')">↑ Meine Daten hochladen</button>
+      <button class="btn btn-p" onclick="AzureSync.conflictChoose('remote')">↓ Azure-Daten laden</button>
+      <button class="btn" onclick="AzureSync.conflictChoose('merge')">⊕ Zusammenführen (Transaktionen beider Versionen)</button>
     </div>
   </div>
 </div>
 
-<script src="store.js?v=20260605a"></script>
-<script src="app.js?v=20260605a"></script>
+<script src="store.js?v=20260605b"></script>
+<script src="app.js?v=20260605b"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
