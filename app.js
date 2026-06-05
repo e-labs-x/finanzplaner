@@ -617,9 +617,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // iOS PWA: prüfen wenn App aus dem Hintergrund zurückkommt (pageshow = sicher, kein Reload-Loop)
+  // iOS PWA: prüfen wenn App aus dem Hintergrund zurückkommt
+  // pageshow(persisted) = BFCache (Vor/Zurück), visibilitychange = iOS PWA suspend/resume
   window.addEventListener('pageshow', function(e) {
     if (e.persisted && window.AzureSync && FP.Store.Settings.get().azureSync?.enabled) {
+      AzureSync.checkRemote();
+    }
+  });
+  var _lastFgCheck = 0;
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState !== 'visible') return;
+    var now = Date.now();
+    if (now - _lastFgCheck < 15000) return; // 15s Debounce verhindert Doppelcheck nach Reload
+    _lastFgCheck = now;
+    if (window.AzureSync && FP.Store.Settings.get().azureSync?.enabled) {
       AzureSync.checkRemote();
     }
   });
