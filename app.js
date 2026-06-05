@@ -63,6 +63,7 @@ var AzureSync = (function() {
   var _conflictRemoteETag   = null;
   var _conflictRemoteBackup = null;
   var _conflictLocalBackup  = null;
+  var _authErrShown = false;  // verhindert Toast-Spam bei wiederholtem 403 im Polling
 
   // Lokale Änderungen über Page-Reload hinaus persistieren
   try { if (sessionStorage.getItem(SESSION_KEY) === '1') { _dirtyLocal = true; _pendingPush = true; } } catch(e) {}
@@ -89,6 +90,28 @@ var AzureSync = (function() {
   function _blobUrl(){ return _cfg().blobUrl; }
   function _active() { return _cfg().enabled && !!_sas() && !!_blobUrl(); }
   function _fullUrl(){ return _blobUrl() + '?' + _sas(); }
+
+  // H2: Token-Fehler (401/403) auch im Polling/Start sichtbar machen — sonst stirbt der
+  // Sync leise. Toast nur einmal pro Ausfall (kein Spam alle 3 Min).
+  function _authFailed(r) {
+    if (!r || (r.status !== 401 && r.status !== 403)) return false;
+    setSyncStatus('error', 'Token abgelaufen');
+    if (!_authErrShown) {
+      _authErrShown = true;
+      FP.Store.appLog('SYNC', 'Sync gestoppt: SAS-Token abgelaufen/ungültig (' + r.status + ')');
+      toast('⚠ Azure SAS-Token abgelaufen — bitte in den Einstellungen erneuern');
+    }
+    return true;
+  }
+
+  // N1: offene, noch nicht gespeicherte Numpad-Eingabe — Auto-Pull (mit Reload) würde sie
+  // verwerfen. Dann lieber den Pull aufschieben (nächster Poll holt es nach).
+  function _hasUnsavedInput() {
+    try {
+      var note = document.getElementById('np-note');
+      return !!((typeof amt !== 'undefined' && amt) || (note && note.value.trim()));
+    } catch(e) { return false; }
+  }
 
   function _fetch(method, extraHeaders, body) {
     var headers = { 'x-ms-version': '2020-10-02' };
@@ -209,32 +232,25 @@ var AzureSync = (function() {
   function _mergeBackups(localBackup, remoteBackup) {
     var rStore = JSON.parse(JSON.stringify(remoteBackup.store || remoteBackup));
     var lStore = localBackup.store || localBackup;
-    // Transaktionen
-    var txIds = new Set((rStore.transactions || []).map(function(t) { return t.id; }));
-    (lStore.transactions || []).forEach(function(tx) { if (!txIds.has(tx.id)) rStore.transactions.push(tx); });
-    // Objekte
-    var objIds = new Set((rStore.objects || []).map(function(o) { return o.id; }));
-    (lStore.objects || []).forEach(function(o) { if (!objIds.has(o.id)) rStore.objects.push(o); });
-    // Benutzerdefinierte Kategorien (keine System-Kategorien)
-    var catIds = new Set((rStore.categories || []).map(function(c) { return c.id; }));
-    (lStore.categories || []).forEach(function(c) { if (!catIds.has(c.id) && c.source !== 'system') rStore.categories.push(c); });
-    // Fixkosten
-    if (rStore.fixkosten && lStore.fixkosten) {
-      var fkIds = new Set((rStore.fixkosten || []).map(function(f) { return f.id; }));
-      (lStore.fixkosten || []).forEach(function(f) { if (!fkIds.has(f.id)) rStore.fixkosten.push(f); });
+    // Lokale Listeneinträge per id in die Remote-Liste übernehmen. Wichtig: rStore-Liste
+    // wird angelegt falls sie remote noch fehlt (H1) — sonst gingen nur-lokal vorhandene
+    // Einträge (z.B. recurring/assets auf einem neuen Gerät) beim Merge verloren.
+    // Bei id-Kollision gewinnt die Remote-Version des Eintrags (M11 — bewusst akzeptiert).
+    function mergeById(key, filterFn) {
+      if (!Array.isArray(rStore[key])) rStore[key] = [];
+      var ids = new Set(rStore[key].map(function(e) { return e.id; }));
+      (lStore[key] || []).forEach(function(e) {
+        if (!ids.has(e.id) && (!filterFn || filterFn(e))) rStore[key].push(e);
+      });
     }
-    // Wiederkehrende Buchungsvorlagen
-    if (lStore.recurring && rStore.recurring) {
-      var recIds = new Set((rStore.recurring || []).map(function(r) { return r.id; }));
-      (lStore.recurring || []).forEach(function(r) { if (!recIds.has(r.id)) rStore.recurring.push(r); });
-    }
-    // Assets (Anlagen-Snapshots)
-    if (lStore.assets && rStore.assets) {
-      var asIds = new Set((rStore.assets || []).map(function(a) { return a.id; }));
-      (lStore.assets || []).forEach(function(a) { if (!asIds.has(a.id)) rStore.assets.push(a); });
-    }
-    // Gehaltseinträge (nach Jahr mergen — lokal fehlende Jahre aus Remote übernehmen)
-    if (lStore.salary && rStore.salary) {
+    mergeById('transactions');
+    mergeById('objects');
+    mergeById('categories', function(c) { return c.source !== 'system'; }); // keine System-Kategorien
+    mergeById('recurring');
+    mergeById('assets');
+    // Gehaltseinträge (Objekt nach Jahr — lokal fehlende Jahre aus Remote übernehmen)
+    if (lStore.salary) {
+      if (!rStore.salary) rStore.salary = {};
       Object.keys(lStore.salary).forEach(function(yr) {
         if (!rStore.salary[yr]) rStore.salary[yr] = lStore.salary[yr];
       });
@@ -319,6 +335,7 @@ var AzureSync = (function() {
           _origSetItem(LS_KEY_STORE, JSON.stringify(s));
         } catch(e) {}
         toast('↓ Azure-Daten geladen — App wird neu gestartet');
+        window.__fpReloading = true;  // M12: beforeunload-Warnung beim Sync-Reload unterdrücken
         setTimeout(function() { location.reload(); }, 1200);
       }).catch(function(err) { toast('Fehler beim Laden: ' + err.message); });
     }
@@ -350,13 +367,13 @@ var AzureSync = (function() {
             s.settings.azureSync.autoSync  = _cfg().autoSync !== false;
             _origSetItem(LS_KEY_STORE, JSON.stringify(s));
           } catch(e) {}
-          if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
+          if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); window.__fpReloading = true; setTimeout(function(){ location.reload(); }, 1200); }
         });
       });
     }).catch(function(err) {
       _busy = false;
       _setBusy(false);
-      appLog('ERROR', 'Sync Pull fehlgeschlagen: ' + (err&&err.message?err.message:'Unbekannt'));
+      FP.Store.appLog('ERROR', 'Sync Pull fehlgeschlagen: ' + (err&&err.message?err.message:'Unbekannt'));
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[AzureSync] pull:', err);
     });
@@ -384,7 +401,8 @@ var AzureSync = (function() {
     if (!_active() || _busy || _cfg().autoSync === false) return;
     var localETag = _cfg().lastETag;
     _fetch('HEAD').then(function(r) {
-      if (!r.ok) return;
+      if (!r.ok) { _authFailed(r); return; }
+      _authErrShown = false;  // erfolgreicher Request → Token wieder gültig
       var remoteETag = r.headers.get('ETag');
       if (!remoteETag || remoteETag === localETag) return;
       if (_dirtyLocal) {
@@ -399,6 +417,9 @@ var AzureSync = (function() {
             _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
           });
         }).catch(function() { _busy = false; pull(false, remoteETag); });
+      } else if (_hasUnsavedInput()) {
+        // N1: offene Eingabe nicht durch Auto-Reload verwerfen — nächster Poll holt es nach
+        setSyncStatus('pending', 'Neuere Daten — warte auf Eingabe');
       } else {
         toast('Neuere Daten auf Azure — wird geladen…');
         setTimeout(function(){ pull(false, remoteETag); }, 400);
@@ -449,7 +470,8 @@ var AzureSync = (function() {
       if (_cfg().autoSync === false) { _releaseLock(); setSyncStatus('synced', 'Synchronisiert'); return; }
       var localETag = _cfg().lastETag;
       _fetch('HEAD').then(function(r) {
-        if (!r.ok) { _releaseLock(); return; }
+        if (!r.ok) { if (!_authFailed(r)) setSyncStatus('error', 'Fehler'); _releaseLock(); return; }
+        _authErrShown = false;
         var remoteETag = r.headers.get('ETag');
         if (!remoteETag || remoteETag === localETag) {
           _releaseLock();
@@ -608,6 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   // Warnung bei offenem Numpad (ungespeicherte Eingabe) — Browser/Desktop
   window.addEventListener('beforeunload', function(e) {
+    if (window.__fpReloading) return;  // M12: gewollter Sync-Reload → nicht warnen
     var note = document.getElementById('np-note');
     if (amt || (note && note.value.trim())) {
       e.preventDefault();

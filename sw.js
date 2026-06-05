@@ -32,11 +32,14 @@ self.addEventListener('fetch', evt => {
   if (evt.request.method !== 'GET') return;
   const url = evt.request.url;
 
-  // GitHub API und externe CDNs: nie cachen, immer netzwerk
+  // GitHub API, externe CDNs UND Azure-Blob-Sync: nie cachen, immer netzwerk.
+  // H3: Azure-Blob ausnehmen — sonst landet das komplette Klartext-Finanzdaten-Backup
+  // im SW-Cache und künftige Pulls würden veraltete Daten aus dem Cache bedienen.
   if (
     url.includes('api.github.com') ||
     url.includes('cdn.jsdelivr.net') ||
-    url.includes('unpkg.com')
+    url.includes('unpkg.com') ||
+    url.includes('.blob.core.windows.net')
   ) return;
 
   evt.respondWith(
