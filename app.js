@@ -3632,7 +3632,8 @@ function fkCopyToNextYear(){
   var activeNow=allEntries.filter(function(r){return _fkCoversYear(r,_fkNavYear);});
   var copied=0;
   activeNow.forEach(function(r){
-    var alreadyCovered=allEntries.some(function(o){return o.name===r.name&&_fkCoversYear(o,nextYear);});
+    // objectId einbeziehen — TRV-Hausgeld und MIM-Hausgeld sind verschiedene Serien (M1)
+    var alreadyCovered=allEntries.some(function(o){return o.name===r.name&&(o.objectId||null)===(r.objectId||null)&&_fkCoversYear(o,nextYear);});
     if(alreadyCovered)return;
     // Quell-Eintrag schließen damit er nicht ins Folgejahr durchsickert
     if(!r.validUntil) FP.Store.Recurring.update(r.id,{validUntil:'12.'+_fkNavYear});

@@ -833,6 +833,14 @@ const Store = (() => {
     try { _save(); } finally { _suppressTouch = _prev; }
   }
 
+  // MM.YYYY → Vormonat als MM.YYYY (für saubere validUntil-Grenzen)
+  function _prevMonthStr(mmyyyy) {
+    const p = (mmyyyy || currentMonthStr()).split('.');
+    let m = parseInt(p[0]), y = parseInt(p[1]);
+    m--; if (m < 1) { m = 12; y--; }
+    return String(m).padStart(2, '0') + '.' + y;
+  }
+
   // MM.YYYY → numerischer Vergleichswert (Jahr*12+Monat)
   function _mmyyyyToNum(mmyyyy) {
     if (!mmyyyy) return 0;
@@ -876,15 +884,27 @@ const Store = (() => {
       if (rec.validFrom  && txNum < _mmyyyyToNum(rec.validFrom))  toDelete.add(tx.id);
     });
 
-    if (toDelete.size > 0) {
-      _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
+    // H9: Waisen (recurringId zeigt auf gelöschtes Template) zu 'manual' machen — die
+    // Buchung ist passiert und bleibt als historischer Eintrag, aber ohne falsche
+    // recurring-Bindung (sonst taucht sie in Summen auf, ist aber nie steuerbar).
+    let orphansConverted = 0;
+    (_state.transactions || []).forEach(tx => {
+      if (tx.source === 'recurring' && tx.recurringId && !recMap[tx.recurringId] && !toDelete.has(tx.id)) {
+        tx.source = 'manual';
+        tx.recurringId = null;
+        orphansConverted++;
+      }
+    });
+
+    if (toDelete.size > 0 || orphansConverted > 0) {
+      if (toDelete.size > 0) _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
       // silent (Start): lastModified NICHT bumpen und keinen Push triggern — sonst gilt
       // jedes Gerät beim Start als "neuer" und löst falsche Sync-Konflikte aus.
       const _prevSuppress = _suppressTouch;
       if (opts.silent === true) _suppressTouch = true;
       try {
         _save();
-        appLog('recurring_cleanup', toDelete.size + ' Buchungen bereinigt (Duplikate + außerhalb Zeitraum)');
+        appLog('recurring_cleanup', toDelete.size + ' bereinigt, ' + orphansConverted + ' Waisen→manuell');
       } finally {
         _suppressTouch = _prevSuppress;
       }
@@ -1328,14 +1348,23 @@ const Store = (() => {
       // Betragsänderung → alten Eintrag beenden, neuen anlegen (Audit-Trail)
       if (changes.amount !== undefined && changes.amount !== _state.recurring[idx].amount) {
         const old = _state.recurring[idx];
-        old.validUntil = changes.validFrom || currentMonthStr();
-        const newRec = { ...old, ...changes, id: generateId('rec'), validUntil: null };
+        const newFrom = changes.validFrom || currentMonthStr();
+        // M9: alter Eintrag endet im Vormonat des neuen Starts — kein Monat doppelt abgedeckt
+        old.validUntil = _prevMonthStr(newFrom);
+        const newRec = { ...old, ...changes, id: generateId('rec'), validFrom: newFrom, validUntil: null };
         _state.recurring.push(newRec);
         _save();
         appLog('recurring_update', old.name + ' Betrag geändert');
         return newRec;
       }
       Object.assign(_state.recurring[idx], changes);
+      // M2: beim Umbenennen rawName aller gebuchten Transaktionen mitziehen — sonst
+      // gruppiert cleanupRecurringDuplicates nach altem Namen, generate nach neuem → Duplikate.
+      if (changes.name) {
+        (_state.transactions || []).forEach(tx => {
+          if (tx.source === 'recurring' && tx.recurringId === id) tx.rawName = changes.name;
+        });
+      }
       _save();
       return _state.recurring[idx];
     },
@@ -1669,99 +1698,8 @@ const BackupManager = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// EXCEL-IMPORT
-// ═══════════════════════════════════════════════════════════════
-
-const ExcelImporter = {
-  /**
-   * Verarbeitet die Flat-Table aus dem Excel-Import.
-   * Erwartet ein Array von Zeilen-Objekten:
-   * { jahr, monat, monat_nr, rohname, kategorie, unterkategorie, objekt, betrag }
-   */
-  importRows(rows) {
-    const result = {
-      imported:   0,
-      skipped:    0,
-      duplicates: 0,
-      newCats:    [],
-      newObjects: [],
-      errors:     [],
-    };
-
-    // Duplikat-Erkennung: existierende Excel-Transaktionen
-    const existing = new Set(
-      Store.Transactions.getAll()
-        .filter(tx => tx.source === 'excel')
-        .map(tx => `${tx.date}_${tx.rawName}_${tx.amount}`)
-    );
-
-    rows.forEach((row, i) => {
-      try {
-        // Validierung
-        if (!row.jahr || !row.monat_nr || !row.kategorie || !row.betrag) {
-          result.errors.push(`Zeile ${i + 2}: Pflichtfeld fehlt`);
-          result.skipped++;
-          return;
-        }
-
-        const betrag = parseFloat(String(row.betrag).replace(',', '.'));
-        if (isNaN(betrag) || betrag <= 0) {
-          result.errors.push(`Zeile ${i + 2}: Ungültiger Betrag "${row.betrag}"`);
-          result.skipped++;
-          return;
-        }
-
-        const month = String(row.monat_nr).padStart(2, '0') + '.' + row.jahr;
-        const key   = `${month}_${row.rohname || ''}_${r2(betrag)}`;
-
-        if (existing.has(key)) {
-          result.duplicates++;
-          return;
-        }
-
-        // Kategorie finden oder anlegen
-        const cat = Store.Categories.findOrCreate(row.kategorie);
-        if (!cat) { result.errors.push(`Zeile ${i + 2}: Kategorie konnte nicht angelegt werden`); result.skipped++; return; }
-
-        // Unterkategorie
-        let subCat = null;
-        if (row.unterkategorie) {
-          subCat = Store.Categories.findOrCreate(row.unterkategorie, row.kategorie);
-        }
-
-        // Objekt
-        let obj = null;
-        if (row.objekt) {
-          obj = Store.Objects.getAll().find(o => o.name.toLowerCase() === row.objekt.trim().toLowerCase());
-          if (!obj) {
-            obj = Store.Objects.add({ name: row.objekt.trim(), type: 'sonstiges' });
-            result.newObjects.push(obj.name);
-          }
-        }
-
-        Store.Transactions.add({
-          date:          month,
-          categoryId:    cat.id,
-          subcategoryId: subCat?.id || null,
-          objectId:      obj?.id    || null,
-          amount:        r2(betrag),
-          rawName:       row.rohname || '',
-          note:          '',
-          source:        'excel',
-        });
-
-        existing.add(key);
-        result.imported++;
-      } catch(e) {
-        result.errors.push(`Zeile ${i + 2}: ${e.message}`);
-        result.skipped++;
-      }
-    });
-
-    return result;
-  },
-};
+// H5: ExcelImporter (source:'excel') entfernt — war toter Code, nie aufgerufen.
+// Der aktive Import läuft über stImportAusgaben() in app.js (source:'import').
 
 // ═══════════════════════════════════════════════════════════════
 // CALCULATOR — Alle Berechnungen (kein UI-Code)
@@ -2732,7 +2670,6 @@ if (typeof window !== 'undefined') {
     Trash: Store.Trash,
     Calculator,
     BackupManager,
-    ExcelImporter,
     MONATE_KURZ,
     MONATE_LANG,
     generateId,
