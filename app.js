@@ -48,6 +48,8 @@ let amt = '', hasDec = false, decPos = 0;
 // ── Azure Blob Sync ───────────────────────────────────────────────────────────
 var AzureSync = (function() {
   var TOKEN_KEY    = 'fp_azure_sas';
+  var SESSION_KEY  = 'fp_dirty';       // sessionStorage: lokale Änderungen über Reload hinaus merken
+  var BACKUP_DATE_KEY = 'fp_backup_dt'; // sessionStorage: tägliches Backup-Datum
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
@@ -61,6 +63,26 @@ var AzureSync = (function() {
   var _conflictRemoteETag   = null;
   var _conflictRemoteBackup = null;
   var _conflictLocalBackup  = null;
+
+  // Lokale Änderungen über Page-Reload hinaus persistieren
+  try { if (sessionStorage.getItem(SESSION_KEY) === '1') { _dirtyLocal = true; _pendingPush = true; } } catch(e) {}
+
+  function _clearDirty() {
+    _dirtyLocal = false;
+    try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
+  }
+  function _setDirty() {
+    _dirtyLocal = true;
+    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
+  }
+  function _maybeDailyBackup(backup) {
+    var today = new Date().toISOString().slice(0, 10);
+    try {
+      if (sessionStorage.getItem(BACKUP_DATE_KEY) === today) return;
+      sessionStorage.setItem(BACKUP_DATE_KEY, today);
+      FP.BackupManager._saveAutoBackup(backup);
+    } catch(e) {}
+  }
 
   function _sas()    { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()    { var s = FP.Store.Settings.get().azureSync; return s || {}; }
@@ -104,7 +126,9 @@ var AzureSync = (function() {
       if (r.status !== 200 && r.status !== 404) throw new Error('Verbindung fehlgeschlagen: HTTP ' + r.status);
       localStorage.setItem(TOKEN_KEY, sasToken);
       var remoteETag = r.headers.get('ETag');
+      _syncingNow = true;
       FP.Store.Settings.setAzureSync({ enabled: true, blobUrl: blobUrl, lastSync: null, lastETag: null, autoSync: true });
+      _syncingNow = false;
       azsRenderUI();
       if (r.status === 200) {
         // Azure hat bereits Daten → zuerst laden, nicht überschreiben
@@ -135,7 +159,7 @@ var AzureSync = (function() {
       if (r.ok) {
         _busy = false;
         _setBusy(false);
-        _dirtyLocal = false;
+        _clearDirty();
         var newETag = r.headers.get('ETag');
         var now = new Date().toISOString();
         _justPushed = true;
@@ -144,20 +168,21 @@ var AzureSync = (function() {
         FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
         FP.Store.appLog('SYNC', '↑ Hochgeladen');
         _syncingNow = false;
+        _maybeDailyBackup(backup);
         azsRenderUI();
         setSyncStatus('synced', 'Synchronisiert');
         if (!silent) toast('↑ Sync abgeschlossen');
       } else if (r.status === 412) {
-        // ETag-Konflikt — anderes Gerät hat zwischenzeitlich geschrieben → Konflikt-Dialog
-        _busy = false;
-        _setBusy(false);
+        // ETag-Konflikt — _busy bleibt true bis Konflikt-GET abgeschlossen
         setSyncStatus('pending', 'Konflikt erkannt…');
         _fetch('GET').then(function(r2) {
+          _busy = false;
+          _setBusy(false);
           var remoteETag = r2.headers.get('ETag');
           return r2.json().then(function(rBackup) {
             _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, remoteETag);
           });
-        }).catch(function() { setSyncStatus('error', 'Fehler'); });
+        }).catch(function() { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); });
       } else if (r.status === 403) {
         _busy = false;
         _setBusy(false);
@@ -197,6 +222,22 @@ var AzureSync = (function() {
     if (rStore.fixkosten && lStore.fixkosten) {
       var fkIds = new Set((rStore.fixkosten || []).map(function(f) { return f.id; }));
       (lStore.fixkosten || []).forEach(function(f) { if (!fkIds.has(f.id)) rStore.fixkosten.push(f); });
+    }
+    // Wiederkehrende Buchungsvorlagen
+    if (lStore.recurring && rStore.recurring) {
+      var recIds = new Set((rStore.recurring || []).map(function(r) { return r.id; }));
+      (lStore.recurring || []).forEach(function(r) { if (!recIds.has(r.id)) rStore.recurring.push(r); });
+    }
+    // Assets (Anlagen-Snapshots)
+    if (lStore.assets && rStore.assets) {
+      var asIds = new Set((rStore.assets || []).map(function(a) { return a.id; }));
+      (lStore.assets || []).forEach(function(a) { if (!asIds.has(a.id)) rStore.assets.push(a); });
+    }
+    // Gehaltseinträge (nach Jahr mergen — lokal fehlende Jahre aus Remote übernehmen)
+    if (lStore.salary && rStore.salary) {
+      Object.keys(lStore.salary).forEach(function(yr) {
+        if (!rStore.salary[yr]) rStore.salary[yr] = lStore.salary[yr];
+      });
     }
     return Object.assign({}, remoteBackup, { store: rStore });
   }
@@ -241,10 +282,17 @@ var AzureSync = (function() {
           FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
           FP.Store.appLog('SYNC', choice === 'merge' ? '⊕ Konflikt: zusammengeführt' : '↑ Konflikt: lokal hochgeladen');
           _syncingNow = false;
-          _dirtyLocal = false;
+          _clearDirty();
           azsRenderUI();
           setSyncStatus('synced', 'Synchronisiert');
           toast(choice === 'merge' ? '⊕ Daten zusammengeführt' : '↑ Deine Daten wurden hochgeladen');
+        } else if (r.status === 412) {
+          // Erneuter Konflikt während Auflösung → Remote nochmal laden und Dialog erneut zeigen
+          setSyncStatus('pending', 'Erneuter Konflikt — bitte nochmal wählen');
+          _fetch('GET').then(function(r2) {
+            var eTag = r2.headers.get('ETag');
+            r2.json().then(function(rB) { _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rB, eTag); });
+          }).catch(function() { setSyncStatus('error', 'Fehler'); toast('Konflikt konnte nicht aufgelöst werden'); });
         } else {
           setSyncStatus('error', 'Fehler'); toast('Fehler: HTTP ' + r.status);
         }
@@ -253,6 +301,8 @@ var AzureSync = (function() {
       var blob = new Blob([JSON.stringify(rBackup)], { type: 'application/json' });
       var f = new File([blob], 'conflict.fpbackup');
       FP.BackupManager.import(f).then(function() {
+        clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+        _clearDirty();
         try {
           var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
           if (!s.settings) s.settings = {};
@@ -282,8 +332,9 @@ var AzureSync = (function() {
         var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
         var f = new File([blob], 'sync.fpbackup');
         return FP.BackupManager.import(f).then(function() {
-          _busy = false;
-          _setBusy(false);
+          // _busy bleibt true bis Reload — verhindert Push der alten Daten im 1,2s-Fenster
+          clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+          _clearDirty();
           try {
             var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
             if (!s.settings) s.settings = {};
@@ -311,7 +362,7 @@ var AzureSync = (function() {
   function schedulePush() {
     _scheduleCount++;
     if (_syncingNow) return;
-    _dirtyLocal = true;
+    _setDirty();
     if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
@@ -333,9 +384,11 @@ var AzureSync = (function() {
       var remoteETag = r.headers.get('ETag');
       if (!remoteETag || remoteETag === localETag) return;
       if (_dirtyLocal) {
+        _busy = true;
         _fetch('GET').then(function(r2) {
-          if (!r2.ok) { pull(false, remoteETag); return; }
+          if (!r2.ok) { _busy = false; pull(false, remoteETag); return; }
           var eTag = r2.headers.get('ETag');
+          _busy = false;
           return r2.json().then(function(rBackup) {
             _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
           });
@@ -422,7 +475,12 @@ var AzureSync = (function() {
     toast('Azure-Verbindung getrennt');
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose };
+  function clearPending() {
+    clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+    _clearDirty();
+  }
+
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -485,8 +543,8 @@ function azsConnect() {
   AzureSync.connect(url);
 }
 
-function azsPush()       { toast('Lade hoch…');              AzureSync.push(false); }
-function azsPull()       { toast('Lade herunter…');           AzureSync.pull(false); }
+function azsPush()       { AzureSync.push(false); }
+function azsPull()       { AzureSync.pull(false); }
 function azsCheck()      { toast('Prüfe auf neue Daten…');    AzureSync.checkRemote(); }
 function azsDisconnect() {
   if (!confirm('Azure-Verbindung wirklich trennen?\nDie Daten auf Azure bleiben erhalten.')) return;
@@ -494,11 +552,13 @@ function azsDisconnect() {
 }
 function azsToggleAuto(val) {
   FP.Store.Settings.setAzureSync({ autoSync: val });
+  if (!val) AzureSync.clearPending();
   appLog('SYNC', val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
   toast(val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  AzureSync.installStorageHook();
   FP.Store.load();
   FP.Store.generateRecurringTransactions({ retroactive: true });
   setHeute();
@@ -522,8 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if(window.ResizeObserver){
     new ResizeObserver(_scheduleRedraw).observe(document.documentElement);
   }
-  // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
-  AzureSync.installStorageHook();
+  // Azure Sync initialisieren
   AzureSync.init();
   AzureSync.startPolling();
   // Backup-Download-Trigger (store.js ist DOM-frei, daher Custom-Event)
@@ -552,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('online', function() {
     if (window.AzureSync && FP.Store.Settings.get().azureSync?.enabled) {
       setSyncStatus('pending', 'Verbinde…');
-      AzureSync.schedulePush();
+      AzureSync.checkRemote();
     } else {
       setSyncStatus('off', '');
     }
@@ -1562,7 +1621,7 @@ function avRenderKatGruppen(bc){
     var row='<div class="av-kat-grp" onclick="'+onclick+'">'+
       arrow+
       '<div class="av-kat-dot" style="background:'+color+'"></div>'+
-      '<div class="av-kat-grp-name">'+g.cat.name+'</div>'+
+      '<div class="av-kat-grp-name">'+esc(g.cat.name)+'</div>'+
       '<div class="av-row-bar-wrap"><div class="av-row-bar-track"><div class="av-row-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div></div>'+
       '<div class="av-kat-amt" style="color:'+(g.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(g.total))+'</div>'+
     '</div>';
@@ -1634,7 +1693,7 @@ function avRenderKatObjekte(){
     var row='<div class="av-kat-grp" onclick="avToggleObj(\''+d.obj.id+'\')">'+
       '<span class="av-kat-grp-arrow'+(isOpen?' open':'')+'">›</span>'+
       '<span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--tx2)">'+(OBJ_ICONS[d.obj.type]||d.obj.icon||'')+'</span>'+
-      '<div class="av-kat-grp-name">'+d.obj.name+'</div>'+
+      '<div class="av-kat-grp-name">'+esc(d.obj.name)+'</div>'+
       '<div class="av-kat-pct">'+pct+'%</div>'+
       '<div class="av-kat-amt" style="color:'+(d.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(d.total))+'</div>'+
       '</div>';

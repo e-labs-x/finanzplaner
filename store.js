@@ -790,12 +790,10 @@ const Store = (() => {
         _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
         Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
         // Migration githubSync → azureSync
-        if (_state.settings.githubSync && !_state.settings.azureSync) {
-          _state.settings.azureSync = { enabled: false, autoSync: true, blobUrl: null, lastSync: null, lastETag: null };
-        }
         if (!_state.settings.azureSync) {
           _state.settings.azureSync = { enabled: false, autoSync: true, blobUrl: null, lastSync: null, lastETag: null };
         }
+        if (_state.settings.githubSync) delete _state.settings.githubSync;
       } finally {
         _suppressTouch = false;
       }
@@ -806,8 +804,7 @@ const Store = (() => {
       // _suppressTouch: lastModified darf beim Laden nicht auf "jetzt" gesetzt werden —
       // nur echte User-Änderungen sollen den Timestamp setzen (Grundlage für SHA-Konflikt-Auflösung)
       _suppressTouch = true;
-      _save();
-      _suppressTouch = false;
+      try { _save(); } finally { _suppressTouch = false; }
       return { ok: true, fresh: false, warnings: errors };
     } catch(e) {
       console.error('[Store] Ladefehler:', e);
@@ -841,8 +838,7 @@ const Store = (() => {
     if (_state.log.length > 500) _state.log.length = 500;
     var _prev = _suppressTouch;
     _suppressTouch = true;
-    _save();
-    _suppressTouch = _prev;
+    try { _save(); } finally { _suppressTouch = _prev; }
   }
 
   // ── Wiederkehrende Ausgaben buchen (v2.0) ──
@@ -1299,7 +1295,7 @@ const Store = (() => {
       if (!_state.trash?.length) return;
       const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - TRASH_TTL_DAYS);
       const before = _state.trash.length;
-      _state.trash = _state.trash.filter(e => new Date(e.deletedAt) > cutoff);
+      _state.trash = _state.trash.filter(e => { var d = new Date(e.deletedAt); return !isNaN(d) && d > cutoff; });
       if (_state.trash.length < before) _save();
     },
     restore(trashId) {
@@ -1416,7 +1412,8 @@ const Store = (() => {
     setAzureSync(config) {
       if (!_state.settings.azureSync) _state.settings.azureSync = {};
       Object.assign(_state.settings.azureSync, config);
-      _save();
+      var _prev = _suppressTouch; _suppressTouch = true;
+      try { _save(); } finally { _suppressTouch = _prev; }
     },
 
     updateRetirementProfile(personId, changes) {
@@ -1537,12 +1534,15 @@ const BackupManager = {
           if (errors.length > 0) {
             return reject(new Error('Validierungsfehler: ' + errors.join(', ')));
           }
-          // GitHub-Sync-Einstellungen vom aktuellen Gerät beibehalten (nicht aus Backup überschreiben)
+          // Azure-Sync-Einstellungen vom aktuellen Gerät beibehalten (nicht aus Backup überschreiben)
+          // lastETag auf null setzen → erzwingt ETag-Prüfung beim nächsten Start
           try {
             const currentRaw = localStorage.getItem(LS_KEY);
             if (currentRaw) {
-              const currentGhSync = JSON.parse(currentRaw)?.settings?.githubSync;
-              if (currentGhSync && migrated.settings) migrated.settings.githubSync = currentGhSync;
+              const currentAzureSync = JSON.parse(currentRaw)?.settings?.azureSync;
+              if (currentAzureSync && migrated.settings) {
+                migrated.settings.azureSync = Object.assign({}, currentAzureSync, { lastETag: null });
+              }
             }
           } catch(e) {}
           // Backup vor dem Import
