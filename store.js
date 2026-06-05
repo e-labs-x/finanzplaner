@@ -866,10 +866,20 @@ const Store = (() => {
       grp.slice(0, -1).forEach(tx => toDelete.add(tx.id));
     });
 
+    // Auch Transaktionen außerhalb des aktiven Zeitraums des Templates entfernen
+    (_state.transactions || []).forEach(tx => {
+      if (tx.source !== 'recurring' || toDelete.has(tx.id)) return;
+      const rec = recMap[tx.recurringId];
+      if (!rec) return;
+      const txNum = _mmyyyyToNum(tx.date);
+      if (rec.validUntil && txNum > _mmyyyyToNum(rec.validUntil)) toDelete.add(tx.id);
+      if (rec.validFrom  && txNum < _mmyyyyToNum(rec.validFrom))  toDelete.add(tx.id);
+    });
+
     if (toDelete.size > 0) {
       _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
       _save();
-      appLog('recurring_cleanup', toDelete.size + ' Duplikat-Buchungen bereinigt');
+      appLog('recurring_cleanup', toDelete.size + ' Buchungen bereinigt (Duplikate + außerhalb Zeitraum)');
     }
     return toDelete.size;
   }
@@ -1321,8 +1331,17 @@ const Store = (() => {
       if (!rec) return;
       Trash._add('recurring', rec);
       _state.recurring = _state.recurring.filter(r => r.id !== id);
+      // Automatisch gebuchte Transaktionen dieses Templates ab aktuellem Monat löschen
+      // (historische Daten vor dem Löschen bleiben erhalten)
+      const currentNum = _mmyyyyToNum(currentMonthStr());
+      const removed = _state.transactions.filter(tx =>
+        tx.source === 'recurring' && tx.recurringId === id && _mmyyyyToNum(tx.date) >= currentNum
+      ).length;
+      _state.transactions = _state.transactions.filter(tx =>
+        !(tx.source === 'recurring' && tx.recurringId === id && _mmyyyyToNum(tx.date) >= currentNum)
+      );
       _save();
-      appLog('recurring_delete', rec.name);
+      appLog('recurring_delete', rec.name + (removed ? ' (' + removed + ' Buchungen entfernt)' : ''));
     },
   };
 
