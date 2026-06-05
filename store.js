@@ -420,11 +420,12 @@ function createDefaultStore() {
         clientId:   null,
         tenantId:   'common',
       },
-      githubSync: {
-        enabled:   false,
-        autoSync:  true,
-        owner:     null,
-        lastSync:  null,
+      azureSync: {
+        enabled:  false,
+        autoSync: true,
+        blobUrl:  null,
+        lastSync: null,
+        lastETag: null,
       },
       deletedSystemCats: [],
     },
@@ -750,7 +751,7 @@ const Store = (() => {
       throw new Error('LocalStorage voll oder gesperrt.');
     }
     // Nur bei echten User-Änderungen pushen — System-Saves (suppressTouch) nicht markieren
-    if (!_suppressTouch && window.GHSync) try { GHSync.schedulePush(); } catch(e) {}
+    if (!_suppressTouch && window.AzureSync) try { AzureSync.schedulePush(); } catch(e) {}
   }
 
   function _patchSystemCategories() {
@@ -788,6 +789,13 @@ const Store = (() => {
       try {
         _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
         Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
+        // Migration githubSync → azureSync
+        if (_state.settings.githubSync && !_state.settings.azureSync) {
+          _state.settings.azureSync = { enabled: false, autoSync: true, blobUrl: null, lastSync: null, lastETag: null };
+        }
+        if (!_state.settings.azureSync) {
+          _state.settings.azureSync = { enabled: false, autoSync: true, blobUrl: null, lastSync: null, lastETag: null };
+        }
       } finally {
         _suppressTouch = false;
       }
@@ -1405,9 +1413,9 @@ const Store = (() => {
       _save();
     },
 
-    setGithubSync(config) {
-      if (!_state.settings.githubSync) _state.settings.githubSync = {};
-      Object.assign(_state.settings.githubSync, config);
+    setAzureSync(config) {
+      if (!_state.settings.azureSync) _state.settings.azureSync = {};
+      Object.assign(_state.settings.azureSync, config);
       _save();
     },
 

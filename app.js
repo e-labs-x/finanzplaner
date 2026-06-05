@@ -45,11 +45,9 @@ const SECS   = [ { k:'fixkosten', lbl:'Notwendig' }, { k:'freizeit', lbl:'Freize
 let selCat = null, secState = {};
 let amt = '', hasDec = false, decPos = 0;
 
-// ── GitHub Sync ──────────────────────────────────────────────────────────────
-var GHSync = (function() {
-  var TOKEN_KEY    = 'fp_gh_token';
-  var REPO         = 'finanzplaner-data';
-  var SYNC_FILE    = 'sync.fpbackup';
+// ── Azure Blob Sync ───────────────────────────────────────────────────────────
+var AzureSync = (function() {
+  var TOKEN_KEY    = 'fp_azure_sas';
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
@@ -60,30 +58,29 @@ var GHSync = (function() {
   var _syncingNow   = false;
   var _scheduleCount = 0;
   var _dirtyLocal   = false;
-  var _conflictRemoteSHA    = null;
+  var _conflictRemoteETag   = null;
   var _conflictRemoteBackup = null;
   var _conflictLocalBackup  = null;
 
-  function _token() { return localStorage.getItem(TOKEN_KEY); }
-  function _cfg()   { var s = FP.Store.Settings.get().githubSync; return s || {}; }
-  function _owner() { return _cfg().owner; }
-  function _active(){ return _cfg().enabled && !!_token() && !!_owner(); }
+  function _sas()    { return localStorage.getItem(TOKEN_KEY); }
+  function _cfg()    { var s = FP.Store.Settings.get().azureSync; return s || {}; }
+  function _blobUrl(){ return _cfg().blobUrl; }
+  function _active() { return _cfg().enabled && !!_sas() && !!_blobUrl(); }
+  function _fullUrl(){ return _blobUrl() + '?' + _sas(); }
 
-  function _api(method, path, body) {
-    var opts = { method: method, headers: {
-      'Authorization': 'token ' + _token(),
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json'
-    }};
-    if (body) opts.body = JSON.stringify(body);
+  function _fetch(method, extraHeaders, body) {
+    var headers = { 'x-ms-version': '2020-10-02' };
+    if (body) headers['Content-Type'] = 'application/json';
+    if (method === 'PUT') headers['x-ms-blob-type'] = 'BlockBlob';
+    Object.assign(headers, extraHeaders || {});
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var opts = { method: method, headers: headers };
+    if (body) opts.body = body;
     if (controller) opts.signal = controller.signal;
     var timer = controller ? setTimeout(function() { controller.abort(); }, 20000) : null;
-    return fetch('https://api.github.com' + path, opts).then(function(r) {
+    return fetch(_fullUrl(), opts).then(function(r) {
       if (timer) clearTimeout(timer);
-      if (r.status === 404) { var e = new Error('Not Found'); e.status = 404; throw e; }
-      if (!r.ok) return r.json().then(function(e2) { throw new Error(e2.message || r.status); });
-      return r.status === 204 ? null : r.json();
+      return r;
     }).catch(function(err) {
       if (timer) clearTimeout(timer);
       if (err && err.name === 'AbortError') { var te = new Error('Timeout'); te.isTimeout = true; throw te; }
@@ -91,84 +88,78 @@ var GHSync = (function() {
     });
   }
 
-  function _enc(str) { return btoa(unescape(encodeURIComponent(str))); }
-  function _dec(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g,'')))); }
-
-  // Verbinden: Token prüfen, Owner ermitteln, erstes Push
-  function connect(token) {
-    return fetch('https://api.github.com/user', { headers: {
-      'Authorization': 'token ' + token,
-      'Accept': 'application/vnd.github.v3+json'
-    }}).then(function(r) {
-      if (!r.ok) throw new Error('Token ungültig oder fehlende Berechtigung');
-      return r.json();
-    }).then(function(user) {
-      localStorage.setItem(TOKEN_KEY, token);
-      FP.Store.Settings.setGithubSync({ enabled: true, owner: user.login, lastSync: null, autoSync: true });
-      ghsRenderUI();
-      return _ensureRepo(user.login);
-    }).then(function() {
-      return _checkRemoteAndDecide();
+  // Verbinden: SAS URL prüfen und erste Daten hochladen
+  function connect(sasUrl) {
+    sasUrl = sasUrl.trim();
+    var qIdx = sasUrl.indexOf('?');
+    if (qIdx === -1) { toast('Ungültige URL — SAS-Token fehlt (kein ? gefunden)'); return Promise.resolve(); }
+    // Blob-URL konstruieren: Account-URL + /sync/sync.fpbackup
+    var accountUrl = sasUrl.substring(0, qIdx).replace(/\/$/, '');
+    var sasToken   = sasUrl.substring(qIdx + 1);
+    var blobUrl    = accountUrl + '/sync/sync.fpbackup';
+    var testUrl    = blobUrl + '?' + sasToken;
+    setSyncStatus('busy', 'Verbinde…');
+    return fetch(testUrl, { method: 'HEAD', headers: { 'x-ms-version': '2020-10-02' } }).then(function(r) {
+      if (r.status === 403) throw new Error('SAS-Token ungültig oder abgelaufen (403)');
+      if (r.status !== 200 && r.status !== 404) throw new Error('Verbindung fehlgeschlagen: HTTP ' + r.status);
+      localStorage.setItem(TOKEN_KEY, sasToken);
+      FP.Store.Settings.setAzureSync({ enabled: true, blobUrl: blobUrl, lastSync: null, lastETag: null, autoSync: true });
+      azsRenderUI();
+      toast('Azure verbunden — lade Daten hoch…');
+      return push(false);
+    }).catch(function(err) {
+      setSyncStatus('off', '');
+      toast('Fehler: ' + err.message);
     });
   }
 
-  // Sicherstellen dass Repo existiert und initialisiert ist
-  function _ensureRepo(owner) {
-    return _api('GET', '/repos/' + owner + '/' + REPO + '/contents/').catch(function(e) {
-      if (e.status === 404) {
-        return _api('PUT', '/repos/' + owner + '/' + REPO + '/contents/README.md', {
-          message: 'Init Finanzplaner Sync',
-          content: _enc('# Finanzplaner Sync\nAutomatisch synchronisierte Daten.')
-        });
-      }
-    });
-  }
-
-  // Push: lokale Daten hochladen
+  // Push: lokale Daten hochladen (mit If-Match für atomare Schreibsicherheit)
   function push(silent) {
     if (!_active() || _busy) return Promise.resolve();
     _busy = true;
     _setBusy(true);
-    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-    var backup = FP.BackupManager.create('Auto-Sync');
-    var content = _enc(JSON.stringify(backup));
-    return _api('GET', path).catch(function(e) {
-      if (e.status === 404) return null;
-      throw e;
-    }).then(function(existing) {
-      var body = { message: 'Sync ' + new Date().toISOString().slice(0,16), content: content };
-      if (existing && existing.sha) body.sha = existing.sha;
-      return _api('PUT', path, body);
-    }).then(function(putResult) {
-      _busy = false;
-      _setBusy(false);
-      _dirtyLocal = false;
-      var now = new Date().toISOString();
-      var newSHA = putResult && putResult.commit ? putResult.commit.sha : null;
-      _justPushed = true;
-      setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
-      _syncingNow = true;
-      FP.Store.Settings.setGithubSync({ lastSync: now, lastCommitSHA: newSHA });
-      FP.Store.appLog('SYNC', '↑ Hochgeladen');
-      _syncingNow = false;
-      ghsRenderUI();
-      setSyncStatus('synced', 'Synchronisiert');
-      if (!silent) toast('↑ Sync abgeschlossen');
-      _maybeDailyBackup(backup, content);
-    }).catch(function(err) {
-      if (err.status === 422) {
-        // SHA veraltet — Remote hat sich geändert → Konflikt-Dialog statt blindem Überschreiben
+    var backup  = FP.BackupManager.create('Auto-Sync');
+    var content = JSON.stringify(backup);
+    var lastETag = _cfg().lastETag;
+    var extraHeaders = {};
+    if (lastETag) extraHeaders['If-Match'] = lastETag;
+    return _fetch('PUT', extraHeaders, content).then(function(r) {
+      if (r.ok) {
+        _busy = false;
+        _setBusy(false);
+        _dirtyLocal = false;
+        var newETag = r.headers.get('ETag');
+        var now = new Date().toISOString();
+        _justPushed = true;
+        setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
+        _syncingNow = true;
+        FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
+        FP.Store.appLog('SYNC', '↑ Hochgeladen');
+        _syncingNow = false;
+        azsRenderUI();
+        setSyncStatus('synced', 'Synchronisiert');
+        if (!silent) toast('↑ Sync abgeschlossen');
+      } else if (r.status === 412) {
+        // ETag-Konflikt — anderes Gerät hat zwischenzeitlich geschrieben → Konflikt-Dialog
+        _busy = false;
+        _setBusy(false);
         setSyncStatus('pending', 'Konflikt erkannt…');
-        _api('GET', path).then(function(file) {
-          if (!file || !file.content) { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); return; }
-          try {
-            var rBackup = JSON.parse(_dec(file.content));
-            var lBackup = FP.BackupManager.create('Konflikt-Snapshot');
-            _showConflict(lBackup, rBackup, file.sha);
-          } catch(e) { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); }
-        }).catch(function() { _busy = false; _setBusy(false); setSyncStatus('error', 'Fehler'); });
-        return;
+        _fetch('GET').then(function(r2) {
+          var remoteETag = r2.headers.get('ETag');
+          return r2.json().then(function(rBackup) {
+            _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, remoteETag);
+          });
+        }).catch(function() { setSyncStatus('error', 'Fehler'); });
+      } else if (r.status === 403) {
+        _busy = false;
+        _setBusy(false);
+        setSyncStatus('error', 'Token abgelaufen');
+        toast('⚠ Azure SAS-Token abgelaufen — bitte erneuern');
+        FP.Store.appLog('SYNC', 'Push fehlgeschlagen: Token abgelaufen (403)');
+      } else {
+        throw new Error('HTTP ' + r.status);
       }
+    }).catch(function(err) {
       _busy = false;
       _setBusy(false);
       setSyncStatus('error', 'Fehler');
@@ -176,7 +167,7 @@ var GHSync = (function() {
       FP.Store.appLog('SYNC', '↑ Upload fehlgeschlagen: ' + err.message);
       _syncingNow = false;
       if (!silent) toast('Sync-Fehler: ' + err.message);
-      console.error('[GHSync] push:', err);
+      console.error('[AzureSync] push:', err);
     });
   }
 
@@ -185,19 +176,29 @@ var GHSync = (function() {
   function _mergeBackups(localBackup, remoteBackup) {
     var rStore = JSON.parse(JSON.stringify(remoteBackup.store || remoteBackup));
     var lStore = localBackup.store || localBackup;
+    // Transaktionen
     var txIds = new Set((rStore.transactions || []).map(function(t) { return t.id; }));
-    (lStore.transactions || []).forEach(function(tx) {
-      if (!txIds.has(tx.id)) rStore.transactions.push(tx);
-    });
+    (lStore.transactions || []).forEach(function(tx) { if (!txIds.has(tx.id)) rStore.transactions.push(tx); });
+    // Objekte
+    var objIds = new Set((rStore.objects || []).map(function(o) { return o.id; }));
+    (lStore.objects || []).forEach(function(o) { if (!objIds.has(o.id)) rStore.objects.push(o); });
+    // Benutzerdefinierte Kategorien (keine System-Kategorien)
+    var catIds = new Set((rStore.categories || []).map(function(c) { return c.id; }));
+    (lStore.categories || []).forEach(function(c) { if (!catIds.has(c.id) && c.source !== 'system') rStore.categories.push(c); });
+    // Fixkosten
+    if (rStore.fixkosten && lStore.fixkosten) {
+      var fkIds = new Set((rStore.fixkosten || []).map(function(f) { return f.id; }));
+      (lStore.fixkosten || []).forEach(function(f) { if (!fkIds.has(f.id)) rStore.fixkosten.push(f); });
+    }
     return Object.assign({}, remoteBackup, { store: rStore });
   }
 
-  function _showConflict(localBackup, remoteBackup, remoteSHA) {
+  function _showConflict(localBackup, remoteBackup, remoteETag) {
     _conflictLocalBackup  = localBackup;
     _conflictRemoteBackup = remoteBackup;
-    _conflictRemoteSHA    = remoteSHA;
-    _pendingPush  = false;  // 15s-Timer darf nicht pushen während Dialog offen ist
-    _startupLock  = false;  // Startup-Lock freigeben
+    _conflictRemoteETag   = remoteETag;
+    _pendingPush  = false;
+    _startupLock  = false;
     var lStore = localBackup.store  || localBackup;
     var rStore = remoteBackup.store || remoteBackup;
     var fmt = function(iso) {
@@ -217,37 +218,29 @@ var GHSync = (function() {
     _busy = false;
     _startupLock = false;
     setSyncStatus('pending', 'Arbeite…');
-    var path    = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-    var rSHA    = _conflictRemoteSHA;
-    var lBackup = _conflictLocalBackup;
-    var rBackup = _conflictRemoteBackup;
-
-    function _afterPush(r) {
-      var now = new Date().toISOString();
-      var newSHA = r && r.commit ? r.commit.sha : null;
-      _syncingNow = true;
-      FP.Store.Settings.setGithubSync({ lastSync: now, lastCommitSHA: newSHA });
-      FP.Store.appLog('SYNC', choice === 'merge' ? '⊕ Konflikt: Daten zusammengeführt' : '↑ Konflikt: Lokale Daten hochgeladen');
-      _syncingNow = false;
-      _dirtyLocal = false;
-      ghsRenderUI();
-      setSyncStatus('synced', 'Synchronisiert');
-      toast(choice === 'merge' ? '⊕ Daten zusammengeführt und hochgeladen' : '↑ Deine Daten wurden hochgeladen');
-    }
+    var remoteETag = _conflictRemoteETag;
+    var lBackup    = _conflictLocalBackup;
+    var rBackup    = _conflictRemoteBackup;
 
     if (choice === 'local' || choice === 'merge') {
       var backupToUse = choice === 'merge' ? _mergeBackups(lBackup, rBackup) : lBackup;
-      var content = _enc(JSON.stringify(backupToUse));
-      var msg = (choice === 'merge' ? 'Merge ' : 'Sync ') + new Date().toISOString().slice(0, 16);
-      _api('GET', path).catch(function() { return null; }).then(function(f) {
-        var body = { message: msg, content: content };
-        if (f && f.sha) body.sha = f.sha;
-        return _api('PUT', path, body);
-      }).then(_afterPush).catch(function(err) {
-        setSyncStatus('error', 'Fehler');
-        toast('Fehler: ' + err.message);
-        console.error('[GHSync] conflict push:', err);
-      });
+      var extraHeaders = { 'If-Match': remoteETag };
+      _fetch('PUT', extraHeaders, JSON.stringify(backupToUse)).then(function(r) {
+        if (r.ok) {
+          var newETag = r.headers.get('ETag');
+          var now = new Date().toISOString();
+          _syncingNow = true;
+          FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
+          FP.Store.appLog('SYNC', choice === 'merge' ? '⊕ Konflikt: zusammengeführt' : '↑ Konflikt: lokal hochgeladen');
+          _syncingNow = false;
+          _dirtyLocal = false;
+          azsRenderUI();
+          setSyncStatus('synced', 'Synchronisiert');
+          toast(choice === 'merge' ? '⊕ Daten zusammengeführt' : '↑ Deine Daten wurden hochgeladen');
+        } else {
+          setSyncStatus('error', 'Fehler'); toast('Fehler: HTTP ' + r.status);
+        }
+      }).catch(function(err) { setSyncStatus('error', 'Fehler'); toast('Fehler: ' + err.message); });
     } else if (choice === 'remote') {
       var blob = new Blob([JSON.stringify(rBackup)], { type: 'application/json' });
       var f = new File([blob], 'conflict.fpbackup');
@@ -255,90 +248,58 @@ var GHSync = (function() {
         try {
           var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
           if (!s.settings) s.settings = {};
-          if (!s.settings.githubSync) s.settings.githubSync = {};
-          s.settings.githubSync.lastSync      = new Date().toISOString();
-          s.settings.githubSync.lastCommitSHA = rSHA;
-          s.settings.githubSync.enabled       = true;
-          s.settings.githubSync.owner         = _owner();
-          s.settings.githubSync.autoSync      = _cfg().autoSync !== false;
+          if (!s.settings.azureSync) s.settings.azureSync = {};
+          s.settings.azureSync.lastSync  = new Date().toISOString();
+          s.settings.azureSync.lastETag  = remoteETag;
+          s.settings.azureSync.enabled   = true;
+          s.settings.azureSync.blobUrl   = _blobUrl();
+          s.settings.azureSync.autoSync  = _cfg().autoSync !== false;
           _origSetItem(LS_KEY_STORE, JSON.stringify(s));
         } catch(e) {}
-        toast('↓ GitHub-Daten geladen — App wird neu gestartet');
+        toast('↓ Azure-Daten geladen — App wird neu gestartet');
         setTimeout(function() { location.reload(); }, 1200);
       }).catch(function(err) { toast('Fehler beim Laden: ' + err.message); });
     }
   }
 
   // Pull: Remote-Daten laden und anwenden
-  function pull(silent, commitSHA) {
+  function pull(silent, remoteETag) {
     if (!_active() || _busy) return Promise.resolve();
     _busy = true;
     _setBusy(true);
-    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-    // SHA holen falls nicht übergeben (z.B. manueller Pull via Button)
-    var shaP = commitSHA
-      ? Promise.resolve(commitSHA)
-      : _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
-          .then(function(c) { return c && c[0] ? c[0].sha : null; }).catch(function(){ return null; });
-    var _sha = null;
-    return shaP.then(function(sha) {
-      _sha = sha;
-      return _api('GET', path);
-    }).then(function(file) {
-      if (!file || !file.content) throw new Error('Keine Sync-Datei gefunden');
-      var jsonStr = _dec(file.content);
-      var blob = new Blob([jsonStr], { type: 'application/json' });
-      var f = new File([blob], 'sync.fpbackup');
-      return FP.BackupManager.import(f);
-    }).then(function() {
-      _busy = false;
-      _setBusy(false);
-      // SHA + lastSync direkt in localStorage schreiben ohne _state zu überschreiben
-      try {
-        var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
-        if (!s.settings) s.settings = {};
-        if (!s.settings.githubSync) s.settings.githubSync = {};
-        s.settings.githubSync.lastSync      = new Date().toISOString();
-        s.settings.githubSync.lastCommitSHA = _sha;
-        s.settings.githubSync.enabled       = true;
-        s.settings.githubSync.owner         = _owner();
-        s.settings.githubSync.autoSync      = _cfg().autoSync !== false;
-        _origSetItem(LS_KEY_STORE, JSON.stringify(s));
-      } catch(e) {}
-      if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
+    return _fetch('GET').then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var newETag = r.headers.get('ETag') || remoteETag;
+      return r.json().then(function(backup) {
+        var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+        var f = new File([blob], 'sync.fpbackup');
+        return FP.BackupManager.import(f).then(function() {
+          _busy = false;
+          _setBusy(false);
+          try {
+            var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
+            if (!s.settings) s.settings = {};
+            if (!s.settings.azureSync) s.settings.azureSync = {};
+            s.settings.azureSync.lastSync  = new Date().toISOString();
+            s.settings.azureSync.lastETag  = newETag;
+            s.settings.azureSync.enabled   = true;
+            s.settings.azureSync.blobUrl   = _blobUrl();
+            s.settings.azureSync.autoSync  = _cfg().autoSync !== false;
+            _origSetItem(LS_KEY_STORE, JSON.stringify(s));
+          } catch(e) {}
+          if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); setTimeout(function(){ location.reload(); }, 1200); }
+        });
+      });
     }).catch(function(err) {
       _busy = false;
       _setBusy(false);
-      if (err.status === 404) { push(silent); return; }
       appLog('ERROR', 'Sync Pull fehlgeschlagen: ' + (err&&err.message?err.message:'Unbekannt'));
       if (!silent) toast('Sync-Fehler: ' + err.message);
-      console.error('[GHSync] pull:', err);
+      console.error('[AzureSync] pull:', err);
     });
   }
 
-  // Entscheiden ob push oder pull — GitHub ist immer führend
-  function _checkRemoteAndDecide() {
-    var path = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-    return _api('GET', path).then(function(file) {
-      // GitHub hat Daten → immer laden. Wer lokale Daten hochladen will: ↑ Upload nutzen.
-      if (file && file.content) { return pull(false); }
-      // GitHub leer → lokale Daten hochladen
-      return push(false);
-    }).catch(function() { return push(false); });
-  }
-
-  // Tägliches Backup erstellen (einmal pro Tag)
-  function _maybeDailyBackup(backup, content) {
-    var today = new Date().toISOString().slice(0,10);
-    var path = '/repos/' + _owner() + '/' + REPO + '/contents/backups/' + today + '.fpbackup';
-    _api('GET', path).catch(function(e) {
-      if (e.status === 404) {
-        _api('PUT', path, { message: 'Backup ' + today, content: content }).catch(function(){});
-      }
-    });
-  }
-
-  // Auto-Push nach Änderungen (debounced, 8 Sekunden)
+  // Auto-Push nach Änderungen (debounced, 500ms)
   function schedulePush() {
     _scheduleCount++;
     if (_syncingNow) return;
@@ -358,48 +319,41 @@ var GHSync = (function() {
 
   function _checkRemote() {
     if (!_active() || _busy || _cfg().autoSync === false) return;
-    var localSHA = _cfg().lastCommitSHA;
-    _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
-      .then(function(commits) {
-        if (!commits || !commits[0]) return;
-        var remoteSHA = commits[0].sha;
-        if (remoteSHA !== localSHA) {
-          if (_dirtyLocal) {
-            // Lokale ungespeicherte Änderungen + Remote ist neuer → Konflikt-Dialog
-            var filePath = '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE;
-            _api('GET', filePath).then(function(file) {
-              if (!file || !file.content) { pull(false, remoteSHA); return; }
-              try {
-                var rBackup = JSON.parse(_dec(file.content));
-                var lBackup = FP.BackupManager.create('Konflikt-Snapshot');
-                _showConflict(lBackup, rBackup, remoteSHA);
-              } catch(e) { pull(false, remoteSHA); }
-            }).catch(function() { pull(false, remoteSHA); });
-          } else {
-            toast('Neuere Daten auf GitHub — wird geladen…');
-            setTimeout(function(){ pull(false, remoteSHA); }, 400);
-          }
-        }
-      }).catch(function(){});
+    var localETag = _cfg().lastETag;
+    _fetch('HEAD').then(function(r) {
+      if (!r.ok) return;
+      var remoteETag = r.headers.get('ETag');
+      if (!remoteETag || remoteETag === localETag) return;
+      if (_dirtyLocal) {
+        _fetch('GET').then(function(r2) {
+          if (!r2.ok) { pull(false, remoteETag); return; }
+          var eTag = r2.headers.get('ETag');
+          return r2.json().then(function(rBackup) {
+            _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
+          });
+        }).catch(function() { pull(false, remoteETag); });
+      } else {
+        toast('Neuere Daten auf Azure — wird geladen…');
+        setTimeout(function(){ pull(false, remoteETag); }, 400);
+      }
+    }).catch(function(){});
   }
 
   function startPolling() {
-    // Alle 3 Minuten auf neuere Remote-Daten prüfen
     setInterval(function() { _checkRemote(); }, 180000);
-    // Live-Debug-Anzeige (nur lesen, kein Store-Zugriff)
     setInterval(function() {
       var el = document.getElementById('sync-debug');
       if (!el) return;
       var cfg = _cfg();
       el.innerHTML =
-        'active: '       + _active()       + '&nbsp;&nbsp;' +
-        'autoSync: '     + cfg.autoSync    + '<br>' +
-        'startupLock: '  + _startupLock    + '&nbsp;&nbsp;' +
-        'busy: '         + _busy           + '<br>' +
-        'justPushed: '   + _justPushed     + '&nbsp;&nbsp;' +
-        'pending: '      + _pendingPush    + '<br>' +
-        'dirtyLocal: '   + _dirtyLocal     + '&nbsp;&nbsp;' +
-        'scheduleCalls: '+ _scheduleCount;
+        'active: '        + _active()      + '&nbsp;&nbsp;' +
+        'autoSync: '      + cfg.autoSync   + '<br>' +
+        'startupLock: '   + _startupLock   + '&nbsp;&nbsp;' +
+        'busy: '          + _busy          + '<br>' +
+        'justPushed: '    + _justPushed    + '&nbsp;&nbsp;' +
+        'pending: '       + _pendingPush   + '<br>' +
+        'dirtyLocal: '    + _dirtyLocal    + '&nbsp;&nbsp;' +
+        'scheduleCalls: ' + _scheduleCount;
     }, 1000);
   }
 
@@ -408,18 +362,10 @@ var GHSync = (function() {
     // schedulePush wird direkt aus FP.Store._save aufgerufen (iOS-sicher)
   }
 
-  function disconnect() {
-    localStorage.removeItem(TOKEN_KEY);
-    FP.Store.Settings.setGithubSync({ enabled: false, owner: null, lastSync: null });
-    appLog('SYNC', 'GitHub-Verbindung getrennt');
-    ghsRenderUI();
-    toast('GitHub-Verbindung getrennt');
-  }
-
   function _setBusy(on) {
-    var pushBtn = document.getElementById('st-gh-push-btn');
-    var pullBtn = document.getElementById('st-gh-pull-btn');
-    var dot = document.getElementById('st-gh-dot');
+    var pushBtn = document.getElementById('st-az-push-btn');
+    var pullBtn = document.getElementById('st-az-pull-btn');
+    var dot = document.getElementById('st-az-dot');
     if (pushBtn) pushBtn.disabled = on;
     if (pullBtn) pullBtn.disabled = on;
     if (dot) dot.className = 'ghs-status-dot ' + (on ? 'busy' : 'ok');
@@ -428,52 +374,44 @@ var GHSync = (function() {
   }
 
   function init() {
-    ghsRenderUI();
+    azsRenderUI();
     if (_active()) setSyncStatus('pending', 'Prüfe…');
-    else setSyncStatus('off', '');
-    // Startup-Lock nach 15 Sekunden aufheben
+    else { setSyncStatus('off', ''); return; }
     setTimeout(function() { _releaseLock(); }, 15000);
-    if (_active()) {
-      // Beim Start prüfen ob Remote neuer ist (SHA-Vergleich — unabhängig von Uhrzeiten)
-      setTimeout(function() {
-        var localSHA = _cfg().lastCommitSHA;
-        _api('GET', '/repos/' + _owner() + '/' + REPO + '/commits?path=' + SYNC_FILE + '&per_page=1')
-          .then(function(commits) {
-            if (!commits || !commits[0]) { _releaseLock(); return; }
-            var remoteSHA = commits[0].sha;
-            if (remoteSHA !== localSHA) {
-              // Wenn Auto-Sync deaktiviert: kein automatisches Pull beim Start
-              if (_cfg().autoSync === false) { _releaseLock(); setSyncStatus('synced', 'Synchronisiert'); return; }
-              // SHA-Mismatch: Remote-Datei laden und entscheiden
-              // Regel: echte lokale Änderungen (_pendingPush) → Konflikt-Dialog zeigen
-              //        keine lokalen Änderungen → sicher pullen (kein Datenverlust möglich)
-              _api('GET', '/repos/' + _owner() + '/' + REPO + '/contents/' + SYNC_FILE)
-                .then(function(file) {
-                  var doPull = function() {
-                    toast('Neuere Daten auf GitHub — wird geladen…');
-                    setTimeout(function(){ pull(false, remoteSHA); }, 500);
-                  };
-                  if (!file || !file.content) { doPull(); return; }
-                  try {
-                    var rBackup = JSON.parse(_dec(file.content));
-                    if (_pendingPush) {
-                      // Gerät hat echte ungespeicherte Änderungen → Konflikt-Dialog
-                      _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, remoteSHA);
-                    } else {
-                      // Keine eigenen Änderungen → Remote-Daten sicher laden
-                      doPull();
-                    }
-                  } catch(e) {
-                    doPull();
-                  }
-                }).catch(function() { _releaseLock(); });
-            } else {
-              _releaseLock();
-              setSyncStatus('synced', 'Synchronisiert');
-            }
-          }).catch(function(){ _releaseLock(); });
-      }, 2000);
-    }
+    setTimeout(function() {
+      if (_cfg().autoSync === false) { _releaseLock(); setSyncStatus('synced', 'Synchronisiert'); return; }
+      var localETag = _cfg().lastETag;
+      _fetch('HEAD').then(function(r) {
+        if (!r.ok) { _releaseLock(); return; }
+        var remoteETag = r.headers.get('ETag');
+        if (!remoteETag || remoteETag === localETag) {
+          _releaseLock();
+          setSyncStatus('synced', 'Synchronisiert');
+          return;
+        }
+        // ETag-Mismatch: echte lokale Änderungen → Konflikt, sonst sicher pullen
+        if (_pendingPush) {
+          _fetch('GET').then(function(r2) {
+            if (!r2.ok) { pull(false, remoteETag); return; }
+            var eTag = r2.headers.get('ETag');
+            return r2.json().then(function(rBackup) {
+              _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rBackup, eTag || remoteETag);
+            });
+          }).catch(function() { pull(false, remoteETag); });
+        } else {
+          toast('Neuere Daten auf Azure — wird geladen…');
+          setTimeout(function(){ pull(false, remoteETag); }, 500);
+        }
+      }).catch(function() { _releaseLock(); });
+    }, 2000);
+  }
+
+  function disconnect() {
+    localStorage.removeItem(TOKEN_KEY);
+    FP.Store.Settings.setAzureSync({ enabled: false, blobUrl: null, lastSync: null, lastETag: null });
+    FP.Store.appLog('SYNC', 'Azure-Verbindung getrennt');
+    azsRenderUI();
+    toast('Azure-Verbindung getrennt');
   }
 
   return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose };
@@ -501,20 +439,20 @@ function setSyncStatus(state, label) {
   }
 }
 
-function ghsRenderUI() {
-  var cfg = FP.Store.Settings.get().githubSync || {};
-  var token = localStorage.getItem('fp_gh_token');
-  var connected = cfg.enabled && !!token && !!cfg.owner;
-  var setup = document.getElementById('st-gh-setup');
-  var conn  = document.getElementById('st-gh-connected');
-  var badge = document.getElementById('st-gh-badge');
-  var lbl   = document.getElementById('st-gh-status-lbl');
-  var auto  = document.getElementById('st-gh-auto');
+function azsRenderUI() {
+  var cfg = FP.Store.Settings.get().azureSync || {};
+  var sas = localStorage.getItem('fp_azure_sas');
+  var connected = cfg.enabled && !!sas && !!cfg.blobUrl;
+  var setup = document.getElementById('st-az-setup');
+  var conn  = document.getElementById('st-az-connected');
+  var badge = document.getElementById('st-az-badge');
+  var lbl   = document.getElementById('st-az-status-lbl');
+  var auto  = document.getElementById('st-az-auto');
   if (!setup) return;
   if (connected) {
     setup.style.display = 'none';
     conn.style.display  = 'block';
-    if (badge) { badge.textContent = '✓ ' + cfg.owner; badge.style.color = 'var(--green)'; }
+    if (badge) { badge.textContent = '✓ Azure verbunden'; badge.style.color = 'var(--green)'; }
     if (lbl) {
       lbl.textContent = cfg.lastSync
         ? 'Letzter Sync: ' + new Date(cfg.lastSync).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
@@ -528,37 +466,26 @@ function ghsRenderUI() {
   }
 }
 
-function ghsConnect() {
-  var inp = document.getElementById('st-gh-token-input');
-  var token = inp ? inp.value.trim() : '';
-  if (!token) { toast('Bitte Token eingeben'); return; }
-  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) { toast('Token muss mit ghp_ beginnen'); return; }
-  toast('Verbinde mit GitHub…');
-  GHSync.connect(token).catch(function(err) { toast('Fehler: ' + err.message); });
+function azsConnect() {
+  var inp = document.getElementById('st-az-sas-input');
+  var url = inp ? inp.value.trim() : '';
+  if (!url) { toast('Bitte SAS URL eingeben'); return; }
+  if (!url.startsWith('https://') || !url.includes('.blob.core.windows.net')) {
+    toast('Ungültige URL — muss https://....blob.core.windows.net/... sein'); return;
+  }
+  toast('Verbinde mit Azure…');
+  AzureSync.connect(url);
 }
 
-function ghsPush() {
-  toast('Lade hoch…');
-  GHSync.push(false);
+function azsPush()       { toast('Lade hoch…');              AzureSync.push(false); }
+function azsPull()       { toast('Lade herunter…');           AzureSync.pull(false); }
+function azsCheck()      { toast('Prüfe auf neue Daten…');    AzureSync.checkRemote(); }
+function azsDisconnect() {
+  if (!confirm('Azure-Verbindung wirklich trennen?\nDie Daten auf Azure bleiben erhalten.')) return;
+  AzureSync.disconnect();
 }
-
-function ghsPull() {
-  toast('Lade herunter…');
-  GHSync.pull(false);
-}
-
-function ghsCheck() {
-  toast('Prüfe auf neue Daten…');
-  GHSync.checkRemote();
-}
-
-function ghsDisconnect() {
-  if (!confirm('GitHub-Verbindung wirklich trennen?\nDie Daten auf GitHub bleiben erhalten.')) return;
-  GHSync.disconnect();
-}
-
-function ghsToggleAuto(val) {
-  FP.Store.Settings.setGithubSync({ autoSync: val });
+function azsToggleAuto(val) {
+  FP.Store.Settings.setAzureSync({ autoSync: val });
   appLog('SYNC', val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
   toast(val ? 'Auto-Sync aktiviert' : 'Auto-Sync deaktiviert');
 }
@@ -588,9 +515,9 @@ document.addEventListener('DOMContentLoaded', function() {
     new ResizeObserver(_scheduleRedraw).observe(document.documentElement);
   }
   // GitHub Sync initialisieren + localStorage-Hook für Auto-Push
-  GHSync.installStorageHook();
-  GHSync.init();
-  GHSync.startPolling();
+  AzureSync.installStorageHook();
+  AzureSync.init();
+  AzureSync.startPolling();
   // Backup-Download-Trigger (store.js ist DOM-frei, daher Custom-Event)
   window.addEventListener('fp:download', function(e) {
     var blob = new Blob([e.detail.json], { type: 'application/json' });
@@ -615,9 +542,9 @@ document.addEventListener('DOMContentLoaded', function() {
     toast('Du bist offline — Daten werden lokal gespeichert.');
   });
   window.addEventListener('online', function() {
-    if (window.GHSync && FP.Store.Settings.get().githubSync?.enabled) {
+    if (window.AzureSync && FP.Store.Settings.get().azureSync?.enabled) {
       setSyncStatus('pending', 'Verbinde…');
-      GHSync.schedulePush();
+      AzureSync.schedulePush();
     } else {
       setSyncStatus('off', '');
     }

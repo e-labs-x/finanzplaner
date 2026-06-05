@@ -14,7 +14,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260604c">
+<link rel="stylesheet" href="style.css?v=20260605a">
 </head>
 <body>
 
@@ -767,39 +767,39 @@
             </div>
           </div>
 
-          <!-- GitHub Sync -->
-          <div class="st-card" id="st-gh-card">
+          <!-- Azure Sync -->
+          <div class="st-card" id="st-az-card">
             <div class="st-card-hdr">
               <span class="st-card-title">Sync</span>
-              <span id="st-gh-badge" style="font-size:11px;color:var(--tx3)">Nicht verbunden</span>
+              <span id="st-az-badge" style="font-size:11px;color:var(--tx3)">Nicht verbunden</span>
             </div>
             <!-- Setup-Bereich (nicht verbunden) -->
-            <div id="st-gh-setup" style="padding:0 16px 14px">
-              <p class="ghs-hint">Verbinde die App mit GitHub um Daten automatisch auf allen Geräten (PC, iPhone, iPad) zu synchronisieren. Tägliche Backups werden automatisch angelegt.</p>
-              <p class="ghs-hint">Token erstellen: <b>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token</b> — nur den Haken bei <b>repo</b> setzen.</p>
-              <input type="password" id="st-gh-token-input" class="ghs-token-input" placeholder="ghp_…">
-              <button class="st-btn primary" onclick="ghsConnect()" style="width:100%">Mit GitHub verbinden</button>
+            <div id="st-az-setup" style="padding:0 16px 14px">
+              <p class="ghs-hint">Verbinde die App mit Azure Blob Storage um Daten automatisch auf allen Geräten zu synchronisieren.</p>
+              <p class="ghs-hint">Die SAS URL findest du im Azure Portal unter deinem Storage Account → <b>Shared Access Signature</b> → <b>Blob-Dienst-SAS-URL</b>.</p>
+              <input type="password" id="st-az-sas-input" class="ghs-token-input" placeholder="https://....blob.core.windows.net/?sv=…">
+              <button class="st-btn primary" onclick="azsConnect()" style="width:100%">Mit Azure verbinden</button>
             </div>
             <!-- Verbunden-Bereich -->
-            <div id="st-gh-connected" style="display:none;padding:0 16px 14px">
+            <div id="st-az-connected" style="display:none;padding:0 16px 14px">
               <div class="ghs-toggle-row">
-                <span class="ghs-toggle-lbl"><span class="ghs-status-dot ok" id="st-gh-dot"></span><span id="st-gh-status-lbl">Verbunden</span></span>
+                <span class="ghs-toggle-lbl"><span class="ghs-status-dot ok" id="st-az-dot"></span><span id="st-az-status-lbl">Verbunden</span></span>
                 <span style="display:flex;gap:6px">
-                  <button class="st-btn primary" id="st-gh-push-btn" onclick="ghsPush()" title="Lokale Daten hochladen">↑ Upload</button>
-                  <button class="st-btn primary" id="st-gh-pull-btn" onclick="ghsPull()" title="Daten von GitHub laden">↓ Download</button>
-                  <button class="st-btn" onclick="ghsCheck()" title="Jetzt auf neue Daten prüfen">⟳ Prüfen</button>
+                  <button class="st-btn primary" id="st-az-push-btn" onclick="azsPush()" title="Lokale Daten hochladen">↑ Upload</button>
+                  <button class="st-btn primary" id="st-az-pull-btn" onclick="azsPull()" title="Daten von Azure laden">↓ Download</button>
+                  <button class="st-btn" onclick="azsCheck()" title="Jetzt auf neue Daten prüfen">⟳ Prüfen</button>
                 </span>
               </div>
               <div class="ghs-toggle-row">
                 <span class="ghs-toggle-lbl">Automatischer Sync</span>
                 <label class="ghs-switch">
-                  <input type="checkbox" id="st-gh-auto" onchange="ghsToggleAuto(this.checked)" checked>
+                  <input type="checkbox" id="st-az-auto" onchange="azsToggleAuto(this.checked)" checked>
                   <span class="ghs-switch-slider"></span>
                 </label>
               </div>
               <div class="ghs-toggle-row">
                 <span class="ghs-toggle-lbl" style="color:var(--tx2)">Verbindung trennen</span>
-                <button class="st-btn danger" onclick="ghsDisconnect()">Trennen</button>
+                <button class="st-btn danger" onclick="azsDisconnect()">Trennen</button>
               </div>
               <div id="sync-debug" style="margin-top:8px;border-top:1px solid var(--brd);padding-top:8px;font-size:10px;font-family:var(--mono);color:var(--tx3);line-height:1.8"></div>
             </div>
@@ -1411,8 +1411,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260604c"></script>
-<script src="app.js?v=20260604c"></script>
+<script src="store.js?v=20260605a"></script>
+<script src="app.js?v=20260605a"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
