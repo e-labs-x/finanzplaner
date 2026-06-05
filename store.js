@@ -412,14 +412,6 @@ function createDefaultStore() {
         ausbildungKosten: 800,
         ausbildungDauer:  4,
       },
-      oneDrive: {
-        enabled:    false,
-        autoSync:   false,
-        lastSync:   null,
-        remotePath: '/Finanzplaner/Backups/',
-        clientId:   null,
-        tenantId:   'common',
-      },
       azureSync: {
         enabled:  false,
         autoSync: true,
@@ -1401,11 +1393,6 @@ const Store = (() => {
     setApiKey(service, key) {
       if(!_state.settings.apiKeys) _state.settings.apiKeys={};
       _state.settings.apiKeys[service]=key;
-      _save();
-    },
-
-    setOneDrive(config) {
-      Object.assign(_state.settings.oneDrive, config);
       _save();
     },
 
