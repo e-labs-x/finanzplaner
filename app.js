@@ -616,6 +616,13 @@ document.addEventListener('DOMContentLoaded', function() {
       setSyncStatus('off', '');
     }
   });
+
+  // iOS PWA: prüfen wenn App aus dem Hintergrund zurückkommt (pageshow = sicher, kein Reload-Loop)
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted && window.AzureSync && FP.Store.Settings.get().azureSync?.enabled) {
+      AzureSync.checkRemote();
+    }
+  });
 });
 
 /* ── Navigation ── */
