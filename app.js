@@ -3699,13 +3699,13 @@ function fkRenderList(){
   // Einträge für dieses Jahr — ältere Split-Version ausblenden wenn Nachfolger vorhanden
   var items=all.filter(function(r){
     if(!_fkCoversYear(r,year))return false;
-    if(r.validUntil&&_fkYearFromStr(r.validUntil)===year){
-      var hasSuccessor=all.some(function(o){
-        return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,year)&&
-               _fkToMonths(o.validFrom)>_fkToMonths(r.validFrom||'01.0000');
-      });
-      if(hasSuccessor)return false;
-    }
+    // Ältere Version ausblenden wenn eine neuere mit gleichem Namen für dieses Jahr existiert
+    // (gilt unabhängig davon ob validUntil gesetzt ist — betrifft auch alte Einträge ohne Enddatum)
+    var hasSuccessor=all.some(function(o){
+      return o.id!==r.id&&o.name===r.name&&_fkCoversYear(o,year)&&
+             _fkToMonths(o.validFrom)>_fkToMonths(r.validFrom||'01.0000');
+    });
+    if(hasSuccessor)return false;
     return true;
   });
 
