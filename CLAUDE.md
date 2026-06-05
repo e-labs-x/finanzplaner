@@ -189,6 +189,8 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 | G  | Reports & Export         | PDF, Steuer-Helfer                                         |
 | H  | Smart-Input              | Natural-Language, Autovervollständigung                    |
 | I  | Bank-Integration         | Enable Banking + Azure Function                            |
+| —  | Google Fonts lokal       | Inter lokal hosten oder System Fonts — IP-Übermittlung an Google vermeiden |
+| —  | GitHub Data-Repo löschen | e-labs-x/finanzplaner-data (alt, GitHub Sync) — Repo löschen nach Übergangszeit |
 
 ---
 
