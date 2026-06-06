@@ -266,7 +266,7 @@ button { cursor: pointer; border: none; background: none; }
 /* ════════════════════════════════════════
    MAIN CONTENT AREA
 ════════════════════════════════════════ */
-#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; position: relative; }
 
 /* ════════════════════════════════════════
    MOBILE HEADER — NUR auf iPhone/Mobile (<768px)
@@ -1076,14 +1076,14 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 }
 
 /* Einklappbare Einstellungs-Leiste (Chevron) */
-/* Schwebender Einklapp-Griff (fest positioniert → immer sichtbar, scrollt nie mit).
-   An der LINKEN Kante neben dem Einstellungs-Feld, vertikal mittig. */
-.rp-fab{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:40;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--tx);cursor:pointer;box-shadow:var(--sh-md);transition:background .15s}
+/* Schwebender Einklapp-Griff — relativ zum INHALTSBEREICH (#main), nicht zum Viewport.
+   Dadurch sitzt er immer an der linken Kante des Inhalts, egal wie breit die
+   App-Navigation gerade ist. #main scrollt nicht (overflow:hidden) → bleibt fixiert. */
+.rp-fab{position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:40;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--tx);cursor:pointer;box-shadow:var(--sh-md);transition:background .15s}
 .rp-fab:hover{background:var(--surf2)}
 .rp-fab:active{transform:translateY(-50%) scale(.92)}
 .rp-fab svg{width:18px;height:18px;transition:transform .25s}
 .rp-layout.rp-collapsed ~ .rp-fab svg{transform:rotate(180deg)}
-@media(min-width:768px){.rp-fab{left:calc(var(--nav-col) + 12px)}}
 .rp-layout.rp-collapsed{grid-template-columns:1fr !important}
 .rp-layout.rp-collapsed .rp-sidebar{display:none}
 /* Sichtbarer Scrollbalken Sidebar */
