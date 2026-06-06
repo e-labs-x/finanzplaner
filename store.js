@@ -2551,10 +2551,17 @@ const Calculator = {
     const ausgabenNominal = yearsToRetire > 0 ? r2(ausgaben * Math.pow(1 + inflationRate / 100, yearsToRetire)) : ausgaben;
 
     // ── KV-Lücke: Frühverrentung vor Regelrentenalter ──────────────────────────
-    // Zwischen Aufhören (targetRetirementAge) und Regelrente (regularRetirementAge)
-    // ist man kein Rentner → kein Anspruch auf KVdR (§ 5 Abs. 1 Nr. 11 SGB V)
+    // ANNAHME (Design-Entscheidung 06.06.2026, R8): Die gesetzliche Rente wird AB
+    // targetRetirementAge BEZOGEN → ab da ist man KVdR-pflichtiger Rentner
+    // (§5 Abs.1 Nr.11 SGB V, Vorversicherungszeit vorausgesetzt): die DRV trägt die
+    // halbe KV auf die gesetzliche Rente (§106 SGB VI, in rpCalcNetAmounts abgebildet)
+    // und Depot-Entnahmen/Kapitalerträge sind beitragsFREI. Es gibt daher KEINE
+    // Übergangs-KV-Lücke zwischen targetRetirementAge und Regelrentenalter.
+    // → kvLueckeJahre = 0. Der Block unten bleibt (deaktiviert) erhalten, falls künftig
+    //   ein vom Eintrittsalter abweichender, SPÄTERER Rentenbeginn modelliert wird
+    //   (Privatier, der mit 63 aufhört, die Rente aber erst z.B. mit 67 nimmt).
     const kvStatus     = profile.kvStatus || 'gkv';
-    const kvLueckeJahre = Math.max(0, regularRetirementAge - p.targetRetirementAge);
+    const kvLueckeJahre = 0;  // war: Math.max(0, regularRetirementAge - p.targetRetirementAge)
     const assumptions  = store.retirement && store.retirement.assumptions || {};
     const fvGrenze     = assumptions.familienversicherungGrenze || 565;   // § 10 Abs. 1 Nr. 5 SGB V
     const gkvMindestBmg = assumptions.gkvMindestBmg || 1318.33;           // § 240 Abs. 4 SGB V
