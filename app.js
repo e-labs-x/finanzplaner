@@ -4586,8 +4586,8 @@ function rpFillForm(){
 function rpGetErtragsanteil(age) {
   if(age<=60)return 22; if(age===61)return 22; if(age===62)return 21;
   if(age===63)return 20; if(age===64)return 19; if(age<=66)return 18;
-  if(age<=68)return 17; if(age===69)return 16; if(age<=71)return 15;
-  return 14;
+  if(age===67)return 17; if(age===68)return 16; if(age<=70)return 15;
+  if(age===71)return 14; return 13;
 }
 function rpRenderWeitere(){
   var el=document.getElementById('rp-weitere-list');

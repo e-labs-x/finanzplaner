@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const FP_VERSION = '12.0.0';
-const STORE_VERSION    = 1;
+const STORE_VERSION    = 2;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
 const MAX_AUTO_BACKUPS = 5;
@@ -263,11 +263,11 @@ function createDefaultStore() {
         expectedReturn:     6.0,
         safeWithdrawalRate: 3.5,
         currency:           'EUR',
-        kvZusatzbeitrag:    2.99,
-        familienversicherungGrenze: 505,    // § 10 Abs. 1 Nr. 5 SGB V, jährlich prüfen
-        gkvMindestBmg:      1131.67,        // § 240 Abs. 4 SGB V (1/30 Bezugsgröße 2026), jährlich prüfen
-        durchschnittsentgelt: 45538,        // § 68 SGB VI, jährlich vom Rentenversicherungsbericht, jährlich prüfen
-        bbgRvJahr:          96600,          // BBG Rentenversicherung 2026 (jährlich), jährlich prüfen
+        kvZusatzbeitrag:    2.9,            // durchschn. Zusatzbeitrag 2026 (BMG 10.11.2025), jährlich prüfen
+        familienversicherungGrenze: 565,    // § 10 Abs. 1 Nr. 5 SGB V (1/7 Bezugsgröße 2026 = 3.955/7), jährlich prüfen
+        gkvMindestBmg:      1318.33,        // § 240 Abs. 4 SGB V (1/3 Bezugsgröße 2026 = 3.955/3), jährlich prüfen
+        durchschnittsentgelt: 51944,        // § 69 SGB VI, vorläufiges Durchschnittsentgelt 2026, jährlich prüfen
+        bbgRvJahr:          101400,         // BBG Rentenversicherung 2026 (8.450 €/Monat), jährlich prüfen
       },
       profiles: {
         person_1: {
@@ -676,8 +676,21 @@ const DEFAULT_CURRENCIES = [
 ];
 
 const MIGRATIONS = {
-  // Zukünftige Schema-Migrationen hier hinzufügen:
-  // 1: (data) => { /* Upgrade v1 → v2 */ return data; },
+  // v1 → v2: Gesetzliche Renten-Stammwerte auf Stand 2026 anheben. Diese Werte sind
+  // gesetzlich vorgegeben (keine Nutzer-Präferenzen) und wurden in Altständen veraltet
+  // gespeichert. kvZusatzbeitrag ist im UI editierbar → nur anheben, wenn noch auf dem
+  // alten Default (2.99) steht, damit eine bewusste Nutzer-Eingabe nicht überschrieben wird.
+  1: (data) => {
+    const a = data.retirement && data.retirement.assumptions;
+    if (a) {
+      if (a.durchschnittsentgelt === 45538)       a.durchschnittsentgelt = 51944;  // § 69 SGB VI, 2026
+      if (a.bbgRvJahr === 96600)                  a.bbgRvJahr = 101400;            // BBG RV 2026
+      if (a.familienversicherungGrenze === 505)   a.familienversicherungGrenze = 565;   // § 10 SGB V, 2026
+      if (a.gkvMindestBmg === 1131.67)            a.gkvMindestBmg = 1318.33;       // § 240 SGB V, 2026
+      if (a.kvZusatzbeitrag === 2.99)             a.kvZusatzbeitrag = 2.9;         // Ø-Zusatzbeitrag 2026
+    }
+    return data;
+  },
 };
 
 function migrateStore(data) {
@@ -1750,19 +1763,23 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
   const isSplit       = opts && opts.steuerVeranlagung === 'gemeinsam';
   const kinderAnzahl  = (opts && opts.kinderAnzahl != null) ? opts.kinderAnzahl : (opts && opts.hatKinder ? 1 : 0);
 
-  // Besteuerungsanteil §22 Nr. 1a EStG nach JStG 2022: 2005→50%, +2%/Jahr bis 2020 (80%), +0,5%/Jahr bis 2058 (100%)
+  // Besteuerungsanteil §22 Nr. 1a EStG nach Wachstumschancengesetz 2024:
+  //   2005→50%, +2%/Jahr bis 2020 (80%), 2021/22 +1%/Jahr (81/82%),
+  //   ab 2023 +0,5%/Jahr (2023=82,5%, 2026=84%) → 100% erst 2058.
   const bA = retirementYear >= 2058 ? 1.0
-           : retirementYear >  2020 ? Math.min(1.0, 0.80 + (retirementYear - 2020) * 0.005)
+           : retirementYear >= 2023 ? Math.min(1.0, 0.825 + (retirementYear - 2023) * 0.005)
+           : retirementYear >= 2021 ? 0.80 + (retirementYear - 2020) * 0.01
            : retirementYear >  2005 ? Math.min(0.80, 0.50 + (retirementYear - 2005) * 0.02)
            : 0.50;
 
   // Sozialversicherungssätze 2026
-  const kvZusatz   = (opts && opts.kvZusatzbeitrag != null) ? opts.kvZusatzbeitrag : 2.99;
+  const kvZusatz   = (opts && opts.kvZusatzbeitrag != null) ? opts.kvZusatzbeitrag : 2.9;
   const kvHalb     = (14.6 + kvZusatz) / 2 / 100;  // Gesetzl. Rente: Rentner zahlt Hälfte
-  const kvVoll     = 0.1750;   // bAV/Versorgungsbezug: voller Satz (kein DRV-Zuschuss)
+  const kvVoll     = (14.6 + kvZusatz) / 100;  // bAV/Versorgungsbezug: voller Satz (kein DRV-Zuschuss), folgt dem Zusatzbeitrag
   const kvFreibetr = 197.75;   // 2026: 1/20 Bezugsgröße (€3.955), §226 SGB V
-  // PV-Satz gestaffelt nach Kinderzahl (§ 55 SGB XI, ab 01.07.2025)
-  const pvSatz = kinderAnzahl >= 5 ? 0.024 : kinderAnzahl === 4 ? 0.0265 : kinderAnzahl === 3 ? 0.029 : kinderAnzahl === 2 ? 0.0315 : kinderAnzahl === 1 ? 0.034 : 0.042;
+  // PV-Satz gestaffelt nach Kinderzahl (§ 55 SGB XI): Basis 3,6 %, +0,6 % kinderlos,
+  // −0,25 %/Kind ab dem 2. Kind (max. bis 5. Kind). 0 K=4,2 / 1=3,6 / 2=3,35 / 3=3,10 / 4=2,85 / 5+=2,60
+  const pvSatz = kinderAnzahl >= 5 ? 0.026 : kinderAnzahl === 4 ? 0.0285 : kinderAnzahl === 3 ? 0.031 : kinderAnzahl === 2 ? 0.0335 : kinderAnzahl === 1 ? 0.036 : 0.042;
 
   const g = amounts.gesetzlich || 0;
   const d = amounts.direkt     || 0;
@@ -1773,7 +1790,7 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
   const wBavTotal   = weitereArr.filter(w => w.type === 'bav').reduce((s, w) => s + (w.brutto||0), 0);
   const wPrivTotal  = weitereArr.filter(w => w.type !== 'bav').reduce((s, w) => s + (w.brutto||0), 0);
   // Ertragsanteil §22 Nr.1 Satz 3 EStG — gewichtet nach Startalter
-  const _eaTable = a => a<=60?0.22:a===61?0.22:a===62?0.21:a===63?0.20:a===64?0.19:a<=66?0.18:a<=68?0.17:a===69?0.16:a<=71?0.15:0.14;
+  const _eaTable = a => a<=60?0.22:a===61?0.22:a===62?0.21:a===63?0.20:a===64?0.19:a<=66?0.18:a===67?0.17:a===68?0.16:a<=70?0.15:a===71?0.14:0.13;
   const privArr   = weitereArr.filter(w => w.type !== 'bav');
   const ertragsanteil = wPrivTotal > 0
     ? privArr.reduce((s, w) => s + (w.brutto||0) * _eaTable(w.startAge||67), 0) / wPrivTotal
@@ -1794,18 +1811,23 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
 
   // ── Einkommensteuer ──
 
+  // zvE = steuerpflichtige Renteneinkünfte abzgl. Werbungskostenpauschale (§9a EStG).
+  // WICHTIG: Grundfreibetrag hier NICHT abziehen — er ist bereits im Tarif rpCalcIncomeTax
+  // enthalten (Tarifzone beginnt bei 12.096 €). Ein zusätzlicher Abzug würde den
+  // Grundfreibetrag doppelt anrechnen und die Steuer massiv unterschätzen.
+  // Steuer wird PRO PERSON als Einzelveranlagung gerechnet (isSplit=false); der
+  // Splittingvorteil bei gemeinsamer Veranlagung wird EINMAL zentral in rpRenderMain() angewandt.
   const stpflichtigJahr = Math.max(0,
     (g + ru) * bA * 12          // Gesetzl. + Rürup: Kohortenversteuerung
     + (d + wBavTotal) * 12      // bAV: 100% steuerpflichtig
     + wPrivTotal * ertragsanteil * 12  // Private RV: Ertragsanteil
-    - (isSplit ? 24192 : 12096) // Grundfreibetrag 2026
-    - (isSplit ? 204 : 102)     // Werbungskostenpauschale §9a Abs. 1 Nr. 3 EStG
+    - 102                       // Werbungskostenpauschale §9a Abs. 1 Nr. 3 EStG (pro Person)
   );
-  const estJahr  = rpCalcIncomeTax(stpflichtigJahr, isSplit);
+  const estJahr  = rpCalcIncomeTax(stpflichtigJahr, false);
   const estMonat = estJahr / 12;
   // Grenzsteuersatz für Günstigerprüfung §32d Abs. 6 EStG
   const marginalRate = stpflichtigJahr > 0
-    ? (rpCalcIncomeTax(stpflichtigJahr + 1000, isSplit) - estJahr) / 1000
+    ? (rpCalcIncomeTax(stpflichtigJahr + 1000, false) - estJahr) / 1000
     : 0;
 
   // Steuer proportional auf Quellen verteilen
@@ -2150,8 +2172,8 @@ const Calculator = {
     let epPerYear = rente.estimatedNewPointsPerYear || 1.8;
     if (epMode === 'auto') {
       const a2 = baseAssumptions || {};
-      const durchschnitt = a2.durchschnittsentgelt || 45538;
-      const bbg = a2.bbgRvJahr || 96600;
+      const durchschnitt = a2.durchschnittsentgelt || 51944;
+      const bbg = a2.bbgRvJahr || 101400;
       const salData = (store.salary && store.salary[personId]) || {};
       const salKeys = Object.keys(salData).sort((a,b)=>{
         const [ma,ya]=[parseInt(a.split('.')[0]),parseInt(a.split('.')[1])];
@@ -2339,7 +2361,7 @@ const Calculator = {
     }, {
       kinderAnzahl:      kinderAnzahl,
       steuerVeranlagung: store.settings.steuerlicheVeranlagung || 'einzeln',
-      kvZusatzbeitrag:   store.retirement?.assumptions?.kvZusatzbeitrag ?? 2.99,
+      kvZusatzbeitrag:   store.retirement?.assumptions?.kvZusatzbeitrag ?? 2.9,
     });
     // Manuelle Overrides (nur wenn Nutzer explizit Netto-Faktor gesetzt hat)
     const gesetzlicheMonatsrente = p.netFactorGesetzlich != null
@@ -2534,8 +2556,8 @@ const Calculator = {
     const kvStatus     = profile.kvStatus || 'gkv';
     const kvLueckeJahre = Math.max(0, regularRetirementAge - p.targetRetirementAge);
     const assumptions  = store.retirement && store.retirement.assumptions || {};
-    const fvGrenze     = assumptions.familienversicherungGrenze || 505;   // § 10 Abs. 1 Nr. 5 SGB V
-    const gkvMindestBmg = assumptions.gkvMindestBmg || 1131.67;           // § 240 Abs. 4 SGB V
+    const fvGrenze     = assumptions.familienversicherungGrenze || 565;   // § 10 Abs. 1 Nr. 5 SGB V
+    const gkvMindestBmg = assumptions.gkvMindestBmg || 1318.33;           // § 240 Abs. 4 SGB V
 
     let kvLueckeStatus  = 'kein';        // 'kein' | 'familienversicherung' | 'freiwillig'
     let kvFreiwilligKosten = 0;          // €/Monat freiwillige GKV (wenn nötig)
@@ -2553,9 +2575,9 @@ const Calculator = {
         kvLueckeStatus = 'freiwillig';
         // Freiwillige GKV: Beitrag auf max(tatsächliches Einkommen, Mindest-BMG)
         const bemessungsgrundlage = Math.max(gkvMindestBmg, Math.min(kvGainMonatlich, 5512.50));
-        const kvZusatzFreiw = assumptions.kvZusatzbeitrag != null ? assumptions.kvZusatzbeitrag : 2.99;
+        const kvZusatzFreiw = assumptions.kvZusatzbeitrag != null ? assumptions.kvZusatzbeitrag : 2.9;
         const kinderAnzahl  = store.settings && store.settings.kinder ? (store.settings.kinder.anzahl||0) : 0;
-        const pvSatzFreiw   = kinderAnzahl >= 5 ? 0.024 : kinderAnzahl === 4 ? 0.0265 : kinderAnzahl === 3 ? 0.029 : kinderAnzahl === 2 ? 0.0315 : kinderAnzahl === 1 ? 0.034 : 0.042;
+        const pvSatzFreiw   = kinderAnzahl >= 5 ? 0.026 : kinderAnzahl === 4 ? 0.0285 : kinderAnzahl === 3 ? 0.031 : kinderAnzahl === 2 ? 0.0335 : kinderAnzahl === 1 ? 0.036 : 0.042;
         kvFreiwilligKosten  = r2(bemessungsgrundlage * ((14.6 + kvZusatzFreiw) / 100 + pvSatzFreiw));
       }
     } else if (kvStatus === 'pkv') {
