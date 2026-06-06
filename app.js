@@ -3989,18 +3989,20 @@ function rpSidebarHeight(){
   var mn=document.querySelector('#p-rente .rp-main');
   var isIOS=document.documentElement.classList.contains('ios');
   // iOS/iPadOS oder schmal: EIN Scroll-Bereich → keine festen Höhen (verhindert iOS
-  // Pull-to-Refresh durch verschachteltes Scrollen). Eingeklappt ebenfalls.
-  var collapsed=!!document.querySelector('#p-rente .rp-layout.rp-collapsed');
-  if(isIOS||window.innerWidth<960||collapsed){
+  // Pull-to-Refresh durch verschachteltes Scrollen).
+  if(isIOS||window.innerWidth<960){
     if(sb){ sb.style.height=''; sb.style.overflowY=''; }
     if(mn){ mn.style.height=''; mn.style.overflowY=''; }
     return;
   }
-  // Desktop (Maus/Trackpad): Zwei-Pane mit eigenständigem Scroll wie zuvor.
-  if(!sb||!mn)return;
-  var top=sb.getBoundingClientRect().top;
+  // Desktop (Maus/Trackpad): Zwei-Pane mit eigenständigem Scroll. WICHTIG: auch im
+  // eingeklappten Zustand muss der Ergebnisbereich seine feste Scroll-Höhe behalten,
+  // sonst kann man nicht mehr scrollen (.page selbst hat overflow:hidden). Die (evtl.
+  // versteckte) Leiste referenzieren wir nicht für den Top-Wert — dafür den Main-Bereich.
+  if(!mn)return;
+  var top=mn.getBoundingClientRect().top;
   var h=(window.innerHeight-top)+'px';
-  sb.style.height=h; sb.style.overflowY='auto';
+  if(sb){ sb.style.height=h; sb.style.overflowY='auto'; }
   mn.style.height=h; mn.style.overflowY='auto';
 }
 
