@@ -608,6 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (window.innerWidth >= 768) nav('home');
   var _resizeTimer;
   var _lastRedrawW = window.innerWidth;
+  var _lastScrollTs = 0;
   function _redrawActiveCharts(){
     _lastRedrawW = window.innerWidth;
     if(document.getElementById('p-rente').classList.contains('active')){ rpSidebarHeight(); rpRenderMain(); }
@@ -615,14 +616,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
   }
   function _scheduleRedraw(){
-    // Nur bei echter, größerer BREITEN-Änderung (Rotation/Fenster) neu zeichnen.
-    // Schwelle 24px ignoriert: reine Höhenänderungen (iOS-Adressleiste beim Scrollen)
-    // und Scrollbalken-Breite (~15px) — sonst rendert der Rente-Tab beim Scrollen dauernd neu.
+    // Strukturelle Garantie: NICHT neu zeichnen während/kurz nach dem Scrollen. iPadOS/iOS
+    // blenden beim Scrollen die Adressleiste ein/aus → das feuert resize, ist aber keine
+    // echte Layout-Änderung. Eine Rotation passiert nie während des Scrollens.
+    if(Date.now() - _lastScrollTs < 600) return;
+    // Zusätzlich kleine Breitendeltas (Scrollbalken ~15px) ignorieren.
     if(Math.abs(window.innerWidth - _lastRedrawW) < 24) return;
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(_redrawActiveCharts, 150);
   }
-  // Nur window.resize (feuert bei Rotation/Fenstergröße). Der frühere ResizeObserver auf
+  // Jedes Scrollen (auch in inneren overflow-Containern → capture) merkt sich den Zeitpunkt.
+  window.addEventListener('scroll', function(){ _lastScrollTs = Date.now(); }, {capture:true, passive:true});
+  // Nur window.resize (Rotation/Fenstergröße). Der frühere ResizeObserver auf
   // document.documentElement wurde entfernt — sein Callback baute via rpRenderMain das DOM
   // neu auf, was die Höhe änderte und den Observer erneut auslöste = Re-Render-Schleife.
   window.addEventListener('resize', _scheduleRedraw);
