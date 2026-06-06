@@ -114,6 +114,11 @@ _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfr
 - [ ] **R15** — Halbeinkünfte-Modus ohne 12/62-Plausibilitätsprüfung
 
 ### Sicherheit / Sync _(aus Audit 05.06.2026, offen-optional)_
+- [ ] **Backup-Verhalten prüfen & ggf. automatisieren** — Aktuell: die „Automatischen Sicherungen" liegen nur im `localStorage` des jeweiligen Geräts (`finanzplaner_v3_backups`, max. 5, nur „Vor Import/Reset"), NICHT im heruntergeladenen `.fpbackup` und NICHT im Azure-Sync → bei „Website-Daten löschen" verloren. Zu prüfen/umsetzen:
+  - (a) regelmäßiges/automatisches Datei- oder Cloud-Backup (z. B. periodischer Export oder zweiter versionierter Azure-Blob)
+  - (b) Auto-Sicherungen ins Download-`.fpbackup` aufnehmen (Audit M13)
+  - (c) „tägliches Backup" hängt an erfolgreichem Push + sessionStorage-Datum → faktisch „pro Session" statt täglich (Audit M8)
+  - Ziel: kein Datenverlust möglich, ohne dass man manuell ein `.fpbackup` herunterlädt
 - [ ] Azure: HTTPS-only erzwingen
 - [ ] Azure: Soft Delete / Versioning für den Blob-Container aktivieren
 - [ ] `sw.js`: SHELL-/Versionsmarker pflegen (kosmetisch)
