@@ -4031,6 +4031,46 @@ function rpRender(){
   rpUpdateSidebarLiveInfo();
 }
 
+// R9: Anzeige-Brille. Intern rechnet die App in heutiger Kaufkraft (real); für die
+// nominale Ansicht werden die angezeigten €-Werte umgerechnet (eine Wahrheit, zwei Anzeigen).
+function rpGeldModus(){ try{ return localStorage.getItem('fp_rp_geld')==='nominal'?'nominal':'heute'; }catch(e){ return 'heute'; } }
+function rpSetGeldModus(m){ try{ localStorage.setItem('fp_rp_geld', m==='nominal'?'nominal':'heute'); }catch(e){} rpRenderMain(); }
+// Wandelt ein calcRente-Ergebnis (real/heute) in nominale Zukunfts-Euro um.
+// €-Werte zum Renteneintritt × Inflationsfaktor; Verläufe jahresgenau (× Faktor je Alter).
+function rpToNominal(r){
+  if(!r || !r.inflationFactorAtRetire || r.inflationFactorAtRetire===1) return r;
+  var f=r.inflationFactorAtRetire;
+  var infl=1+(r.inflationRate||2.3)/100;
+  var currentAge=(r.retirementAge||67)-(r.yearsToRetire||0);
+  var scale=['gesamtEinkommen','gesamtEinkommenVoll','gesamtBrutto',
+    'gesetzlicheMonatsrenteBrutto','gesetzlicheMonatsrente','direktzusageBrutto','direktzusageMonatlich',
+    'ruerupBrutto','ruerupMonatlich','weitereBrutto','weitereMonatlich','estMonat',
+    'ausgaben','ausgabenEffektiv','luecke','lueckeVoll','erbMieteMonatlich',
+    'depotAtRetire','safeWithdrawal','swrNetto','entnahmeMonatlich',
+    'kvFreiwilligKosten','kvGainMonatlich','splittingVorteil'];
+  var out=Object.assign({},r);
+  scale.forEach(function(k){ if(typeof out[k]==='number') out[k]=Math.round(out[k]*f*100)/100; });
+  // kaufkraftHeute bleibt REAL → erscheint im Nominal-Modus als Zusatzzeile "Kaufkraft heute".
+  // ausgabenNominal ist im Nominal-Modus redundant → gleichsetzen, damit die Zeile verschwindet.
+  out.ausgabenNominal=out.ausgaben;
+  if(r.netResult){
+    var nr=Object.assign({},r.netResult);
+    Object.keys(nr).forEach(function(k){ if(typeof nr[k]==='number' && k!=='besteuerungsanteil' && k!=='marginalRate') nr[k]=Math.round(nr[k]*f*100)/100; });
+    out.netResult=nr;
+  }
+  function sv(arr,fields){ return (arr||[]).map(function(pt){
+    var jahre=Math.max(0,(pt.alter||currentAge)-currentAge);
+    var pf=Math.pow(infl,jahre);
+    var o=Object.assign({},pt);
+    fields.forEach(function(k){ if(typeof o[k]==='number') o[k]=Math.round(o[k]*pf); });
+    return o;
+  }); }
+  out.verlaufData=sv(r.verlaufData,['depot']);
+  out.entnahmePlan=sv(r.entnahmePlan,['depot','entnahme','rendite']);
+  out.wcVerlauf=sv(r.wcVerlauf,['depot']);
+  return out;
+}
+
 function rpRenderMain(){
   var store=FP.Store.get();
   var partnerOn=store.settings.partnerEnabled;
@@ -4072,6 +4112,8 @@ function rpRenderMain(){
       r2=Object.assign({},r2,{kvLueckeStatus:'freiwillig',kvFreiwilligKosten:r2.kvFreiwilligKosten||0});
     }
   }
+  // R9: Anzeige-Brille — bei "zukünftigem Geld" alle €-Werte nominal hochrechnen
+  if(rpGeldModus()==='nominal'){ r1=rpToNominal(r1); if(r2) r2=rpToNominal(r2); }
   var result=(rpS.person==='person_2'?r2:r1)||r1;
   if(!result){
     document.getElementById('rp-kpi-grid').innerHTML='<div style="padding:20px;color:var(--tx3);font-size:13px">Kein Rentenprofil vorhanden.</div>';
@@ -5155,7 +5197,14 @@ function rpRenderKpi(r1,r2,store) {
     {lbl:'Renteneinkommen (Netto)',val:eur(partnerOn?hhEink:r.gesamtEinkommen+r.erbMieteMonatlich),sub:'Brutto: '+eur(partnerOn?(r1?r1.gesamtBrutto:0)+(r2?r2.gesamtBrutto:0):r.gesamtBrutto),cls:''},
     {lbl:'Ausgaben/Mo',val:eur(partnerOn?hhAusg:r.ausgaben),sub:partnerOn?'Beide':'Ruhestand',cls:''},
   ];
-  el.innerHTML=warnHtml+cards.map(function(c){
+  var _gm=rpGeldModus();
+  var geldToggle='<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surf2);border-radius:10px;padding:5px;margin-bottom:4px">'
+    +'<span style="font-size:11px;color:var(--tx3);padding:0 6px">Anzeige:</span>'
+    +'<button class="rp-sz-btn'+(_gm!=='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:8px;font-size:12px" onclick="rpSetGeldModus(\'heute\')">Heutiges Geld</button>'
+    +'<button class="rp-sz-btn'+(_gm==='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:8px;font-size:12px" onclick="rpSetGeldModus(\'nominal\')">Zukünftiges Geld</button>'
+    +'<span style="font-size:11px;color:var(--tx3);padding:0 6px">'+(_gm==='nominal'?'nominal, ab Renteneintritt':'heutige Kaufkraft')+'</span>'
+    +'</div>';
+  el.innerHTML=geldToggle+warnHtml+cards.map(function(c){
     return '<div class="rp-kpi '+c.cls+'"><div class="rp-kpi-lbl">'+c.lbl+'</div><div class="rp-kpi-val">'+c.val+'</div><div class="rp-kpi-sub">'+c.sub+'</div></div>';
   }).join('');
 }
