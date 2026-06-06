@@ -1364,11 +1364,19 @@ function avMonths(){
   else{for(var i=1;i<=12;i++)ms.push(String(i).padStart(2,'0')+'.'+avS.year);}
   return ms;
 }
+// M4: IDs archivierter Objekte — deren Buchungen aus den Ausgaben-Übersichten ausschließen
+function _archObjSet(){
+  var s={};
+  FP.Store.Objects.getAll().forEach(function(o){ if(o.status==='archiviert') s[o.id]=true; });
+  return s;
+}
 function avBC(){
   var store=FP.Store.get();var cats={};store.categories.forEach(function(c){cats[c.id]=c;});
+  var arch=_archObjSet();
   var bc={};
   store.transactions.forEach(function(tx){
     if(avMonths().indexOf(tx.date)<0)return;
+    if(tx.objectId&&arch[tx.objectId])return; // M4: archiviertes Objekt
     // M3: gelöschte categoryId nicht still verschlucken — als "Ohne Kategorie" sammeln,
     // sonst weicht die Übersichts-Summe von Budget/Reports ab.
     var cat=cats[tx.categoryId]||{id:'_uncat',name:'Ohne Kategorie',color:'var(--cat-slate)'};
@@ -3237,9 +3245,10 @@ function stImportAusgaben(input){
             // Backup erstellen bevor Transaktionen unwiderruflich gelöscht werden
             FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Vor Excel-Import'));
 
-            // Bestehende Transaktionen löschen
+            // H4: nur zuvor importierte Excel-Buchungen ersetzen (source:'import') —
+            // manuell erfasste Buchungen und generierte Fixkosten bleiben erhalten.
             var store=FP.Store.get();
-            store.transactions=[];
+            store.transactions=store.transactions.filter(function(t){return t.source!=='import';});
             FP.Store.save();
 
         var imported=0,skipped=0,nocat=0,flaggedSkip=0,badData=0;
@@ -7822,6 +7831,7 @@ function cfShift(d) {
 
 function cfGetData() {
   var store = FP.Store.get();
+  var _archCf = _archObjSet(); // M4: archivierte Objekte ausschließen
   var months = [];
   for (var m = 1; m <= 12; m++) {
     var ds = String(m).padStart(2, '0') + '.' + cfY;
@@ -7832,8 +7842,9 @@ function cfGetData() {
       }
     });
     // H6: alle Buchungen netto (Erstattungen mindern die Ausgabe) statt nur amount>0
+    // M4: Buchungen archivierter Objekte ausschließen
     var exp = store.transactions
-      .filter(function(t) { return t.date === ds; })
+      .filter(function(t) { return t.date === ds && !(t.objectId && _archCf[t.objectId]); })
       .reduce(function(s, t) { return s + Number(t.amount); }, 0);
     months.push({ m: m, ds: ds, inc: inc, exp: exp, net: inc - exp });
   }
@@ -8145,7 +8156,9 @@ function rp2Filter() {
   FP.Store.Categories.getAll().forEach(function(c) { catParent[c.id] = c.parentId || c.id; });
 
   var all = FP.Store.Transactions.getAll();
+  var arch = _archObjSet(); // M4: archivierte Objekte ausschließen
   return all.filter(function(tx) {
+    if (tx.objectId && arch[tx.objectId]) return false;
     if (_rp2.cats.length) {
       var rootId = catParent[tx.categoryId] || tx.categoryId;
       if (_rp2.cats.indexOf(tx.categoryId) < 0 && _rp2.cats.indexOf(rootId) < 0) return false;

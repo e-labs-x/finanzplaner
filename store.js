@@ -1850,7 +1850,9 @@ const Calculator = {
     const dateStr = String(month).padStart(2, '0') + '.' + year;
     const store   = Store.get();
 
-    const txs = store.transactions.filter(tx => tx.date === dateStr);
+    // M4: Buchungen archivierter Objekte überall aus den Ausgaben-Übersichten ausschließen
+    const archObj = new Set((store.objects || []).filter(o => o.status === 'archiviert').map(o => o.id));
+    const txs = store.transactions.filter(tx => tx.date === dateStr && !(tx.objectId && archObj.has(tx.objectId)));
 
     let fixTotal = 0, freiTotal = 0;
     const byCat = {};
@@ -1914,11 +1916,13 @@ const Calculator = {
   getCategoryTrend(categoryId, fromYear, toYear) {
     const store  = Store.get();
     const points = [];
+    // M4: Buchungen archivierter Objekte ausschließen (konsistent mit getMonthSummary)
+    const archObj = new Set((store.objects || []).filter(o => o.status === 'archiviert').map(o => o.id));
     for (let yr = fromYear; yr <= toYear; yr++) {
       for (let m = 1; m <= 12; m++) {
         const dateStr = String(m).padStart(2, '0') + '.' + yr;
         const total = store.transactions
-          .filter(tx => tx.date === dateStr && tx.categoryId === categoryId)
+          .filter(tx => tx.date === dateStr && tx.categoryId === categoryId && !(tx.objectId && archObj.has(tx.objectId)))
           .reduce((s, tx) => s + tx.amount, 0);
         // N5: auch Monate mit Netto ≤ 0 (erstattungslastig) behalten — sonst verzerren
         // sie Durchschnitt/Jahressumme. Nur echte Null-Monate (keine Buchung) weglassen.
