@@ -681,13 +681,17 @@ const MIGRATIONS = {
 };
 
 function migrateStore(data) {
-  let v = data?.meta?.version || 1;
+  // M7: meta sicherstellen und Version normalisieren — fehlende/korrupte Version = v1
+  // (erste Version). Final immer setzen, damit kein Store ohne meta.version zurückbleibt.
+  if (!data.meta || typeof data.meta !== 'object') data.meta = {};
+  let v = parseInt(data.meta.version, 10);
+  if (!Number.isInteger(v) || v < 1) v = 1;
   while (v < STORE_VERSION) {
     const fn = MIGRATIONS[v];
     if (fn) data = fn(data);
     v++;
-    if (data.meta) data.meta.version = v;
   }
+  data.meta.version = Math.max(v, STORE_VERSION);
   return data;
 }
 
@@ -786,6 +790,9 @@ const Store = (() => {
           _state.settings.azureSync = { enabled: false, autoSync: true, blobUrl: null, lastSync: null, lastETag: null };
         }
         if (_state.settings.githubSync) delete _state.settings.githubSync;
+        // N3: Alt-Reste der GitHub/OneDrive-Sync-Ära aufräumen
+        if (_state.settings.oneDrive) delete _state.settings.oneDrive;
+        try { localStorage.removeItem('fp_gh_token'); } catch(e) {}
       } finally {
         _suppressTouch = false;
       }
@@ -1025,21 +1032,6 @@ const Store = (() => {
     },
 
     /** Bulk-Zuordnung: objectId auf gefilterte Transaktionen setzen */
-    bulkAssignObject(filter, objectId) {
-      let count = 0;
-      _state.transactions.forEach(tx => {
-        const matchCat  = !filter.categoryId || tx.categoryId === filter.categoryId;
-        const matchYear = !filter.year       || tx.date.endsWith('.' + filter.year);
-        const matchSrc  = !filter.source     || tx.source === filter.source;
-        if (matchCat && matchYear && matchSrc) {
-          tx.objectId = objectId;
-          count++;
-        }
-      });
-      if (count > 0) _save();
-      return count;
-    },
-
     getAll()                { return _state.transactions; },
     getById(id)             { return _state.transactions.find(tx => tx.id === id); },
   };
@@ -1652,7 +1644,16 @@ const BackupManager = {
           } catch(e) {}
           // Backup vor dem Import
           BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
-          localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+          // H7: Speichern separat absichern — bei vollem localStorage (iOS) klare Meldung
+          // statt irreführendem "Datei konnte nicht gelesen werden".
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+          } catch(setErr) {
+            const quota = setErr && (setErr.name === 'QuotaExceededError' || String(setErr).includes('QuotaExceeded'));
+            return reject(new Error(quota
+              ? 'Speicher voll — Import abgebrochen. Bitte alte Auto-Backups oder Browserdaten löschen und erneut versuchen.'
+              : 'Import konnte nicht gespeichert werden: ' + setErr.message));
+          }
           resolve({
             ok: true,
             transactions: migrated.transactions?.length || 0,
@@ -1663,24 +1664,31 @@ const BackupManager = {
           reject(new Error('Datei konnte nicht gelesen werden: ' + err.message));
         }
       };
+      // M5: Lesefehler abfangen — sonst hängt das Promise (und bei Sync-Pull _busy=true) für immer
+      reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden (Lesefehler).'));
       reader.readAsText(file);
     });
   },
 
   /** Auto-Backup in LocalStorage (max 5) */
   _saveAutoBackup(backup) {
-    try {
-      let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
-      backups.unshift({
-        timestamp: new Date().toISOString(),
-        label:     backup._backup?.label || 'Auto',
-        data:      backup,
-      });
-      backups = backups.slice(0, MAX_AUTO_BACKUPS);
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
-    } catch(e) {
-      console.warn('[Backup] Auto-Backup fehlgeschlagen:', e);
+    let backups = [];
+    try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch(e) {}
+    backups.unshift({
+      timestamp: new Date().toISOString(),
+      label:     backup._backup?.label || 'Auto',
+      data:      backup,
+    });
+    // M13: bei vollem Speicher schrittweise ältere Auto-Backups verwerfen, statt still
+    // zu scheitern (sonst denkt der Nutzer, er sei gesichert).
+    for (let keep = MAX_AUTO_BACKUPS; keep >= 1; keep--) {
+      try {
+        localStorage.setItem(BACKUP_KEY, JSON.stringify(backups.slice(0, keep)));
+        return;
+      } catch(e) { /* Quota — mit weniger Backups erneut versuchen */ }
     }
+    console.warn('[Backup] Auto-Backup fehlgeschlagen: Speicher voll');
+    if (typeof window !== 'undefined' && window.toast) toast('⚠ Auto-Backup fehlgeschlagen — Speicher voll');
   },
 
   getAutoBackups() {
@@ -1693,7 +1701,23 @@ const BackupManager = {
     const backups = BackupManager.getAutoBackups();
     if (!backups[index]) throw new Error('Backup nicht gefunden');
     const data = backups[index].data?.store || backups[index].data;
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
+    // H8: vor dem Schreiben validieren — sonst wird ein korruptes Backup zum Hauptstore
+    const migrated = migrateStore(data);
+    const errors = validateStore(migrated);
+    if (errors.length > 0) throw new Error('Backup beschädigt: ' + errors.join(', '));
+    // Azure-Sync vom aktuellen Gerät beibehalten, lastETag null (wie import)
+    try {
+      const currentRaw = localStorage.getItem(LS_KEY);
+      if (currentRaw) {
+        const cur = JSON.parse(currentRaw)?.settings?.azureSync;
+        if (cur && migrated.settings) migrated.settings.azureSync = Object.assign({}, cur, { lastETag: null });
+      }
+    } catch(e) {}
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+    } catch(setErr) {
+      throw new Error('Speicher voll — Wiederherstellung abgebrochen.');
+    }
     return { ok: true };
   },
 };
@@ -1884,13 +1908,6 @@ const Calculator = {
       yearTotal:    r2(yearTotal),
       monthlyAvg:   nonZero.length ? r2(yearTotal / nonZero.length) : 0,
     };
-  },
-
-  // ── Mehrjahres-Vergleich ──
-  getMultiYearSummary(years) {
-    const result = {};
-    years.forEach(yr => { result[yr] = Calculator.getYearSummary(yr); });
-    return result;
   },
 
   // ── Kategorien-Vergleich über Zeit ──

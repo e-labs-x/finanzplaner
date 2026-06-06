@@ -49,7 +49,7 @@ let amt = '', hasDec = false, decPos = 0;
 var AzureSync = (function() {
   var TOKEN_KEY    = 'fp_azure_sas';
   var SESSION_KEY  = 'fp_dirty';       // sessionStorage: lokale Änderungen über Reload hinaus merken
-  var BACKUP_DATE_KEY = 'fp_backup_dt'; // sessionStorage: tägliches Backup-Datum
+  var BACKUP_DATE_KEY = 'fp_backup_dt'; // localStorage: tägliches Backup-Datum (pro Kalendertag)
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
@@ -76,14 +76,17 @@ var AzureSync = (function() {
     _dirtyLocal = true;
     try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
   }
+  // M8: localStorage statt sessionStorage → wirklich ein Backup pro Kalendertag (nicht pro Session).
   function _maybeDailyBackup(backup) {
     var today = new Date().toISOString().slice(0, 10);
     try {
-      if (sessionStorage.getItem(BACKUP_DATE_KEY) === today) return;
-      sessionStorage.setItem(BACKUP_DATE_KEY, today);
-      FP.BackupManager._saveAutoBackup(backup);
+      if (localStorage.getItem(BACKUP_DATE_KEY) === today) return;
+      localStorage.setItem(BACKUP_DATE_KEY, today);
+      FP.BackupManager._saveAutoBackup(backup || FP.BackupManager.create('Täglich'));
     } catch(e) {}
   }
+  // M8: nach außen verfügbar, damit der Start es unabhängig vom Sync auslösen kann
+  function maybeDailyBackup() { _maybeDailyBackup(null); }
 
   function _sas()    { return localStorage.getItem(TOKEN_KEY); }
   function _cfg()    { var s = FP.Store.Settings.get().azureSync; return s || {}; }
@@ -511,7 +514,7 @@ var AzureSync = (function() {
     _clearDirty();
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, maybeDailyBackup: maybeDailyBackup };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -595,6 +598,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // keinen Push triggern (K2) — sonst gilt das Gerät fälschlich als "neuer".
   FP.Store.cleanupRecurringDuplicates({ silent: true });
   FP.Store.generateRecurringTransactions({ retroactive: true, silent: true });
+  // M8: tägliches Sicherungs-Backup beim Start — unabhängig davon ob der Sync läuft
+  try { AzureSync.maybeDailyBackup(); } catch(e) {}
   setHeute();
   buildCats();
   buildObjSel();
@@ -2339,7 +2344,42 @@ function stRender(){
   stRenderCurrencies();
   stRenderInflation();
   stRenderApiKey();
+  stRenderAutoBackups();
   stOpenLog();
+}
+
+// N7: automatische Sicherungen anzeigen + wiederherstellen (vorher waren sie nicht nutzbar)
+function stRenderAutoBackups(){
+  var el=document.getElementById('st-autobackups');
+  if(!el)return;
+  var list=FP.BackupManager.getAutoBackups();
+  if(!list.length){
+    el.innerHTML='<div class="st-backup-row"><span class="st-backup-lbl" style="color:var(--tx3)">Noch keine automatischen Sicherungen vorhanden.</span></div>';
+    return;
+  }
+  el.innerHTML=list.map(function(b,i){
+    var d=new Date(b.timestamp);
+    var when=isNaN(d.getTime())?String(b.timestamp||''):d.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var tx=(b.data&&b.data.store&&Array.isArray(b.data.store.transactions))?b.data.store.transactions.length:'?';
+    return '<div class="st-backup-row">'+
+      '<span class="st-backup-lbl">'+when+' · '+esc(b.label||'Auto')+' · '+tx+' Buchungen</span>'+
+      '<button class="st-btn" onclick="stRestoreAutoBackup('+i+')">↩ Wiederherstellen</button>'+
+    '</div>';
+  }).join('');
+}
+
+function stRestoreAutoBackup(i){
+  var list=FP.BackupManager.getAutoBackups();
+  if(!list[i]){toast('Sicherung nicht gefunden');return;}
+  confirmDialog('Diese Sicherung wiederherstellen? Der aktuelle Stand wird ersetzt.','Wiederherstellen',function(){
+    try{
+      FP.BackupManager.restoreAutoBackup(i);
+      appLog('BACKUP','Auto-Sicherung wiederhergestellt ('+(list[i].label||'Auto')+')');
+      toast('↩ Wiederhergestellt — App wird neu gestartet');
+      window.__fpReloading=true;
+      setTimeout(function(){location.reload();},1200);
+    }catch(err){ toast('Fehler: '+err.message); }
+  });
 }
 
 function stRenderApiKey(){
