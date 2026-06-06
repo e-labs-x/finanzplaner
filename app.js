@@ -642,6 +642,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }, {passive:true});
     window.addEventListener('touchmove', function(e){
       if(!e.touches || e.touches.length > 1) return;
+      // Bedienelemente (Slider, Buttons, Eingaben) nicht stören
+      if(e.target && e.target.closest && e.target.closest('input,select,textarea,button,[contenteditable],canvas')) return;
       var dy = e.touches[0].clientY - _ptrStartY;
       if(dy <= 0) return; // nur Pull-down ist relevant
       // nächsten vertikal scrollbaren Container unter dem Finger suchen
