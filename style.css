@@ -976,9 +976,9 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 /* ── Rentenplanung 2-Spalten-Layout ── */
 .rp-layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
 @media(max-width:960px){.rp-layout{grid-template-columns:1fr}}
-.rp-sidebar{display:flex;flex-direction:column;gap:8px;overflow-y:auto;overflow-x:hidden;overflow-anchor:none;padding-right:4px;scrollbar-width:thin}
+.rp-sidebar{display:flex;flex-direction:column;gap:8px;overflow-y:auto;overflow-x:hidden;overflow-anchor:none;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
 .rp-sidebar::-webkit-scrollbar{width:3px}.rp-sidebar::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px}
-.rp-main{display:flex;flex-direction:column;gap:12px}
+.rp-main{display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
 .rp-sec{background:var(--surf);border:1px solid var(--brd);border-radius:12px;overflow:hidden;box-shadow:var(--sh)}
 .rp-sec-hdr{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;user-select:none;font-weight:700;font-size:14px;color:var(--tx);transition:background .1s}
 .rp-sec-hdr:hover{background:var(--surf2)}
@@ -1064,9 +1064,9 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 @media(min-width:960px){
   #p-rente.active{overflow:hidden !important}
   #p-rente.active .rp-layout{display:flex !important;flex-direction:row;height:calc(100dvh - 12px);gap:16px}
-  #p-rente.active .rp-sidebar{flex:0 0 390px;width:390px;min-height:0;overflow-y:auto !important;overflow-x:hidden}
+  #p-rente.active .rp-sidebar{flex:0 0 390px;width:390px;min-height:0;overflow-y:auto !important;overflow-x:hidden;overscroll-behavior:contain}
   #p-rente.active .rp-sidebar > *{flex-shrink:0}
-  #p-rente.active .rp-main{flex:1;min-width:0;min-height:0;overflow-y:auto}
+  #p-rente.active .rp-main{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
   #p-rente.active .rp-main > *{flex-shrink:0}
 }
 /* Sichtbarer Scrollbalken Sidebar */
