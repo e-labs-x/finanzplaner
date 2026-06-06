@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-05-20
+Letzte Aktualisierung: 2026-06-06
 
 ---
 
@@ -95,6 +95,11 @@ Letzte Aktualisierung: 2026-05-20
 - [ ] Natural-Language-Input: Button im Numpad, Textfeld „45€ rewe gestern", Betrag/Datum/Beschreibung-Parser (offline)
 - [ ] Autovervollständigung auf Beschreibungsfeld: Datalist aus den letzten 50 Beschreibungen
 - [ ] Smart-Kategorie-Vorschlag: Pille mit vorgeschlagener Kategorie beim Tippen, lernt aus Historie
+
+### I — Bank-Integration _(mehrere Sessions, Detailplan in CLAUDE.md)_
+- [ ] Enable Banking (PSD2/OAuth) + Azure Functions: Kontostände/Wertpapiere automatisch abrufen
+- [ ] **Hosting-Konsolidierung evaluieren** — Wenn für die Bank-Integration ohnehin Azure Functions aufgebaut werden: prüfen, ob das App-Hosting von **GitHub Pages → Azure Static Web Apps** ziehen sinnvoll ist (dann alles bei einem Anbieter, evtl. engere Integration mit Functions + Sync).
+  - Kontext (06.06.2026): Heute bewusst NICHT umgestellt. Aktuell: Code auf GitHub Pages (`e-labs-x.github.io`), Daten-Sync auf Azure Blob — saubere, funktionierende Trennung. Eine Migration brächte **keinen funktionalen Mehrwert**, aber Risiko/Aufwand: URL-Wechsel (App auf allen Geräten neu installieren), Service-Worker-/Cache-Neuaufbau, CORS + Azure-Sync neu konfigurieren. GitHub Pages + Azure Functions können auch problemlos koexistieren → nur konsolidieren, wenn man einen klaren Grund hat.
 
 ---
 
