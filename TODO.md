@@ -104,7 +104,7 @@ Letzte Aktualisierung: 2026-06-06
 ### Rente — Audit-Nacharbeiten _(Stand 06.06.2026)_
 _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfreibetrag-Doppelabzug bereits erledigt & deployed (`?v=20260606v`)._
 - [ ] **R7** — Günstigerprüfung §32d: Soli-Inkonsistenz (Schwelle sollte 25 % statt 26,375 % sein)
-- [ ] **R8** — KV-Lücken-Logik vermischt zwei Szenarien (store.js ~2553). App setzt für 63→67 eine freiwillige KV-Lücke an, rechnet die Rente aber als „ab 63 bezogen". Wer ab 63 die gesetzliche Rente BEZIEHT, ist KVdR-pflichtiger Rentner → DRV zahlt halbe KV, Depot-Entnahmen beitragsfrei, KEINE Lücke. Fix braucht Designentscheidung (Annahme „Rente ab targetAge" durchziehen → KV-Lücke=0, ODER separates Rentenbeginn-Alter). Nutzer-Plan: Rente ab 63 beziehen.
+- [x] **R8** — ✅ ERLEDIGT 06.06. (`?v=20260606w`, Commit 4af8946): KV-Lücke entfällt, da Rente ab Eintrittsalter bezogen wird → ab da KVdR-pflichtiger Rentner (DRV zahlt halbe KV, Depot-Entnahmen beitragsfrei). `kvLueckeJahre=0`; Berechnungsblock bleibt deaktiviert für evtl. späteren Rentenbeginn (Option B). Verifiziert: kvLueckeStatus=kein, Rente/Lücke unverändert.
 - [ ] **R9** — Rentenwert wird über die Jahre nicht dynamisiert (Real/Nominal mischt; teils bewusst offen)
 - [ ] **R10** — Entnahme-Taktung: Haltbarkeit (monatlich) vs. Verlauf/Worst-Case (jährlich) inkonsistent
 - [ ] **R11** — Alter nur über Geburtsjahr (ohne Monat) → bis ±1 Jahr Fehler
