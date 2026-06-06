@@ -1063,16 +1063,16 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 
 /* Rentenplanung — Sidebar wider */
 .rp-layout{grid-template-columns:390px 1fr !important}
-/* Rente-Tab — NUR Maus/Trackpad (html:not(.touch)): Zwei-Pane mit eigenständigem Scroll.
+/* Rente-Tab — NUR Maus/Trackpad (html:not(.ios)): Zwei-Pane mit eigenständigem Scroll.
    Auf Touch-Geräten (iPad/iPhone) bleibt es EIN Scroll-Bereich über .page → kein iOS
    Pull-to-Refresh durch verschachtelte Scroll-Container. Zweispaltiges Raster bleibt dort. */
 @media(min-width:960px){
-  html:not(.touch) #p-rente.active{overflow:hidden !important}
-  html:not(.touch) #p-rente.active .rp-layout{display:flex !important;flex-direction:row;height:calc(100dvh - 12px);gap:16px}
-  html:not(.touch) #p-rente.active .rp-sidebar{flex:0 0 390px;width:390px;min-height:0;overflow-y:auto !important;overflow-x:hidden;overscroll-behavior:contain}
-  html:not(.touch) #p-rente.active .rp-sidebar > *{flex-shrink:0}
-  html:not(.touch) #p-rente.active .rp-main{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  html:not(.touch) #p-rente.active .rp-main > *{flex-shrink:0}
+  html:not(.ios) #p-rente.active{overflow:hidden !important}
+  html:not(.ios) #p-rente.active .rp-layout{display:flex !important;flex-direction:row;height:calc(100dvh - 12px);gap:16px}
+  html:not(.ios) #p-rente.active .rp-sidebar{flex:0 0 390px;width:390px;min-height:0;overflow-y:auto !important;overflow-x:hidden;overscroll-behavior:contain}
+  html:not(.ios) #p-rente.active .rp-sidebar > *{flex-shrink:0}
+  html:not(.ios) #p-rente.active .rp-main{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  html:not(.ios) #p-rente.active .rp-main > *{flex-shrink:0}
 }
 
 /* Einklappbare Einstellungs-Leiste (Chevron) */

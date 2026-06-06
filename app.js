@@ -3987,11 +3987,11 @@ function rpInit(){
 function rpSidebarHeight(){
   var sb=document.querySelector('#p-rente .rp-sidebar');
   var mn=document.querySelector('#p-rente .rp-main');
-  var isTouch=document.documentElement.classList.contains('touch');
-  // Touch (iPad/iPhone) oder schmal: EIN Scroll-Bereich → keine festen Höhen (verhindert
-  // iOS Pull-to-Refresh durch verschachteltes Scrollen). Eingeklappt ebenfalls.
+  var isIOS=document.documentElement.classList.contains('ios');
+  // iOS/iPadOS oder schmal: EIN Scroll-Bereich → keine festen Höhen (verhindert iOS
+  // Pull-to-Refresh durch verschachteltes Scrollen). Eingeklappt ebenfalls.
   var collapsed=!!document.querySelector('#p-rente .rp-layout.rp-collapsed');
-  if(isTouch||window.innerWidth<960||collapsed){
+  if(isIOS||window.innerWidth<960||collapsed){
     if(sb){ sb.style.height=''; sb.style.overflowY=''; }
     if(mn){ mn.style.height=''; mn.style.overflowY=''; }
     return;
