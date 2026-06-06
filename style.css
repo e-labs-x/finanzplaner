@@ -979,9 +979,11 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 /* ── Rentenplanung 2-Spalten-Layout ── */
 .rp-layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
 @media(max-width:960px){.rp-layout{grid-template-columns:1fr}}
-.rp-sidebar{display:flex;flex-direction:column;gap:8px;overflow-y:auto;overflow-x:hidden;overflow-anchor:none;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
+.rp-sidebar{display:block;overflow-y:auto;overflow-x:hidden;overflow-anchor:none;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
+.rp-sidebar > * + *{margin-top:8px}
 .rp-sidebar::-webkit-scrollbar{width:3px}.rp-sidebar::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px}
-.rp-main{display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.rp-main{display:block;overscroll-behavior:contain}
+.rp-main > * + *{margin-top:12px}
 .rp-sec{background:var(--surf);border:1px solid var(--brd);border-radius:12px;overflow:hidden;box-shadow:var(--sh)}
 .rp-sec-hdr{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;user-select:none;font-weight:700;font-size:14px;color:var(--tx);transition:background .1s}
 .rp-sec-hdr:hover{background:var(--surf2)}
@@ -1076,14 +1078,14 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 }
 
 /* Einklappbare Einstellungs-Leiste (Chevron) */
-.rp-sb-collapse{align-self:flex-end;position:-webkit-sticky;position:sticky;top:0;z-index:5;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;transition:background .15s;flex-shrink:0}
+.rp-sb-collapse{margin-left:auto;position:-webkit-sticky;position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;transition:background .15s}
 .rp-sb-collapse:hover{background:var(--surf2)}
-.rp-sb-expand{display:none;position:-webkit-sticky;position:sticky;top:0;z-index:5;align-items:center;gap:6px;width:max-content;padding:6px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;flex-shrink:0}
+.rp-sb-expand{display:none;position:-webkit-sticky;position:sticky;top:0;z-index:5;align-items:center;gap:6px;width:max-content;padding:6px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;transition:background .15s}
 .rp-sb-expand:hover{background:var(--surf2)}
 .rp-sb-collapse svg,.rp-sb-expand svg{width:16px;height:16px}
 .rp-layout.rp-collapsed{grid-template-columns:1fr !important}
 .rp-layout.rp-collapsed .rp-sidebar{display:none}
-.rp-layout.rp-collapsed .rp-sb-expand{display:inline-flex}
+.rp-layout.rp-collapsed .rp-sb-expand{display:flex}
 /* Sichtbarer Scrollbalken Sidebar */
 #p-rente .rp-sidebar::-webkit-scrollbar{width:8px}
 #p-rente .rp-sidebar::-webkit-scrollbar-track{background:var(--surf2);border-radius:4px}
