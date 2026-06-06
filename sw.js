@@ -1,7 +1,7 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20260606j';
+const CACHE_NAME = 'fp-20260606k';
 
 const SHELL = [
   './',
@@ -42,6 +42,25 @@ self.addEventListener('fetch', evt => {
     url.includes('.blob.core.windows.net')
   ) return;
 
+  // App-Shell (HTML/JS/CSS + Navigation): NETWORK-FIRST — online immer frischer Code,
+  // Cache nur als Offline-Fallback. Verhindert, dass alte Versionen "kleben bleiben".
+  const isShell = evt.request.mode === 'navigate' || /\.(?:js|css|html)(?:\?|$)/.test(url);
+  if (isShell) {
+    evt.respondWith(
+      fetch(evt.request).then(resp => {
+        if (resp && resp.status === 200 && resp.type !== 'opaque') {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(evt.request, clone));
+        }
+        return resp;
+      }).catch(() =>
+        caches.match(evt.request).then(c => c || (evt.request.mode === 'navigate' ? caches.match('./index.html') : undefined))
+      )
+    );
+    return;
+  }
+
+  // Sonstiges (Bilder etc.): cache-first
   evt.respondWith(
     caches.match(evt.request).then(cached => {
       if (cached) return cached;
@@ -51,10 +70,7 @@ self.addEventListener('fetch', evt => {
         }
         return resp;
       }).catch(() => {
-        // Bei Navigationsanfragen: gecachte index.html als Fallback
-        if (evt.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
+        if (evt.request.mode === 'navigate') return caches.match('./index.html');
       });
     })
   );
