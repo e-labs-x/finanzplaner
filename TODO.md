@@ -80,6 +80,11 @@ Letzte Aktualisierung: 2026-06-06
 - [ ] Dark Mode wird im Print zu Light umgeschaltet
 
 ### Auszahlplan — Entnahmeplanung Rente _(komplex, eigene Session)_
+- [ ] **Erwerbsende ≠ Rentenbeginn + gemeinsamer Haushalts-Cashflow** (Briefing/Konzept:
+  `…\Finanzen App\konzept_auszahlplan_2026-06-06.md`). Auslöser: „Ehli hört mit 53 auf, Rente erst mit 63".
+  Heutiges Modell rechnet Personen isoliert & addiert Endwerte (Depots zu verschiedenen Jahren) → bricht bei
+  gestaffelten Renteneintritten. Soll: Feld „Erwerbsende-Alter" + EIN gemeinsames Depot auf EINEM Zeitstrahl,
+  Phasen-Cashflow, KV-Lücke reaktivieren. Überschlag zeigt: Szenario tragbar (Phase-1-Lücke ~90 €/Mo).
 - [ ] Strategie-Entscheidung vor Implementierung (Glidepath-Variante vs. Bucket vs. Floor+Upside)
 - [ ] Jahr-für-Jahr-Simulation ab Renteneintritt
 - [ ] Einnahmen: DRV + Direktzusage + weitere Quellen aus dem Store
