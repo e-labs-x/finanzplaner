@@ -631,6 +631,34 @@ document.addEventListener('DOMContentLoaded', function() {
   // document.documentElement wurde entfernt — sein Callback baute via rpRenderMain das DOM
   // neu auf, was die Höhe änderte und den Observer erneut auslöste = Re-Render-Schleife.
   window.addEventListener('resize', _scheduleRedraw);
+
+  // iOS/iPadOS Safari: Pull-to-Refresh (Seiten-Reload beim Abwärts-Ziehen am oberen Rand)
+  // unterbinden. overscroll-behavior wird dort nicht zuverlässig beachtet, daher per JS:
+  // nur den Abwärts-Zug am Scroll-Anfang abfangen — normales Scrollen bleibt unberührt.
+  (function(){
+    var _ptrStartY = 0;
+    window.addEventListener('touchstart', function(e){
+      if(e.touches && e.touches.length === 1) _ptrStartY = e.touches[0].clientY;
+    }, {passive:true});
+    window.addEventListener('touchmove', function(e){
+      if(!e.touches || e.touches.length > 1) return;
+      var dy = e.touches[0].clientY - _ptrStartY;
+      if(dy <= 0) return; // nur Pull-down ist relevant
+      // nächsten vertikal scrollbaren Container unter dem Finger suchen
+      var el = e.target;
+      while(el && el.nodeType === 1){
+        if(el.scrollHeight > el.clientHeight){
+          var oy = getComputedStyle(el).overflowY;
+          if(oy === 'auto' || oy === 'scroll'){
+            if(el.scrollTop > 0) return; // kann noch nach oben scrollen → normal zulassen
+            break;                        // am oberen Rand → Pull-to-Refresh verhindern
+          }
+        }
+        el = el.parentElement;
+      }
+      if(e.cancelable) e.preventDefault();
+    }, {passive:false});
+  })();
   // Azure Sync initialisieren
   AzureSync.init();
   AzureSync.startPolling();
