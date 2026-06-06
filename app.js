@@ -5102,7 +5102,7 @@ function rpUpdateSidebarLiveInfo() {
       .filter(function(a){return(a.ownerId||'person_1')===personId||a.ownerId==='joint';})
       .reduce(function(s,a){return s+a.monthlyPlan*(a.ownerId==='joint'?0.5:1);},0);
   var depInfo=document.getElementById('rp-depot-live-info');
-  if(depInfo) depInfo.textContent='Vorsorge-Depot (Anteil): '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Mo';
+  if(depInfo) depInfo.innerHTML='<strong>Vorsorge-Depot (Anteil):</strong> '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Mo<br><span style="opacity:.7;font-size:11px">= eigene Anlagen + ½ gemeinsame, ohne Immobilien/Sonstiges</span>';
   var hdrInfo=document.getElementById('rp-depot-hdr-info');
   if(hdrInfo) hdrInfo.textContent=sp>0?eur(sp)+'/Mo':'';
   // Kinder info
