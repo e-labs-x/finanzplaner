@@ -632,37 +632,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // neu auf, was die Höhe änderte und den Observer erneut auslöste = Re-Render-Schleife.
   window.addEventListener('resize', _scheduleRedraw);
 
-  // iOS/iPadOS Safari: Pull-to-Refresh (Seiten-Reload beim Abwärts-Ziehen am oberen Rand)
-  // unterbinden. overscroll-behavior wird dort nicht zuverlässig beachtet, daher per JS:
-  // nur den Abwärts-Zug am Scroll-Anfang abfangen — normales Scrollen bleibt unberührt.
-  (function(){
-    var _ptrLastY = 0;
-    window.addEventListener('touchstart', function(e){
-      if(e.touches && e.touches.length === 1) _ptrLastY = e.touches[0].clientY;
-    }, {passive:true});
-    window.addEventListener('touchmove', function(e){
-      if(!e.touches || e.touches.length > 1) return;
-      var y = e.touches[0].clientY;
-      var movingDown = y > _ptrLastY;   // MOMENTANE Richtung (nicht kumulativ!)
-      _ptrLastY = y;
-      if(!movingDown) return;            // Hochscrollen/Abwärts-Inhalt → immer zulassen
-      // Bedienelemente (Slider/Eingaben) nicht stören
-      if(e.target && e.target.closest && e.target.closest('input,select,textarea,button,[contenteditable]')) return;
-      // nächsten vertikal scrollbaren Container unter dem Finger suchen
-      var el = e.target;
-      while(el && el.nodeType === 1){
-        if(el.scrollHeight > el.clientHeight){
-          var oy = getComputedStyle(el).overflowY;
-          if(oy === 'auto' || oy === 'scroll'){
-            if(el.scrollTop > 0) return; // nicht am oberen Rand → normales Scrollen zulassen
-            break;                        // am oberen Rand → unten ist nichts → Pull-to-Refresh
-          }
-        }
-        el = el.parentElement;
-      }
-      if(e.cancelable) e.preventDefault();   // nur der Überzug am Top wird unterdrückt
-    }, {passive:false});
-  })();
+  // (Pull-to-Refresh wird jetzt strukturell über body{position:fixed} in style.css verhindert —
+  //  der frühere JS-touchmove-Guard war auf iOS wirkungslos, weil iOS das Überscroll-Event als
+  //  nicht abbrechbar markiert und preventDefault ignoriert.)
   // Azure Sync initialisieren
   AzureSync.init();
   AzureSync.startPolling();
