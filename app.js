@@ -6417,15 +6417,18 @@ function vmDrawTrendRight(canvas,pts,costBasis){
   });
   var assetNames=Object.keys(assetMap);
   // Farben zuweisen: je Asset eine eindeutige Farbe per Typ, mehrere desselben Typs mit Helligkeit gestaffelt
-  var typeCount={};
-  var PALETTE=['#3B82F6','#10B981','#F59E0B','#7C3AED','#EC4899','#0891B2','#059669','#2563EB','#D97706','#6D28D9','#DB2777','#0E7490'];
-  var palIdx=0;
+  function _hexToRgb(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return{r:parseInt(h.slice(0,2),16)||0,g:parseInt(h.slice(2,4),16)||0,b:parseInt(h.slice(4,6),16)||0};}
+  function _lighten(c,a){return{r:Math.round(c.r+(255-c.r)*a),g:Math.round(c.g+(255-c.g)*a),b:Math.round(c.b+(255-c.b)*a)};}
+  function _rgba(c,a){return'rgba('+c.r+','+c.g+','+c.b+','+a+')';}
+  // Jedes Asset eine eigene Farbe: Basis aus dem Typ (wie Donut), mehrere desselben Typs
+  // progressiv aufgehellt, damit gestapelte Flächen unterscheidbar bleiben.
+  var typeSeen={};
   assetNames.forEach(function(n){
-    var type=assetMap[n].type;
-    var base=VM_TYPE_COLOR[type]||PALETTE[palIdx%PALETTE.length];
-    typeCount[type]=(typeCount[type]||0)+1;
-    assetMap[n].color=base;
-    palIdx++;
+    var base=_hexToRgb(VM_TYPE_COLOR[assetMap[n].type]||'#94A3B8');
+    var k=typeSeen[assetMap[n].type]||0; typeSeen[assetMap[n].type]=k+1;
+    var rgb=k>0?_lighten(base,Math.min(0.16*k,0.55)):base;
+    assetMap[n].rgb=rgb;
+    assetMap[n].color=_rgba(rgb,1);
   });
 
   // Pro Asset die Werte je Datenpunkt (0 wenn nicht vorhanden)
@@ -6447,14 +6450,11 @@ function vmDrawTrendRight(canvas,pts,costBasis){
   var pL=52,pR=14,pT=12,pB=30+LEGEND_H;
   var cW=W-pL-pR,cH=H-pT-pB;
 
-  var allVals=pts.map(function(p){return p.value;});
-  if(costBasis>0)allVals.push(costBasis);
-  var minV=Math.min.apply(null,allVals.filter(function(v){return v>0;}))||0;
-  var maxV=Math.max.apply(null,allVals)||1;
-  var vRange=maxV-minV||1;
-  minV=Math.max(0,minV-vRange*0.08);
-  maxV=maxV+vRange*0.05;
-  vRange=maxV-minV;
+  // Gestapelte Flächen → Y-Achse von 0 bis Gesamtsumme (Stapel-Oberkante = Gesamt)
+  var maxTotal=Math.max.apply(null,pts.map(function(p){return p.value;}).concat(costBasis>0?[costBasis]:[]))||1;
+  var minV=0;
+  var maxV=maxTotal*1.08;
+  var vRange=maxV-minV;
 
   function vy(v){return pT+cH*(1-(v-minV)/vRange);}
   function vx(i){return pL+(pts.length<2?cW/2:i/(pts.length-1)*cW);}
@@ -6501,41 +6501,45 @@ function vmDrawTrendRight(canvas,pts,costBasis){
       ctx.beginPath();ctx.moveTo(vx(hi),pT);ctx.lineTo(vx(hi),pT+cH);ctx.stroke();
     }
 
-    // Einzellinien pro Asset (nur wenn mehr als 1)
-    if(assetNames.length>1){
-      assetNames.forEach(function(n){
-        var aData=assetMap[n];
-        var hasData=aData.values.some(function(v){return v>0;});
-        if(!hasData)return;
-        ctx.beginPath();
-        var started=false;
-        aData.values.forEach(function(v,i){
-          if(v<=0)return;
-          if(!started){ctx.moveTo(vx(i),vy(v));started=true;}
-          else ctx.lineTo(vx(i),vy(v));
-        });
-        ctx.strokeStyle=aData.color;
-        ctx.lineWidth=hi>=0?1.5:2;
-        ctx.globalAlpha=hi>=0?0.5:0.85;
-        ctx.lineJoin='round';
-        ctx.stroke();
-        ctx.globalAlpha=1;
-      });
+    // Gestapelte Flächen pro Asset — größtes unten, kleinste oben (Monarch-Stil)
+    var ordered=assetNames.filter(function(n){return assetMap[n].values.some(function(v){return v>0;});});
+    ordered.sort(function(a,b){return Math.max.apply(null,assetMap[b].values)-Math.max.apply(null,assetMap[a].values);});
+    var baseArr=pts.map(function(){return 0;});
+    ordered.forEach(function(n){
+      var vals=assetMap[n].values,rgb=assetMap[n].rgb;
+      // Fläche: Oberkante (base+val) hin, Unterkante (base) zurück
+      ctx.beginPath();
+      pts.forEach(function(p,i){var yT=vy(baseArr[i]+vals[i]);if(i===0)ctx.moveTo(vx(i),yT);else ctx.lineTo(vx(i),yT);});
+      for(var bi=pts.length-1;bi>=0;bi--){ctx.lineTo(vx(bi),vy(baseArr[bi]));}
+      ctx.closePath();
+      var grad=ctx.createLinearGradient(0,pT,0,pT+cH);
+      grad.addColorStop(0,_rgba(rgb,hi>=0?0.55:0.92));
+      grad.addColorStop(1,_rgba(rgb,hi>=0?0.40:0.70));
+      ctx.fillStyle=grad;ctx.fill();
+      // crisp Oberkante der Fläche
+      ctx.beginPath();
+      pts.forEach(function(p,i){var yT=vy(baseArr[i]+vals[i]);if(i===0)ctx.moveTo(vx(i),yT);else ctx.lineTo(vx(i),yT);});
+      ctx.strokeStyle=_rgba(rgb,1);ctx.lineWidth=1.25;ctx.lineJoin='round';ctx.stroke();
+      for(var ai=0;ai<pts.length;ai++){baseArr[ai]+=vals[ai];}
+    });
+
+    // Einstandslinie nochmal über die Flächen (sichtbar halten)
+    if(costBasis>0){
+      var cyT=vy(costBasis);
+      ctx.strokeStyle='#94A3B8';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(pL,cyT);ctx.lineTo(W-pR,cyT);ctx.stroke();
+      ctx.setLineDash([]);
     }
 
-    // Gesamtlinie (dicker, im Vordergrund)
+    // Gesamtlinie = Oberkante des Stapels
     ctx.beginPath();
     pts.forEach(function(p,i){if(i===0)ctx.moveTo(vx(0),vy(p.value));else ctx.lineTo(vx(i),vy(p.value));});
-    ctx.strokeStyle=assetNames.length===1?(assetMap[assetNames[0]]&&assetMap[assetNames[0]].color||totalColor):totalColor;
-    ctx.lineWidth=assetNames.length===1?2.5:3;
-    ctx.lineJoin='round';
-    ctx.stroke();
+    ctx.strokeStyle=tx;ctx.globalAlpha=hi>=0?0.45:0.85;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();ctx.globalAlpha=1;
 
-    // Punkte auf Gesamtlinie
+    // Punkte auf der Gesamtlinie
     pts.forEach(function(p,i){
       ctx.beginPath();ctx.arc(vx(i),vy(p.value),hi===i?5:2.5,0,Math.PI*2);
-      ctx.fillStyle=assetNames.length===1?(assetMap[assetNames[0]]&&assetMap[assetNames[0]].color||totalColor):totalColor;
-      ctx.fill();
+      ctx.fillStyle=tx;ctx.globalAlpha=(hi>=0&&hi!==i)?0.4:1;ctx.fill();ctx.globalAlpha=1;
       if(hi===i){ctx.strokeStyle=surf;ctx.lineWidth=2;ctx.stroke();}
     });
 
