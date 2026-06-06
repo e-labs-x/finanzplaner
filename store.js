@@ -2237,7 +2237,10 @@ const Calculator = {
       const rate = classReturns[item.type] !== undefined ? classReturns[item.type] : (classReturns.etf || 7);
       return s + (item.value / totalWeight) * rate;
     }, 0);
-    const monthlyReturn = Math.pow(1 + weightedReturn / 100, 1/12) - 1;
+    // R9: Intern wird in HEUTIGER KAUFKRAFT (real) gerechnet. weightedReturn bleibt die
+    // NOMINALE Renditeerwartung (Anzeige/Einstellung); für die Projektion die reale Rendite nutzen.
+    const weightedRealReturn = ((1 + weightedReturn / 100) / (1 + (p.inflationRate||2.3) / 100) - 1) * 100;
+    const monthlyReturn = Math.pow(1 + weightedRealReturn / 100, 1/12) - 1;  // real, monatlich
 
     const _now = new Date();
     // Sparraten: savingsPlans nach personId filtern (kein personId → Person 1); asset.monthlyPlan nach ownerId filtern
@@ -2288,10 +2291,10 @@ const Calculator = {
       const yearFromNow = i / 12;
       // Kinder: Ausbildungskosten während 18–(18+kDauer), inflationsbereinigt
       let kinderAbzug = 0;
-      const inflFaktor = Math.pow(1 + (p.inflationRate||2.3) / 100, yearFromNow);
+      // R9: real gerechnet → Kinder-Ausbildungskosten in heutiger Kaufkraft konstant
       kinderAlter.forEach(alter => {
         const ageNow = alter + yearFromNow;
-        if (ageNow >= 18 && ageNow < 18 + kDauer) kinderAbzug += kKosten * inflFaktor;
+        if (ageNow >= 18 && ageNow < 18 + kDauer) kinderAbzug += kKosten;
       });
       kinderGesamtkosten += kinderAbzug;
       // Erbimmobilie: Verkauf einmalig in Jahr erbInJahren; Miete laufend ab erbInJahren
@@ -2310,7 +2313,7 @@ const Calculator = {
         const rvMo = Math.round((rv.startAge - currentAge) * 12);
         if (i >= rvMo && i < rvMo + 1) einmaligBonus += rv.nettoEinmalig;
       });
-      const savingsThisMonth = monthlySavings * Math.pow(1 + gehaltsSteigerung / 100, yearFromNow);
+      const savingsThisMonth = monthlySavings;  // R9: Sparrate real konstant (steigt nominal mit der Inflation mit)
       depotAtRetire = depotAtRetire * (1 + monthlyReturn) + savingsThisMonth - kinderAbzug + erbBonus + einmaligBonus;
       if ((i + 1) % 12 === 0) verlaufAnspar.push({ alter: currentAge + Math.round((i + 1) / 12), depot: Math.round(Math.max(0, depotAtRetire)) });
     }
@@ -2425,15 +2428,12 @@ const Calculator = {
     const luecke       = r2(Math.max(0, ausgabenEffektiv - gesamtEinkommen - erbMieteMonatlich));
     const lueckeVoll   = r2(Math.max(0, ausgaben - gesamtEinkommenVoll - erbMieteMonatlich));
 
-    const inflMonthly = Math.pow(1 + (p.inflationRate||2.3) / 100, 1/12) - 1;
     let depotMonate = 0;
     if (luecke > 0) {
       let d = depotAtRetire;
-      let lueckeInfl = luecke;
       while (d > 0 && depotMonate < 600) {
         postRetBonusMonate.forEach(b => { if (depotMonate === b.monat) d += b.wert; });
-        d = d * (1 + monthlyReturn) - lueckeInfl;
-        lueckeInfl *= (1 + inflMonthly);
+        d = d * (1 + monthlyReturn) - luecke;  // R9: real → Entnahme in heutiger Kaufkraft konstant
         depotMonate++;
       }
     }
@@ -2446,10 +2446,8 @@ const Calculator = {
     const swr            = r2(depotAtRetire * swrRate / 100 / 12);
 
     // Steuer-Schätzung auf Depot-Entnahme (Aktien-ETF, 30% Teilfreistellung)
-    const gMonth = gehaltsSteigerung / 100 / 12;
-    const totalContributions = depotStart + (gMonth > 0
-      ? monthlySavings * (Math.pow(1 + gMonth, monthsToRetire) - 1) / gMonth
-      : monthlySavings * monthsToRetire);
+    // R9: reale Sparrate konstant → Summe der (realen) Einzahlungen
+    const totalContributions = depotStart + monthlySavings * monthsToRetire;
     const estimatedGains   = Math.max(0, depotAtRetire - totalContributions);
     const gainRatio        = depotAtRetire > 0 ? estimatedGains / depotAtRetire : 0;
     // Freistellungsauftrag (§ 20 Abs. 9 EStG): 1000 € / 2000 € gemeinsam je Jahr
@@ -2482,8 +2480,7 @@ const Calculator = {
           else if (grAktivM && d >= grCeilM)  { entnahmeM = entnahmeMonatlich; grAktivM = false; }
         }
         d = d * (1 + monthlyReturn) - r2(entnahmeM / (1 - effectiveTaxRate));
-        // Inflation: bei Lücken-Strategie wächst die Entnahme mit Inflation
-        if (entnahmeStrat === 'luecke') entnahmeM = r2(entnahmeM * (1 + inflMonthly));
+        // R9: real → Entnahme in heutiger Kaufkraft konstant (keine Inflations-Steigerung)
         depotMonate++;
       }
     }
@@ -2512,8 +2509,8 @@ const Calculator = {
         }
         const bruttoAkt = entnahmeAkt > 0 ? r2(entnahmeAkt / (1 - effectiveTaxRate)) : 0;
         const alter = p.targetRetirementAge + y;
-        const renditeJ = d * (Math.pow(1 + weightedReturn/100, 1) - 1);
-        d = d * (1 + weightedReturn/100) - bruttoAkt * 12;
+        const renditeJ = d * (Math.pow(1 + weightedRealReturn/100, 1) - 1);
+        d = d * (1 + weightedRealReturn/100) - bruttoAkt * 12;
         entnahmePlan.push({ alter, depot: Math.max(0, Math.round(d)), entnahme: Math.round(entnahmeAkt * 12), rendite: Math.round(renditeJ), guardrailAktiv });
         if (d <= 0) break;
       }
@@ -2528,7 +2525,6 @@ const Calculator = {
       let wcEntnahmeM = wcEntnahme;
       while (dWc > 0 && wcDepotMonate < 720) {
         dWc = dWc * (1 + monthlyReturn) - r2(wcEntnahmeM / (1 - effectiveTaxRate));
-        if (entnahmeStrat === 'luecke') wcEntnahmeM = r2(wcEntnahmeM * (1 + inflMonthly));
         wcDepotMonate++;
       }
     }
@@ -2539,16 +2535,18 @@ const Calculator = {
       const wcMax = Math.min(wcDepotMonate > 0 ? Math.ceil(wcDepotMonate/12)+2 : 40, 40);
       for (let y = 0; y <= wcMax; y++) {
         wcVerlauf.push({ alter: p.targetRetirementAge + y, depot: Math.max(0, Math.round(dWc)) });
-        dWc = dWc * (1 + weightedReturn/100) - r2(wcEntnahmeAkt / (1 - effectiveTaxRate)) * 12;
-        if (entnahmeStrat === 'luecke') wcEntnahmeAkt = r2(wcEntnahmeAkt * Math.pow(1 + inflMonthly, 12));
+        dWc = dWc * (1 + weightedRealReturn/100) - r2(wcEntnahmeAkt / (1 - effectiveTaxRate)) * 12;
         if (dWc <= 0) break;
       }
     }
 
     // Kaufkraft: Renteneinkommen in heutiger Kaufkraft; benötigte Summe nominal
     const inflationRate = p.inflationRate || 2.3;
-    const kaufkraftHeute  = yearsToRetire > 0 ? r2(gesamtEinkommen / Math.pow(1 + inflationRate / 100, yearsToRetire)) : gesamtEinkommen;
-    const ausgabenNominal = yearsToRetire > 0 ? r2(ausgaben * Math.pow(1 + inflationRate / 100, yearsToRetire)) : ausgaben;
+    // R9: Es wird intern in heutiger Kaufkraft gerechnet → gesamtEinkommen IST bereits der heutige
+    // Wert (keine erneute Abzinsung). Für die nominale Anzeige dient inflationFactorAtRetire.
+    const inflationFactorAtRetire = yearsToRetire > 0 ? Math.pow(1 + inflationRate / 100, yearsToRetire) : 1;
+    const kaufkraftHeute  = gesamtEinkommen;
+    const ausgabenNominal = r2(ausgaben * inflationFactorAtRetire);
 
     // ── KV-Lücke: Frühverrentung vor Regelrentenalter ──────────────────────────
     // ANNAHME (Design-Entscheidung 06.06.2026, R8): Die gesetzliche Rente wird AB
@@ -2651,6 +2649,8 @@ const Calculator = {
       kaufkraftHeute,
       ausgabenNominal,
       inflationRate,
+      inflationFactorAtRetire,
+      yearsToRetire,
       gehaltsSteigerung,
       kvStatus,
       kvLueckeJahre,
