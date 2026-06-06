@@ -5102,7 +5102,7 @@ function rpUpdateSidebarLiveInfo() {
       .filter(function(a){return(a.ownerId||'person_1')===personId||a.ownerId==='joint';})
       .reduce(function(s,a){return s+a.monthlyPlan*(a.ownerId==='joint'?0.5:1);},0);
   var depInfo=document.getElementById('rp-depot-live-info');
-  if(depInfo) depInfo.textContent='Depot heute: '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Mo';
+  if(depInfo) depInfo.textContent='Vorsorge-Depot (Anteil): '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Mo';
   var hdrInfo=document.getElementById('rp-depot-hdr-info');
   if(hdrInfo) hdrInfo.textContent=sp>0?eur(sp)+'/Mo':'';
   // Kinder info
@@ -5278,7 +5278,7 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
       '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:10px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ J.':r.wcDepotJahre.toFixed(0)+' J.')+' (−30% Schock)</div>':'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
-      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Depot heute</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div></div>'+
+      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Vorsorge-Depot (Anteil)</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:9px;color:var(--tx3)">ohne Immobilien/Sonstiges</div></div>'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Sparrate/Mo</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Ø Rendite</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
     '</div>'+
@@ -5859,7 +5859,7 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
 function rpRenderTabDepot(r1,r2,store,el) {
   var r=(rpS.person==='person_2'&&r2)?r2:r1;if(!r){el.innerHTML='';return;}
   el.innerHTML='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">'+
-    '<div class="rp-rc"><div class="rp-rc-title">Depot heute</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:11px;color:var(--tx3)">Ohne Immobilien + Sonstiges</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Vorsorge-Depot (Anteil)</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:11px;color:var(--tx3)">eigene + ½ gemeinsame · ohne Immobilien/Sonstiges</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Sparrate/Mo</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div><div style="font-size:11px;color:var(--tx3)">Sparpläne + Asset-Monatspläne</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Ø Rendite (gewichtet)</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div><div style="font-size:11px;color:var(--tx3)">Nach Portfolio-Komposition</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Abzug Kinder</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--amber)">'+eur(r.kinderGesamtkosten)+'</div><div style="font-size:11px;color:var(--tx3)">Ausbildungskosten gesamt</div></div>'+
