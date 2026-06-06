@@ -1076,9 +1076,9 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 }
 
 /* Einklappbare Einstellungs-Leiste (Chevron) */
-.rp-sb-collapse{align-self:flex-end;position:sticky;top:0;z-index:5;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;transition:background .15s;flex-shrink:0}
+.rp-sb-collapse{align-self:flex-end;position:-webkit-sticky;position:sticky;top:0;z-index:5;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;transition:background .15s;flex-shrink:0}
 .rp-sb-collapse:hover{background:var(--surf2)}
-.rp-sb-expand{display:none;position:sticky;top:0;z-index:5;align-items:center;gap:6px;width:max-content;padding:6px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;flex-shrink:0}
+.rp-sb-expand{display:none;position:-webkit-sticky;position:sticky;top:0;z-index:5;align-items:center;gap:6px;width:max-content;padding:6px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;flex-shrink:0}
 .rp-sb-expand:hover{background:var(--surf2)}
 .rp-sb-collapse svg,.rp-sb-expand svg{width:16px;height:16px}
 .rp-layout.rp-collapsed{grid-template-columns:1fr !important}
