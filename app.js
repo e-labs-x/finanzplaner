@@ -615,18 +615,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
   }
   function _scheduleRedraw(){
-    // Nur bei echter BREITEN-Änderung (Rotation/Fenster) neu zeichnen. Die iOS-Adressleiste
-    // beim Scrollen ändert nur die Höhe — das darf kein Re-Render auslösen (sonst „refresht"
-    // es im Rente-Tab dauernd beim Scrollen).
-    if(window.innerWidth === _lastRedrawW) return;
+    // Nur bei echter, größerer BREITEN-Änderung (Rotation/Fenster) neu zeichnen.
+    // Schwelle 24px ignoriert: reine Höhenänderungen (iOS-Adressleiste beim Scrollen)
+    // und Scrollbalken-Breite (~15px) — sonst rendert der Rente-Tab beim Scrollen dauernd neu.
+    if(Math.abs(window.innerWidth - _lastRedrawW) < 24) return;
     clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(_redrawActiveCharts, 100);
+    _resizeTimer = setTimeout(_redrawActiveCharts, 150);
   }
+  // Nur window.resize (feuert bei Rotation/Fenstergröße). Der frühere ResizeObserver auf
+  // document.documentElement wurde entfernt — sein Callback baute via rpRenderMain das DOM
+  // neu auf, was die Höhe änderte und den Observer erneut auslöste = Re-Render-Schleife.
   window.addEventListener('resize', _scheduleRedraw);
-  // ResizeObserver feuert nach abgeschlossenem Layout — zuverlässig auf iOS bei Rotation
-  if(window.ResizeObserver){
-    new ResizeObserver(_scheduleRedraw).observe(document.documentElement);
-  }
   // Azure Sync initialisieren
   AzureSync.init();
   AzureSync.startPolling();
