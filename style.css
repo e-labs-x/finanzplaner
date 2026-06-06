@@ -1063,15 +1063,10 @@ canvas#avc{display:block;width:100%;cursor:pointer}
 
 /* Rentenplanung — Sidebar wider */
 .rp-layout{grid-template-columns:390px 1fr !important}
-/* Rente-Tab: Two-Pane Flex */
-@media(min-width:960px){
-  #p-rente.active{overflow:hidden !important}
-  #p-rente.active .rp-layout{display:flex !important;flex-direction:row;height:calc(100dvh - 12px);gap:16px}
-  #p-rente.active .rp-sidebar{flex:0 0 390px;width:390px;min-height:0;overflow-y:auto !important;overflow-x:hidden;overscroll-behavior:contain}
-  #p-rente.active .rp-sidebar > *{flex-shrink:0}
-  #p-rente.active .rp-main{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  #p-rente.active .rp-main > *{flex-shrink:0}
-}
+/* Rente-Tab (Weg 1): KEIN eigenständiges Spalten-Scrollen mehr. Die ganze Rente-Seite
+   scrollt als ein Bereich über .page (wie auf dem iPhone) — verhindert iOS Pull-to-Refresh
+   durch verschachtelte Scroll-Container auf dem iPad. Zweispaltiges Raster (390px 1fr,
+   align-items:start) bleibt visuell erhalten, beide Spalten scrollen gemeinsam. */
 /* Sichtbarer Scrollbalken Sidebar */
 #p-rente .rp-sidebar::-webkit-scrollbar{width:8px}
 #p-rente .rp-sidebar::-webkit-scrollbar-track{background:var(--surf2);border-radius:4px}

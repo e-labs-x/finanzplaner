@@ -3984,14 +3984,13 @@ function rpInit(){
 }
 
 function rpSidebarHeight(){
-  if(window.innerWidth<960)return;
+  // Weg 1: kein eigenständiges Spalten-Scrollen mehr — die Rente-Seite scrollt als ein
+  // Bereich (wie iPhone), verhindert iOS Pull-to-Refresh. Etwaige früher gesetzte
+  // Inline-Höhen/Overflow zurücksetzen, damit die Spalten natürlich mitwachsen.
   var sb=document.querySelector('#p-rente .rp-sidebar');
   var mn=document.querySelector('#p-rente .rp-main');
-  if(!sb||!mn)return;
-  var top=sb.getBoundingClientRect().top;
-  var h=(window.innerHeight-top)+'px';
-  sb.style.height=h; sb.style.overflowY='auto';
-  mn.style.height=h; mn.style.overflowY='auto';
+  if(sb){ sb.style.height=''; sb.style.overflowY=''; }
+  if(mn){ mn.style.height=''; mn.style.overflowY=''; }
 }
 
 function rpRender(){
