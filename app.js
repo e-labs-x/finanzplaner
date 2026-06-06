@@ -607,12 +607,18 @@ document.addEventListener('DOMContentLoaded', function() {
   applySB();
   if (window.innerWidth >= 768) nav('home');
   var _resizeTimer;
+  var _lastRedrawW = window.innerWidth;
   function _redrawActiveCharts(){
+    _lastRedrawW = window.innerWidth;
     if(document.getElementById('p-rente').classList.contains('active')){ rpSidebarHeight(); rpRenderMain(); }
     if(document.getElementById('p-gehalt').classList.contains('active')) ghRenderRealWage();
     if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
   }
   function _scheduleRedraw(){
+    // Nur bei echter BREITEN-Änderung (Rotation/Fenster) neu zeichnen. Die iOS-Adressleiste
+    // beim Scrollen ändert nur die Höhe — das darf kein Re-Render auslösen (sonst „refresht"
+    // es im Rente-Tab dauernd beim Scrollen).
+    if(window.innerWidth === _lastRedrawW) return;
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(_redrawActiveCharts, 100);
   }
