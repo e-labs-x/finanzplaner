@@ -3977,6 +3977,7 @@ var rpS={person:'person_1',scenarioId:'sz_basis',formOpen:false,weitere:[],rueru
 
 function rpInit(){
   var store=FP.Store.get();
+  rpApplySidebarCollapsed();
   rpRenderScenarios();
   rpRender();
   rpFillForm();
@@ -3984,13 +3985,39 @@ function rpInit(){
 }
 
 function rpSidebarHeight(){
-  // Weg 1: kein eigenständiges Spalten-Scrollen mehr — die Rente-Seite scrollt als ein
-  // Bereich (wie iPhone), verhindert iOS Pull-to-Refresh. Etwaige früher gesetzte
-  // Inline-Höhen/Overflow zurücksetzen, damit die Spalten natürlich mitwachsen.
   var sb=document.querySelector('#p-rente .rp-sidebar');
   var mn=document.querySelector('#p-rente .rp-main');
-  if(sb){ sb.style.height=''; sb.style.overflowY=''; }
-  if(mn){ mn.style.height=''; mn.style.overflowY=''; }
+  var isTouch=document.documentElement.classList.contains('touch');
+  // Touch (iPad/iPhone) oder schmal: EIN Scroll-Bereich → keine festen Höhen (verhindert
+  // iOS Pull-to-Refresh durch verschachteltes Scrollen). Eingeklappt ebenfalls.
+  var collapsed=!!document.querySelector('#p-rente .rp-layout.rp-collapsed');
+  if(isTouch||window.innerWidth<960||collapsed){
+    if(sb){ sb.style.height=''; sb.style.overflowY=''; }
+    if(mn){ mn.style.height=''; mn.style.overflowY=''; }
+    return;
+  }
+  // Desktop (Maus/Trackpad): Zwei-Pane mit eigenständigem Scroll wie zuvor.
+  if(!sb||!mn)return;
+  var top=sb.getBoundingClientRect().top;
+  var h=(window.innerHeight-top)+'px';
+  sb.style.height=h; sb.style.overflowY='auto';
+  mn.style.height=h; mn.style.overflowY='auto';
+}
+
+function rpToggleSidebar(){
+  var lay=document.querySelector('#p-rente .rp-layout');
+  if(!lay)return;
+  var collapsed=lay.classList.toggle('rp-collapsed');
+  try{ localStorage.setItem('fp_rp_sb_collapsed', collapsed?'1':'0'); }catch(e){}
+  // Breite ändert sich → Höhen-Logik + Chart neu
+  setTimeout(function(){ rpSidebarHeight(); rpRenderMain(); }, 60);
+}
+
+function rpApplySidebarCollapsed(){
+  var lay=document.querySelector('#p-rente .rp-layout');
+  if(!lay)return;
+  var c=false; try{ c=localStorage.getItem('fp_rp_sb_collapsed')==='1'; }catch(e){}
+  lay.classList.toggle('rp-collapsed', c);
 }
 
 function rpRender(){
