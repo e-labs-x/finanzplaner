@@ -101,6 +101,29 @@ Letzte Aktualisierung: 2026-06-06
 - [ ] **Hosting-Konsolidierung evaluieren** — Wenn für die Bank-Integration ohnehin Azure Functions aufgebaut werden: prüfen, ob das App-Hosting von **GitHub Pages → Azure Static Web Apps** ziehen sinnvoll ist (dann alles bei einem Anbieter, evtl. engere Integration mit Functions + Sync).
   - Kontext (06.06.2026): Heute bewusst NICHT umgestellt. Aktuell: Code auf GitHub Pages (`e-labs-x.github.io`), Daten-Sync auf Azure Blob — saubere, funktionierende Trennung. Eine Migration brächte **keinen funktionalen Mehrwert**, aber Risiko/Aufwand: URL-Wechsel (App auf allen Geräten neu installieren), Service-Worker-/Cache-Neuaufbau, CORS + Azure-Sync neu konfigurieren. GitHub Pages + Azure Functions können auch problemlos koexistieren → nur konsolidieren, wenn man einen klaren Grund hat.
 
+### Rente — Audit-Nacharbeiten _(Stand 06.06.2026)_
+_Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfreibetrag-Doppelabzug bereits erledigt & deployed (`?v=20260606v`)._
+- [ ] **R7** — Günstigerprüfung §32d: Soli-Inkonsistenz (Schwelle sollte 25 % statt 26,375 % sein)
+- [ ] **R8** — KV-Kosten der Frührente (63–67) werden nicht zur Rentenlücke addiert
+- [ ] **R9** — Rentenwert wird über die Jahre nicht dynamisiert (Real/Nominal mischt; teils bewusst offen)
+- [ ] **R10** — Entnahme-Taktung: Haltbarkeit (monatlich) vs. Verlauf/Worst-Case (jährlich) inkonsistent
+- [ ] **R11** — Alter nur über Geburtsjahr (ohne Monat) → bis ±1 Jahr Fehler
+- [ ] **R12** — bAV-Einmalauszahlung ohne Fünftelregelung §34 EStG
+- [ ] **R13** — SV-Sätze teils hartkodiert statt aus `assumptions` (doppelte Wahrheitsquelle)
+- [ ] **R14** — `person_2.isActive` vs. `settings.partnerEnabled` inkonsistent (Verwirrungsgefahr)
+- [ ] **R15** — Halbeinkünfte-Modus ohne 12/62-Plausibilitätsprüfung
+
+### Sicherheit / Sync _(aus Audit 05.06.2026, offen-optional)_
+- [ ] Azure: HTTPS-only erzwingen
+- [ ] Azure: Soft Delete / Versioning für den Blob-Container aktivieren
+- [ ] `sw.js`: SHELL-/Versionsmarker pflegen (kosmetisch)
+- [ ] Rente-Ausgabenbasis `getAusgabenAvg` bzgl. archivierter Objekte entscheiden (bewusst offen gelassen)
+
+### Wartung / Sonstiges _(aus CLAUDE.md-Backlog)_
+- [ ] **Kategorien / Fixkosten** — UX-Überarbeitung des Eingabe-Flows (vereinfachen)
+- [ ] **Google Fonts lokal hosten** — Inter lokal einbinden statt von Google laden (vermeidet IP-Übermittlung an Google)
+- [ ] **Altes Daten-Repo löschen** — `e-labs-x/finanzplaner-data` (alter GitHub-Sync) nach Übergangszeit entfernen
+
 ---
 
 ## Vor jeder neuen Version prüfen
