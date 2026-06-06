@@ -105,7 +105,7 @@ Letzte Aktualisierung: 2026-06-06
 _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfreibetrag-Doppelabzug bereits erledigt & deployed (`?v=20260606v`)._
 - [ ] **R7** — Günstigerprüfung §32d: Soli-Inkonsistenz (Schwelle sollte 25 % statt 26,375 % sein)
 - [x] **R8** — ✅ ERLEDIGT 06.06. (`?v=20260606w`, Commit 4af8946): KV-Lücke entfällt, da Rente ab Eintrittsalter bezogen wird → ab da KVdR-pflichtiger Rentner (DRV zahlt halbe KV, Depot-Entnahmen beitragsfrei). `kvLueckeJahre=0`; Berechnungsblock bleibt deaktiviert für evtl. späteren Rentenbeginn (Option B). Verifiziert: kvLueckeStatus=kein, Rente/Lücke unverändert.
-- [ ] **R9** — Rentenwert wird über die Jahre nicht dynamisiert (Real/Nominal mischt; teils bewusst offen)
+- [x] **R9** — ✅ ERLEDIGT 06.06. (`?v=20260606y`): Projektion durchgängig in heutiger Kaufkraft (reale Renditen, reale konstante Entnahme) → behob zu optimistische Depot-Haltbarkeit (Nutzer: 37→26 J.). Umschalter „heutiges/zukünftiges Geld" im Renten-Tab (zentrale rpToNominal-Transform; eine Wahrheit, zwei Anzeigen).
 - [ ] **R10** — Entnahme-Taktung: Haltbarkeit (monatlich) vs. Verlauf/Worst-Case (jährlich) inkonsistent
 - [ ] **R11** — Alter nur über Geburtsjahr (ohne Monat) → bis ±1 Jahr Fehler
 - [ ] **R12** — bAV-Einmalauszahlung ohne Fünftelregelung §34 EStG
