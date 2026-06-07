@@ -1868,7 +1868,7 @@ function avRenderKatObjekte(){
       cats.sort(function(a,b){return Math.abs(b.total)-Math.abs(a.total);});
       row+=cats.map(function(c){
         var cpct=(Math.abs(c.total)/Math.abs(d.total)*100).toFixed(0);
-        return '<div class="av-kat-sub" onclick="avCatDetail(\''+c.cat.id+'\')">'+
+        return '<div class="av-kat-sub" onclick="avCatDetail(\''+c.cat.id+'\',\''+d.obj.id+'\')">'+
           '<div class="av-kat-dot" style="background:'+(c.cat.color||'#6B7280')+'"></div>'+
           '<div class="av-kat-name">'+c.cat.name+'</div>'+
           '<div class="av-kat-pct">'+cpct+'%</div>'+
@@ -1925,30 +1925,40 @@ function avRenderViz(bc){
 }
 
 /* ── Kategorie-Detailansicht ── */
-function avCatDetail(id){
+function avCatDetail(id,objId){
   var cat=FP.Store.Categories.getAll().find(function(c){return c.id===id;});
   if(!cat)return;
+  var obj=objId?FP.Store.Objects.getAll().find(function(o){return o.id===objId;}):null;
   var years=FP.Calculator.getAvailableYears();
   if(!years.length)return;
-  var trend=FP.Calculator.getCategoryTrend(id,years[0],years[years.length-1]);
+
+  // Alle Buchungen dieser Kategorie (optional auf ein Objekt eingeschränkt), neueste zuerst
+  var store=FP.Store.get();
+  var allTxs=store.transactions.filter(function(tx){return tx.categoryId===id&&(!objId||tx.objectId===objId);});
+  allTxs.sort(function(a,b){
+    var ap=a.date.split('.'),bp=b.date.split('.');
+    return (parseInt(bp[1])*12+parseInt(bp[0]))-(parseInt(ap[1])*12+parseInt(ap[0]));
+  });
+
+  // Verlauf: kategorieweit – oder objekt-gefiltert aus allTxs aufgebaut
+  var trend;
+  if(objId){
+    var _tm={};
+    allTxs.forEach(function(tx){_tm[tx.date]=(_tm[tx.date]||0)+tx.amount;});
+    trend=Object.keys(_tm).map(function(ds){var p=ds.split('.');return {date:ds,year:parseInt(p[1]),month:parseInt(p[0]),total:_tm[ds]};})
+      .sort(function(a,b){return (a.year*12+a.month)-(b.year*12+b.month);});
+  } else {
+    trend=FP.Calculator.getCategoryTrend(id,years[0],years[years.length-1]);
+  }
 
   // Aggregate by year
   var byYear={};
-  years.forEach(function(y){byYear[y]=0;});
   trend.forEach(function(p){byYear[p.year]=(byYear[p.year]||0)+p.total;});
 
   var total=trend.reduce(function(s,p){return s+p.total;},0);
   var activeYears=Object.values(byYear).filter(function(v){return v>0;});
   var avgYear=activeYears.length?total/activeYears.length:0;
   var avgMonth=trend.length?total/trend.length:0;
-
-  // All transactions for this category, newest first
-  var store=FP.Store.get();
-  var allTxs=store.transactions.filter(function(tx){return tx.categoryId===id;});
-  allTxs.sort(function(a,b){
-    var ap=a.date.split('.'),bp=b.date.split('.');
-    return (parseInt(bp[1])*12+parseInt(bp[0]))-(parseInt(ap[1])*12+parseInt(ap[0]));
-  });
 
   var el=document.getElementById('av-kat-list');
   if(!el)return;
@@ -2003,7 +2013,7 @@ function avCatDetail(id){
       '<div class="av-cd-back" onclick="avCatBack()">‹ Zurück</div>'+
       '<div class="av-cd-hdr">'+
         '<div class="av-cd-dot" style="background:'+color+'"></div>'+
-        '<div class="av-cd-name">'+(icon||'')+'<span>'+cat.name+'</span></div>'+
+        '<div class="av-cd-name">'+(icon||'')+'<span>'+cat.name+(obj?' · '+esc(obj.name):'')+'</span></div>'+
       '</div>'+
       '<div class="av-cd-stats">'+
         '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Gesamt</div><div class="av-cd-stat-val">'+eur(total)+'</div></div>'+
