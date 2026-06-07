@@ -2105,6 +2105,7 @@ const Calculator = {
       byCat,
       byYear,
       byMonth,
+      txs,
     };
   },
 

@@ -2340,6 +2340,31 @@ function obRenderDetail(id){
       '</div>';
   }).join('');
 
+  // Einzelne Buchungen (monatsweise gruppiert, neueste zuerst)
+  var obCatMap={}; FP.Store.Categories.getAll().forEach(function(c){ obCatMap[c.id]=c; });
+  var obByMo={};
+  (s.txs||[]).forEach(function(tx){ (obByMo[tx.date]=obByMo[tx.date]||[]).push(tx); });
+  var obMoKeys=Object.keys(obByMo).sort(function(a,b){ var pa=a.split('.'),pb=b.split('.'); return (pb[1]-pa[1])||(pb[0]-pa[0]); });
+  var obTxHtml=obMoKeys.map(function(mk){
+    var p=mk.split('.'); var moLbl=MON[parseInt(p[0])-1]+' '+p[1];
+    var lst=obByMo[mk];
+    var moTot=lst.reduce(function(sum,t){ return sum+t.amount; },0);
+    var rws=lst.map(function(tx){
+      var c=obCatMap[tx.categoryId];
+      var lbl=tx.rawName||(c?c.name:'—');
+      var subP=[c?c.name:null, tx.note||null].filter(Boolean);
+      var ref=tx.amount<0;
+      return '<div class="av-cd-tx">'+
+        '<div class="av-cd-tx-lbl">'+
+          '<div class="av-cd-tx-name">'+(ref?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+'</div>'+
+          (subP.length?'<div class="av-cd-tx-note">'+esc(subP.join(' · '))+'</div>':'')+
+        '</div>'+
+        '<div class="av-cd-tx-amt" style="color:'+(ref?'var(--green)':'var(--tx)')+'">'+(ref?'+ ':'')+eur(Math.abs(tx.amount))+'</div>'+
+      '</div>';
+    }).join('');
+    return '<div class="av-cd-mo-hdr"><span style="font-weight:700;color:var(--tx)">'+moLbl+'</span><span style="font-weight:700;color:var(--tx)">'+eur(Math.abs(moTot))+'</span></div>'+rws;
+  }).join('');
+
   var isArch=o.status==='archiviert';
   var isHidden=!!o.hideFromInput;
   el.innerHTML=
@@ -2360,6 +2385,7 @@ function obRenderDetail(id){
     '</div>'+
     (cats.length?'<div class="ob-section"><div class="ob-section-hdr">Nach Kategorie</div>'+catRows+'</div>':'') +
     (years.length?'<div class="ob-section"><div class="ob-section-hdr">Nach Jahr</div>'+yearRows+'</div>':'') +
+    (obTxHtml?'<div class="ob-section"><div class="ob-section-hdr">Buchungen</div>'+obTxHtml+'</div>':'') +
     (!cats.length&&!years.length?'<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Noch keine Buchungen für dieses Objekt.</div>':'');
 }
 
