@@ -47,7 +47,7 @@ function createDefaultStore() {
       {
         id:        'person_1',
         name:      'Person 1',
-        birthDate: '',   // Geburtsjahr — Tag/Monat ggf. anpassen
+        birthDate: '',             // Bitte eintragen
         isPrimary: true,
         gender:    'm',
       },
@@ -94,7 +94,7 @@ function createDefaultStore() {
       { id:'cat_appletv',       name:'Apple TV',         parentId:'cat_abos', group:'freizeit',  color:'var(--cat-slate)', hidden:false, sortOrder:194,source:'system' },
       { id:'cat_icloud',        name:'iCloud',           parentId:'cat_abos', group:'freizeit',  color:'var(--cat-blue)', hidden:false, sortOrder:195,source:'system' },
 
-      { id:'cat_sim_gps',       name:'SIM GPS Kind 1',   parentId:null,       group:'fixkosten', color:'var(--cat-cyan)', hidden:false, sortOrder:20, source:'system' },
+      { id:'cat_sim_gps',       name:'SIM GPS',          parentId:null,       group:'fixkosten', color:'var(--cat-cyan)', hidden:false, sortOrder:20, source:'system' },
       { id:'cat_sonstiges',     name:'Sonstiges',        parentId:null,       group:'freizeit',  color:'var(--cat-slate)', hidden:false, sortOrder:99, source:'system' },
 
       // Fixkosten-only Kategorien (showInInput:false → erscheinen nicht in der Eingabe-Leiste)
@@ -112,19 +112,7 @@ function createDefaultStore() {
     ],
 
     // ── Objekte / Projekte ──
-    objects: [
-      {
-        id:          'obj_auto',
-        name:        'Mein Auto',
-        type:        'fahrzeug',
-        description: '',
-        startDate:   '01.2020',
-        endDate:     null,
-        icon:        '🚗',
-        color:       '#2563EB',
-        status:      'aktiv',
-      },
-    ],
+    objects: [],
 
     // ── Transaktionen ──
     transactions: [],
@@ -133,29 +121,7 @@ function createDefaultStore() {
     // type: 'fixed' | 'variable' | 'savings' (Rücklage)
     // Kein autoGenerate mehr — alle können per generateRecurring() gebucht werden
     // source auf Transaktionen: 'recurring', recurringId: id dieser Vorlage
-    recurring: [
-      { id:'rec_hausgeld',    name:'Hausgeld',    amount:284.78, type:'fixed',    categoryId:'cat_wohnung',     objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_waerme',      name:'Heizung',             amount:208.00, type:'fixed',    categoryId:'cat_wohnung',     objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_hort',        name:'Hort / KiTa',               amount:151.00, type:'fixed',    categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_strom',       name:'Strom',                amount:68.00,  type:'fixed',    categoryId:'cat_wohnung',     objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_internet',    name:'Internet & TV',     amount:64.88,  type:'fixed',    categoryId:'cat_wohnung',     objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_kfzvers',     name:'KFZ-Versicherung',     amount:56.63,  type:'fixed',    categoryId:'cat_autoteile',   objectId:'obj_auto', personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_kfzsteuer',   name:'KFZ Steuer',                amount:31.92,  type:'fixed',    categoryId:'cat_steuer',      objectId:'obj_auto', personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_gez',         name:'GEZ',                       amount:18.36,  type:'fixed',    categoryId:'cat_steuer',      objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_grundsteuer', name:'Grundsteuer',               amount:17.81,  type:'fixed',    categoryId:'cat_steuer',      objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_handy',       name:'Handyvertrag Person 1',         amount:9.99,   type:'fixed',    categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_haftpflicht', name:'Haftpflicht / Hausrat',     amount:13.93,  type:'fixed',    categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_adac',        name:'ADAC',                      amount:8.25,   type:'fixed',    categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_bu',          name:'BU Versicherung',           amount:98.08,  type:'variable', categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_schwimm',     name:'Schwimmkurs Kind 1',        amount:111.57, type:'variable', categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_tiefgarage',  name:'Tiefgarage',                amount:71.40,  type:'variable', categoryId:'cat_parken',      objectId:'obj_auto', personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_rechtsschutz',name:'Rechtsschutz',   amount:18.28,  type:'variable', categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_rentenver',   name:'Private Rentenversicherung',     amount:36.92,  type:'variable', categoryId:'cat_sonstiges',   objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_steuervor',   name:'Steuervorauszahlung',       amount:57.92,  type:'variable', categoryId:'cat_steuer',      objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_rl_auto',     name:'Autokauf Rücklage',         amount:500.00, type:'savings',  categoryId:'cat_autoteile',   objectId:'obj_auto', personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_rl_kfz',      name:'KFZ Wartung Rücklage',     amount:30.06,  type:'savings',  categoryId:'cat_autoteile',   objectId:'obj_auto', personId:'person_1', validFrom:'01.2022', validUntil:null },
-      { id:'rec_rl_renov',    name:'Renovierung Rücklage',      amount:40.00,  type:'savings',  categoryId:'cat_wohnung',     objectId:null,          personId:'person_1', validFrom:'01.2022', validUntil:null },
-    ],
+    recurring: [],
 
     // ── Gehalt ──
     salary: { person_1: {}, person_2: {} },
@@ -164,92 +130,7 @@ function createDefaultStore() {
     savingsPlans: [],
 
     // ── Assets ──
-    assets: [
-      {
-        id:         'asset_etf_1',
-        name:       'ETF Welt',
-        type:       'etf',
-        ownerId:    'person_1',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       {},
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-      {
-        id:         'asset_gm_1',
-        name:       'Geldmarkt',
-        type:       'geldmarkt',
-        ownerId:    'person_1',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       {},
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-      {
-        id:         'asset_etf_2',
-        name:       'ETF Global (Kind 1)',
-        type:       'etf',
-        ownerId:    'joint',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       {},
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-      {
-        id:         'asset_etf_3',
-        name:       'ETF Global (Kind 2)',
-        type:       'etf',
-        ownerId:    'joint',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       {},
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-      {
-        id:         'asset_tagesgeld',
-        name:       'Tagesgeld',
-        type:       'tagesgeld',
-        ownerId:    'person_1',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       {},
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-      {
-        id:         'asset_immobilie',
-        name:       'Eigentumswohnung',
-        type:       'immobilie',
-        ownerId:    'joint',
-        wkn:        '',
-        isin:       '',
-        currency:   'EUR',
-        snapshots:  [],
-        meta:       { address:'', purchaseYear:'2020', purchasePrice:0 },
-        dataSource: 'manual',
-        apiConfig:  null,
-        status:     'aktiv',
-      },
-    ],
+    assets: [],
 
     // ── Freistellungsaufträge ──
     freistellungsauftraege: [],

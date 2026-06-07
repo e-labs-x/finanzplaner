@@ -3320,7 +3320,7 @@ var _XLSX_CAT_MAP = {
   'Gesundheit':'cat_gesundheit','Geschenke':'cat_geschenke','Friseur':'cat_friseur',
   'Weiterbildung':'cat_weiterbildung','Lotto':'cat_lotto','Amazon Prime':'cat_amazon',
   'Netflix':'cat_netflix','YouTube Premium':'cat_youtube','Apple TV':'cat_appletv',
-  'iCloud':'cat_icloud','Sonstiges':'cat_sonstiges','SIM GPS Kind 1':'cat_sim_gps',
+  'iCloud':'cat_icloud','Sonstiges':'cat_sonstiges','SIM GPS':'cat_sim_gps',
 };
 
 function _xlsxParseAmount(v){

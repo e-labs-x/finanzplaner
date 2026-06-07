@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260607h">
+<link rel="stylesheet" href="style.css?v=20260607i">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 0607h</div>
+      <div class="sb-ver">v12.0 · build 0607i</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -605,7 +605,7 @@
             <div class="st-card-body">
               <div class="rp-sub">Person 1</div>
               <div class="st-stamm-grid">
-                <div class="fg" style="margin:0"><label class="fl">Name</label><input class="fi" id="st-p1-name" type="text" placeholder="Person 1" oninput="stSaveStammdaten()"></div>
+                <div class="fg" style="margin:0"><label class="fl">Name</label><input class="fi" id="st-p1-name" type="text" placeholder="Vorname" oninput="stSaveStammdaten()"></div>
                 <div class="fg" style="margin:0"><label class="fl">Geburtsdatum</label><input class="fi" id="st-p1-birth" type="text" placeholder="" oninput="stSaveStammdaten()"></div>
               </div>
               <div class="rp-tgl-row">
@@ -1243,7 +1243,7 @@
     <div class="modal-handle"></div>
     <div class="modal-ttl" id="mfk-ttl">Vorlage hinzufügen</div>
     <input type="hidden" id="mfk-id">
-    <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="mfk-name" type="text" placeholder="z.B. Strom" autocomplete="off"></div>
+    <div class="fg"><label class="fl">Bezeichnung</label><input class="fi" id="mfk-name" type="text" placeholder="z.B. Stromrechnung" autocomplete="off"></div>
     <div class="fg"><label class="fl">Betrag (€/Monat)</label><input class="fi" id="mfk-amount" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
     <div class="fg"><label class="fl">Typ</label>
       <select class="fs" id="mfk-type">
@@ -1460,8 +1460,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260607h"></script>
-<script src="app.js?v=20260607h"></script>
+<script src="store.js?v=20260607i"></script>
+<script src="app.js?v=20260607i"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

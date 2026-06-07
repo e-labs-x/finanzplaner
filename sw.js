@@ -1,7 +1,7 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20260607h';
+const CACHE_NAME = 'fp-20260607i';
 
 // Bewusst OHNE ?v-Marker: Für JS/CSS gilt unten Network-First (echte Version kommt immer
 // frisch aus dem Netz + wird unter ihrer ?v-URL gecacht). Der SHELL-Precache ist nur der
