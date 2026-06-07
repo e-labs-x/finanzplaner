@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260607d">
+<link rel="stylesheet" href="style.css?v=20260607e">
 </head>
 <body>
 
@@ -265,18 +265,18 @@
                 <div class="rp-f">
                   <div class="rp-fl"><span>Regelrentenalter</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-regular-age" type="number" min="60" max="70" step="1" placeholder="67" onchange="rpQuickSave()"><span class="rp-ni-unit">Jahre</span></div>
-                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">§235 SGB VI: Jg. 1964+ = 67 · Jg. 1947–1963 = gestaffelt (z.B. Jg. 1960 = 66 J. 8 M.)</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">§235 SGB VI: Jahrgang 1964+ = 67 · Jahrgang 1947–1963 = gestaffelt (z.B. Jahrgang 1960 = 66 Jahre 8 Monate)</div>
                 </div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Krankenversicherung</span></div>
                   <select class="fs" id="rp-kv-status" onchange="rpQuickSave()" style="width:100%">
-                    <option value="gkv">Gesetzlich (GKV)</option>
-                    <option value="pkv">Privat (PKV)</option>
+                    <option value="gkv">Gesetzliche Krankenversicherung</option>
+                    <option value="pkv">Private Krankenversicherung</option>
                   </select>
                   <div style="font-size:11px;color:var(--tx3);margin-top:3px">Relevant für Familienversicherung bei Frühverrentung</div>
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Gehaltssteigerung p.a.</span><span class="rp-fv" id="rp-gehaltssteig-sv">2.0 %</span></div>
+                  <div class="rp-fl"><span>Gehaltssteigerung pro Jahr</span><span class="rp-fv" id="rp-gehaltssteig-sv">2.0 %</span></div>
                   <input type="range" class="rp-sl-range" id="rp-gehaltssteig-sl" min="0" max="5" step="0.5" oninput="rpSyncSlider('gehaltssteig',this.value);rpQuickSave()">
                   <input type="hidden" id="rp-gehaltssteig">
                 </div>
@@ -293,7 +293,7 @@
                 <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Werte aus der <strong>Renteninformation der DRV</strong> übernehmen.</div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Rentenpunkte</span><span style="font-size:10px;color:var(--tx3)">laut Renteninformation</span></div>
-                  <div class="rp-ni-row"><input class="rp-ni" id="rp-punkte" type="number" min="0" step="0.1" inputmode="decimal" placeholder="z.B. 32.5" onchange="rpQuickSave()"><span class="rp-ni-unit">EP</span></div>
+                  <div class="rp-ni-row"><input class="rp-ni" id="rp-punkte" type="number" min="0" step="0.1" inputmode="decimal" placeholder="z.B. 32.5" onchange="rpQuickSave()"><span class="rp-ni-unit">Punkte</span></div>
                 </div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Stand der Renteninformation</span></div>
@@ -302,7 +302,7 @@
                 <div class="rp-f" id="rp-py-wrap">
                   <div class="rp-fl"><span>Neue Punkte/Jahr</span><span class="rp-fv" id="rp-punkte-year-sv"></span></div>
                   <div id="rp-py-auto" style="display:none;background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--tx2);display:flex;align-items:center;justify-content:space-between;gap:8px">
-                    <span>⚡ Auto: <strong id="rp-py-auto-val">–</strong> EP/Jahr</span>
+                    <span>⚡ Auto: <strong id="rp-py-auto-val">–</strong> Punkte/Jahr</span>
                     <button onclick="rpSetEpMode('manuell')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer">Manuell</button>
                   </div>
                   <div id="rp-py-manual" style="display:none">
@@ -320,17 +320,17 @@
                   <input class="rp-ni" id="rp-rentenwert" type="number" min="0" step="0.01" placeholder="40.79" onchange="rpQuickSave()">
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>KV-Zusatzbeitrag</span><span style="font-size:10px;color:var(--tx3)">deiner Krankenkasse</span></div>
+                  <div class="rp-fl"><span>Krankenversicherungs-Zusatzbeitrag</span><span style="font-size:10px;color:var(--tx3)">deiner Krankenkasse</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-kv-zusatz" type="number" min="0" max="5" step="0.01" placeholder="2.99" onchange="rpSaveKvZusatz(this.value)"><span class="rp-ni-unit">%</span></div>
-                  <div style="font-size:11px;color:var(--tx3);margin-top:3px" id="rp-kv-info">KV-Satz Rentner: <span id="rp-kv-satz-anzeige">8,80</span> % (= (14,6 + Zusatz) / 2)</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:3px" id="rp-kv-info">Krankenversicherungs-Satz Rentner: <span id="rp-kv-satz-anzeige">8,80</span> % (= (14,6 + Zusatzbeitrag) / 2)</div>
                 </div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Familienversicherungsgrenze</span><span style="font-size:10px;color:var(--tx3)">§ 10 SGB V · jährlich prüfen</span></div>
-                  <div class="rp-ni-row"><input class="rp-ni" id="rp-fv-grenze" type="number" min="0" step="1" placeholder="505" onchange="rpSaveFvGrenze(this.value)"><span class="rp-ni-unit">€/Mo</span></div>
+                  <div class="rp-ni-row"><input class="rp-ni" id="rp-fv-grenze" type="number" min="0" step="1" placeholder="505" onchange="rpSaveFvGrenze(this.value)"><span class="rp-ni-unit">€/Monat</span></div>
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>GKV Mindestbemessungsgrundlage</span><span style="font-size:10px;color:var(--tx3)">§ 240 SGB V · jährlich prüfen</span></div>
-                  <div class="rp-ni-row"><input class="rp-ni" id="rp-gkv-mindest" type="number" min="0" step="0.01" placeholder="1131.67" onchange="rpSaveGkvMindest(this.value)"><span class="rp-ni-unit">€/Mo</span></div>
+                  <div class="rp-fl"><span>Mindestbemessungsgrundlage gesetzliche Krankenversicherung</span><span style="font-size:10px;color:var(--tx3)">§ 240 SGB V · jährlich prüfen</span></div>
+                  <div class="rp-ni-row"><input class="rp-ni" id="rp-gkv-mindest" type="number" min="0" step="0.01" placeholder="1131.67" onchange="rpSaveGkvMindest(this.value)"><span class="rp-ni-unit">€/Monat</span></div>
                 </div>
               </div>
             </div>
@@ -379,7 +379,7 @@
                 <span class="rp-sec-arr" id="rp-sarr-ruerup">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-ruerup" style="display:none">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Keine KV/PV — Einkommensteuer nach Kohortenbesteuerung §22 Nr. 1a EStG.</div>
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Keine Kranken-/Pflegeversicherung — Einkommensteuer nach Kohortenbesteuerung §22 Nr. 1a EStG.</div>
                 <!-- Projektion aus Fondswert -->
                 <div style="background:var(--surf);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;margin-bottom:10px">
                   <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">Projektion aus Fondswert</div>
@@ -415,11 +415,11 @@
             <!-- ── Weitere Rentenversicherungen ── -->
             <div class="rp-sec rp-sec-mehr">
               <div class="rp-sec-hdr" onclick="rpToggleSec('weitere')">
-                <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Weitere Rentenvers.</span>
+                <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Weitere Rentenversicherungen</span>
                 <span class="rp-sec-arr" id="rp-sarr-weitere">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-weitere" style="display:none">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">z.B. Private RV, Zusatzversorgung öff. Dienst</div>
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">z.B. Private Rentenversicherung, Zusatzversorgung öffentlicher Dienst</div>
                 <div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Name · Betrag/Monat oder Einmalzahlung · Ab Alter · Typ</div>
                 <div id="rp-weitere-list"></div>
                 <button class="av-heute" onclick="rpAddWeitere()" style="font-size:11px;padding:4px 10px;margin-top:8px;width:100%;text-align:center">+ Hinzufügen</button>
@@ -435,7 +435,7 @@
               <div class="rp-sec-body" id="rp-sb-ausgaben" style="display:none">
                 <div class="rp-info blue" id="rp-ausgaben-avg-info">Wird berechnet…</div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Ausgaben/Mo im Ruhestand</span><span class="rp-fv" id="rp-expenses-sv2"></span></div>
+                  <div class="rp-fl"><span>Ausgaben/Monat im Ruhestand</span><span class="rp-fv" id="rp-expenses-sv2"></span></div>
                   <input type="range" class="rp-sl-range" id="rp-expenses-sl2" min="500" max="10000" step="100" oninput="rpSyncSlider('expenses',this.value);rpQuickSave()">
                   <input type="hidden" id="rp-expenses2">
                 </div>
@@ -461,22 +461,22 @@
                   <div class="rp-fl"><span>Entnahme-Strategie</span></div>
                   <select class="rp-ni" id="rp-entnahme-strat" onchange="rpQuickSave()">
                     <option value="luecke">Rentenlücke decken</option>
-                    <option value="swr">Safe Withdrawal Rate (%)</option>
-                    <option value="fest">Fester Betrag (€/Mo)</option>
+                    <option value="swr">Sichere Entnahmerate (%)</option>
+                    <option value="fest">Fester Betrag (€/Monat)</option>
                   </select>
                 </div>
                 <div class="rp-f" id="rp-swr-field" style="display:none">
-                  <div class="rp-fl"><span>SWR-Rate</span><span class="rp-fv" id="rp-swr-sv">3.5%</span></div>
+                  <div class="rp-fl"><span>Sichere Entnahmerate</span><span class="rp-fv" id="rp-swr-sv">3.5%</span></div>
                   <input type="range" class="rp-sl-range" id="rp-swr-sl" min="1" max="6" step="0.1" oninput="rpSyncSlider('swr',this.value);rpQuickSave()">
                   <input type="hidden" id="rp-swr">
-                  <div style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.4">Die US-basierte 4%-Regel gilt für 30 Jahre. Für dt. Verhältnisse (KV/PV-Abzüge, längerer Horizont) empfehlen sich 3–3,5%.</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.4">Die US-basierte 4%-Regel gilt für 30 Jahre. Für deutsche Verhältnisse (Abzüge für Kranken- und Pflegeversicherung, längerer Horizont) empfehlen sich 3–3,5%.</div>
                   <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
                     <input type="checkbox" id="rp-guardrails" onchange="rpQuickSave()">
                     <span style="font-size:12px;color:var(--tx2);font-weight:500">Guardrails: Rate sinkt bei −20% Depot-Einbruch</span>
                   </label>
                 </div>
                 <div class="rp-f" id="rp-fest-field" style="display:none">
-                  <div class="rp-fl"><span>Fester Betrag/Mo</span></div>
+                  <div class="rp-fl"><span>Fester Betrag/Monat</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-entnahme-fest" type="number" min="0" step="100" placeholder="1000" onchange="rpQuickSave()"><span class="rp-ni-unit">€</span></div>
                 </div>
               </div>
@@ -492,7 +492,7 @@
                 <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Ausbildungskosten reduzieren den Depot-Aufbau. Stammdaten unter Einstellungen → Stammdaten.</div>
                 <div id="rp-kinder-info" class="rp-info blue" style="margin-bottom:8px">Keine Kinder erfasst.</div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Ausbildungskosten/Kind/Mo</span></div>
+                  <div class="rp-fl"><span>Ausbildungskosten/Kind/Monat</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-k-kosten" type="number" min="0" step="50" placeholder="800" onchange="rpQuickSave()"><span class="rp-ni-unit">€</span></div>
                 </div>
                 <div class="rp-f">
@@ -530,7 +530,7 @@
                     </select>
                   </div>
                   <div class="rp-f" id="rp-erbe-miete-field" style="display:none">
-                    <div class="rp-fl"><span>Kaltmiete/Mo</span></div>
+                    <div class="rp-fl"><span>Kaltmiete/Monat</span></div>
                     <div class="rp-ni-row"><input class="rp-ni" id="rp-erbe-miete" type="number" min="0" step="50" placeholder="900" onchange="rpQuickSave()"><span class="rp-ni-unit">€</span></div>
                   </div>
                 </div>
@@ -545,9 +545,9 @@
               </div>
               <div class="rp-sec-body" id="rp-sb-abzuege" style="display:none">
                 <div id="rp-abzuege-calc" class="rp-abz-calc" style="font-size:11px;line-height:1.7;margin-bottom:10px">Wird nach Dateneingabe berechnet.</div>
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px"><strong>Manuelle Überschreibung</strong> — leer = automatisch (GKV, 2026)</div>
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px"><strong>Manuelle Überschreibung</strong> — leer = automatisch (gesetzliche Krankenversicherung, 2026)</div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Netto-Faktor Gesetzl. Rente</span></div>
+                  <div class="rp-fl"><span>Netto-Faktor Gesetzliche Rente</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-nf-gesetzlich" type="number" min="50" max="100" step="1" placeholder="auto" onchange="rpQuickSave()"><span class="rp-ni-unit">%</span></div>
                 </div>
                 <div class="rp-f">
@@ -1421,8 +1421,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260607d"></script>
-<script src="app.js?v=20260607d"></script>
+<script src="store.js?v=20260607e"></script>
+<script src="app.js?v=20260607e"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

@@ -4368,7 +4368,7 @@ function rpRuerupProject(suppressSave){
   projEl.innerHTML=
     'Ø <strong>'+weightedR.toFixed(1)+'%</strong> Rendite, '+years+' Jahre → '+
     'Fonds ~<strong>'+eur(Math.round(fundAtRet/500)*500)+'</strong>'+
-    ' → <strong>~'+Math.round(monthly)+' €/Mo</strong> brutto';
+    ' → <strong>~'+Math.round(monthly)+' €/Monat</strong> brutto';
 
   if(rpS.ruerupAutoCalc){
     var fld=document.getElementById('rp-ruerup');
@@ -4702,7 +4702,7 @@ function rpRenderWeitere(){
     var inpSt='background:var(--surf);border-color:var(--brd);';
     return '<div class="rp-w-row" style="padding:10px 12px;background:var(--surf2);border:1px solid var(--brd);border-radius:10px;margin-bottom:8px">'+
       // Zeile 1: Name (volle Breite)
-      '<input class="fi rp-w-name" type="text" placeholder="z.B. Allianz Private RV" value="'+(w.name||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;margin-bottom:6px;'+inpSt+'">'+
+      '<input class="fi rp-w-name" type="text" placeholder="z.B. Allianz Private Rentenversicherung" value="'+(w.name||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;margin-bottom:6px;'+inpSt+'">'+
       // Zeile 2: Betrag | Ab Alter | Typ | Modus | ×
       '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'+
         (isE
@@ -5039,7 +5039,7 @@ function rpUpdateEpYearUI(personId){
     // Auto-Modus: Info-Box zeigen
     if(elAuto){elAuto.style.display='flex';}
     var autoEl=document.getElementById('rp-py-auto-val');
-    if(autoEl)autoEl.textContent=autoVal.toFixed(2)+' EP/Jahr';
+    if(autoEl)autoEl.textContent=autoVal.toFixed(2)+' Punkte/Jahr';
     if(elSv)elSv.textContent='';
     if(elHidden)elHidden.value=autoVal;
   } else {
@@ -5102,9 +5102,9 @@ function rpUpdateSidebarLiveInfo() {
       .filter(function(a){return(a.ownerId||'person_1')===personId||a.ownerId==='joint';})
       .reduce(function(s,a){return s+a.monthlyPlan*(a.ownerId==='joint'?0.5:1);},0);
   var depInfo=document.getElementById('rp-depot-live-info');
-  if(depInfo) depInfo.innerHTML='<strong>Vorsorge-Depot (Anteil):</strong> '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Mo<br><span style="opacity:.7;font-size:11px">= eigene Anlagen + ½ gemeinsame, ohne Immobilien/Sonstiges</span>';
+  if(depInfo) depInfo.innerHTML='<strong>Vorsorge-Depot (Anteil):</strong> '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Monat<br><span style="opacity:.7;font-size:11px">= eigene Anlagen + ½ gemeinsame, ohne Immobilien/Sonstiges</span>';
   var hdrInfo=document.getElementById('rp-depot-hdr-info');
-  if(hdrInfo) hdrInfo.textContent=sp>0?eur(sp)+'/Mo':'';
+  if(hdrInfo) hdrInfo.textContent=sp>0?eur(sp)+'/Monat':'';
   // Kinder info
   var kSet=FP.Store.get().settings?.kinder||{};
   var kInfo=document.getElementById('rp-kinder-info');
@@ -5112,9 +5112,9 @@ function rpUpdateSidebarLiveInfo() {
     if(!kSet.anzahl){kInfo.textContent='Keine Kinder erfasst. Stammdaten → Einstellungen.';}
     else {
       var kids=[];
-      if(kSet.anzahl>=1&&kSet.kind1Alter)kids.push('Kind 1: '+kSet.kind1Alter+' J.');
-      if(kSet.anzahl>=2&&kSet.kind2Alter)kids.push('Kind 2: '+kSet.kind2Alter+' J.');
-      if(kSet.anzahl>=3&&kSet.kind3Alter)kids.push('Kind 3: '+kSet.kind3Alter+' J.');
+      if(kSet.anzahl>=1&&kSet.kind1Alter)kids.push('Kind 1: '+kSet.kind1Alter+' Jahre');
+      if(kSet.anzahl>=2&&kSet.kind2Alter)kids.push('Kind 2: '+kSet.kind2Alter+' Jahre');
+      if(kSet.anzahl>=3&&kSet.kind3Alter)kids.push('Kind 3: '+kSet.kind3Alter+' Jahre');
       kInfo.textContent=kids.join(' · ')||kSet.anzahl+' Kind(er) — Alter bitte in Einstellungen eintragen';
     }
   }
@@ -5159,9 +5159,9 @@ function rpCollectWarnings(r, skipDepot) {
   if (!skipDepot && r.depotStart <= 0 && r.monthlySavings <= 0)
     w.push('Kein Depot und kein Sparplan erfasst — Depot bei Rente wird als 0 € berechnet.');
   if (r.kvLueckeJahre > 0 && r.kvLueckeStatus === 'freiwillig')
-    w.push('KV-Lücke: ' + r.kvLueckeJahre + ' Jahre freiwillige GKV geschätzt (~' + eur(r.kvFreiwilligKosten) + '/Mo). Gewinnanteil der Entnahme (~' + eur(r.kvGainMonatlich) + '/Mo) überschreitet die Familienversicherungsgrenze (505 €/Mo).');
+    w.push('Krankenversicherungs-Lücke: ' + r.kvLueckeJahre + ' Jahre freiwillige gesetzliche Krankenversicherung geschätzt (~' + eur(r.kvFreiwilligKosten) + '/Monat). Gewinnanteil der Entnahme (~' + eur(r.kvGainMonatlich) + '/Monat) überschreitet die Familienversicherungsgrenze (505 €/Monat).');
   if (r.kvLueckeJahre > 0 && r.kvStatus === 'pkv')
-    w.push('PKV: ' + r.kvLueckeJahre + ' Jahre PKV-Beitrag im Ruhestand — Kosten bitte in den monatlichen Ausgaben erfassen.');
+    w.push('Private Krankenversicherung: ' + r.kvLueckeJahre + ' Jahre Beitrag zur privaten Krankenversicherung im Ruhestand — Kosten bitte in den monatlichen Ausgaben erfassen.');
   return w;
 }
 
@@ -5189,13 +5189,13 @@ function rpRenderKpi(r1,r2,store) {
   var hhLuecke=Math.max(0,hhAusg-(hhEink+(r1?r1.entnahmeMonatlich:0)+(r2&&partnerOn?r2.entnahmeMonatlich:0)));
   var depJahre=r1?r1.depotJahre:0;
   var yearsNote=!partnerOn?'Rente ab '+r.targetRetirementAge+' · '+Math.max(0,r.yearsToRetire)+' Jahre':
-    'P1 ab '+r1.targetRetirementAge+(r2?' · P2 ab '+r2.targetRetirementAge:'');
+    'Person 1 ab '+r1.targetRetirementAge+(r2?' · Person 2 ab '+r2.targetRetirementAge:'');
   var cards=[
     {lbl:'Rentenlücke',val:hhLuecke>0?eur(hhLuecke):'Kein Defizit',sub:hhLuecke>0?'nach Entnahme':'Einkommen reicht',cls:(hhLuecke>0?'luecke':'ok')+' primary'},
-    {lbl:'Depot bei Rente',val:eur(hhDepot),sub:partnerOn?'P1+P2':'ab Alter '+r.targetRetirementAge,cls:'primary'},
-    {lbl:'Depot reicht',val:(r1&&!r1.hatLuecke)?'∞':depJahre>=60?'60+ J.':depJahre>0?depJahre.toFixed(0)+' J.':'< 1 J.',sub:(r1&&!r1.hatLuecke)?'Kein Depot-Verzehr nötig':depJahre>0&&depJahre<10?'⚠️ < 10 Jahre':yearsNote,cls:((r1&&!r1.hatLuecke)||depJahre>=20?'ok':(depJahre>0?'luecke':''))+' primary'},
+    {lbl:'Depot bei Rente',val:eur(hhDepot),sub:partnerOn?'Person 1 + Person 2':'ab Alter '+r.targetRetirementAge,cls:'primary'},
+    {lbl:'Depot reicht',val:(r1&&!r1.hatLuecke)?'∞':depJahre>=60?'60+ Jahre':depJahre>0?depJahre.toFixed(0)+' Jahre':'< 1 Jahr',sub:(r1&&!r1.hatLuecke)?'Kein Depot-Verzehr nötig':depJahre>0&&depJahre<10?'⚠️ < 10 Jahre':yearsNote,cls:((r1&&!r1.hatLuecke)||depJahre>=20?'ok':(depJahre>0?'luecke':''))+' primary'},
     {lbl:'Renteneinkommen (Netto)',val:eur(partnerOn?hhEink:r.gesamtEinkommen+r.erbMieteMonatlich),sub:'Brutto: '+eur(partnerOn?(r1?r1.gesamtBrutto:0)+(r2?r2.gesamtBrutto:0):r.gesamtBrutto),cls:''},
-    {lbl:'Ausgaben/Mo',val:eur(partnerOn?hhAusg:r.ausgaben),sub:partnerOn?'Beide':'Ruhestand',cls:''},
+    {lbl:'Ausgaben/Monat',val:eur(partnerOn?hhAusg:r.ausgaben),sub:partnerOn?'Beide':'Ruhestand',cls:''},
   ];
   var _gm=rpGeldModus();
   var geldToggle='<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surf2);border-radius:10px;padding:5px;margin-bottom:4px">'
@@ -5253,7 +5253,7 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     var start=curAge+(18-ca);
     return{start:start,end:start+kDauer};
   }).filter(function(p){return p.end>curAge;});
-  var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% SWR'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
+  var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
   var tableRows=ep.slice(0,30).map(function(w){
     var grIco=w.guardrailAktiv?' <span style="font-size:10px;color:var(--amber)" title="Guardrail">⚠</span>':'';
     return '<tr class="'+(w.alter===retAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
@@ -5273,17 +5273,17 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     '<div class="rp-chart-wrap"><canvas id="rp-verlauf-canvas" style="display:block;width:100%;cursor:crosshair"></canvas></div>'+
     legendHtml+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px">'+
-      '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Mo</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
       '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
-      '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:10px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ J.':r.wcDepotJahre.toFixed(0)+' J.')+' (−30% Schock)</div>':'')+'</div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ Jahre':r.depotJahre>0?r.depotJahre.toFixed(0)+' Jahre':'< 1 Jahr')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:10px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ Jahre':r.wcDepotJahre.toFixed(0)+' Jahre')+' (−30% Schock)</div>':'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Vorsorge-Depot (Anteil)</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:9px;color:var(--tx3)">ohne Immobilien/Sonstiges</div></div>'+
-      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Sparrate/Mo</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
+      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Sparrate/Monat</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Ø Rendite</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
     '</div>'+
     (hasGuardrail?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:8px">⚠ Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
-    '<table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/J.</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table>'+
+    '<table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/Jahr</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table>'+
     '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten.'+
     '</div>';
@@ -5344,7 +5344,7 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
       ctx.beginPath();ctx.moveTo(x1,PAD.t);ctx.lineTo(x1,PAD.t+cH);ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle=cPurple;ctx.font='bold 10px Inter,system-ui,sans-serif';ctx.textAlign='center';
-      ctx.fillText('Ausb.',(x1+x2)/2,PAD.t+cH-5);
+      ctx.fillText('Ausbildung',(x1+x2)/2,PAD.t+cH-5);
     });
   }
   // Gitter
@@ -5429,7 +5429,7 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
     var line3='';
     if(entnahmePlan&&hd.alter>=retAge){
       var ep=entnahmePlan.find(function(e){return e.alter===hd.alter;});
-      if(ep&&ep.entnahme>0)line3='Entnahme: '+eur(ep.entnahme/12)+'/Mo';
+      if(ep&&ep.entnahme>0)line3='Entnahme: '+eur(ep.entnahme/12)+'/Monat';
     }
     ctx.font='bold 12px Inter,system-ui,sans-serif';
     var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width,line3?ctx.measureText(line3).width:0);
@@ -5584,7 +5584,7 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
     ctx.fillStyle=cAmber;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.stroke();
     var depStr=hd.depot>=1e6?(hd.depot/1e6).toFixed(2)+' M €':hd.depot>=1e3?(hd.depot/1e3).toFixed(0)+' K €':'0 €';
-    var entStr=hd.entnahme>0?eur(hd.entnahme/12)+'/Mo':'–';
+    var entStr=hd.entnahme>0?eur(hd.entnahme/12)+'/Monat':'–';
     var line1='Alter '+hd.alter;
     var line2='Depot: '+depStr;
     var line3='Entnahme: '+entStr;
@@ -5645,7 +5645,7 @@ function rpRenderTabStichtag(r1,r2,store,el) {
       '</td>'+
       '<td style="padding:10px 12px;min-width:180px">'+depotBar(r.depot)+'</td>'+
       '<td style="padding:10px 12px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--tx3)">'+
-        (r.entnahme>0?eur(r.entnahme/12)+'/Mo':r.rendite>0?'+'+eur(r.rendite/12):'-')+
+        (r.entnahme>0?eur(r.entnahme/12)+'/Monat':r.rendite>0?'+'+eur(r.rendite/12):'-')+
       '</td>'+
       '<td style="padding:10px 12px">'+
         '<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:'+phaseColor+';color:var(--on-accent);opacity:.85">'+r.phase+'</span>'+
@@ -5666,7 +5666,7 @@ function rpRenderTabStichtag(r1,r2,store,el) {
       '<thead><tr style="border-bottom:2px solid var(--brd);font-size:11px;color:var(--tx3)">'+
         '<th style="padding:6px 12px;text-align:left;font-weight:600">Alter</th>'+
         '<th style="padding:6px 12px;text-align:left;font-weight:600">Depot</th>'+
-        '<th style="padding:6px 12px;text-align:right;font-weight:600">'+(hasEntnahme?'Entnahme/Mo':'Rendite/Mo')+'</th>'+
+        '<th style="padding:6px 12px;text-align:right;font-weight:600">'+(hasEntnahme?'Entnahme/Monat':'Rendite/Monat')+'</th>'+
         '<th style="padding:6px 12px;text-align:left;font-weight:600">Phase</th>'+
       '</tr></thead>'+
       '<tbody>'+tbody+'</tbody>'+
@@ -5703,18 +5703,18 @@ function rpRenderTabRente(r1,r2,store,el) {
     if(!r)return '<div class="rp-rc"><div class="rp-rc-title">'+name+'</div><div style="color:var(--tx3);font-size:12px">Kein Profil.</div></div>';
     var lueckeCls=r.hatLuecke?'color:var(--red)':'color:var(--green)';
     var rows=[
-      {l:'Rentenpunkte',v:r.punkteBeiRente.toFixed(1)+' EP'},
+      {l:'Rentenpunkte',v:r.punkteBeiRente.toFixed(1)+' Punkte'},
       {l:'Rentenabschlag',v:r.abschlagPct>0?'−'+r.abschlagPct+'%':'Kein Abschlag ('+((r.zugangsfaktor||1)*100).toFixed(1)+'%)'},
-      {l:'Gesetzl. Rente Brutto',v:eur(r.gesetzlicheMonatsrenteBrutto)},
-      {l:'Gesetzl. Rente Netto',v:eur(r.gesetzlicheMonatsrente)},
+      {l:'Gesetzliche Rente Brutto',v:eur(r.gesetzlicheMonatsrenteBrutto)},
+      {l:'Gesetzliche Rente Netto',v:eur(r.gesetzlicheMonatsrente)},
     ];
     if(r.direktzusageBrutto>0)rows.push({l:'Betriebsrente Netto'+(r.direktzusageAktiv?'':' (ab '+r.direktzusageStartAge+')'),v:eur(r.direktzusageMonatlich)});
     if(r.ruerupBrutto>0)rows.push({l:'Rürup Netto'+(r.ruerupAktiv?'':' (ab '+r.ruerupStartAge+')'),v:eur(r.ruerupMonatlich)});
     (r.weitereQuellennetto||[]).forEach(function(w){
-      if(w.brutto>0)rows.push({l:(w.name||'Weitere RV')+(w.aktiv?'':' (ab '+w.startAge+')')+' Netto',v:eur(w.netto)});
+      if(w.brutto>0)rows.push({l:(w.name||'Weitere Rentenversicherung')+(w.aktiv?'':' (ab '+w.startAge+')')+' Netto',v:eur(w.netto)});
     });
     if(r.erbMieteMonatlich>0)rows.push({l:'Erbimmobilie Miete',v:eur(r.erbMieteMonatlich)});
-    rows.push({l:'Ausgaben/Mo (heute)',v:eur(r.ausgaben)});
+    rows.push({l:'Ausgaben/Monat (heute)',v:eur(r.ausgaben)});
     if(r.ausgabenNominal&&r.ausgabenNominal!==r.ausgaben)rows.push({l:'Ausgaben nominal (Rente)',v:eur(r.ausgabenNominal),dim:true});
     if(r.kaufkraftHeute&&r.kaufkraftHeute!==r.gesamtEinkommen)rows.push({l:'Kaufkraft heute',v:eur(r.kaufkraftHeute),dim:true});
     var lbl=r.hatLuecke?'Rentenlücke':'Kein Defizit';
@@ -5724,18 +5724,18 @@ function rpRenderTabRente(r1,r2,store,el) {
     if(r.kvLueckeJahre>0){
       if(r.kvLueckeStatus==='freiwillig'){
         kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--amber-lt,rgba(245,158,11,.08));border:1px solid var(--amber,#F59E0B);font-size:11px;color:var(--tx2)">'+
-          '<span style="color:var(--amber);font-weight:600">⚠ KV-Lücke ('+r.kvLueckeJahre+' J.)</span> '+
-          'Freiwillige GKV geschätzt: <strong>'+eur(r.kvFreiwilligKosten)+'/Mo</strong> · '+
-          'Gewinn-Entnahme ~'+eur(r.kvGainMonatlich)+'/Mo überschreitet Familienversicherungsgrenze (505 €)'+
+          '<span style="color:var(--amber);font-weight:600">⚠ Krankenversicherungs-Lücke ('+r.kvLueckeJahre+' Jahre)</span> '+
+          'Freiwillige gesetzliche Krankenversicherung geschätzt: <strong>'+eur(r.kvFreiwilligKosten)+'/Monat</strong> · '+
+          'Gewinn-Entnahme ~'+eur(r.kvGainMonatlich)+'/Monat überschreitet Familienversicherungsgrenze (505 €)'+
           '</div>';
       } else if(r.kvLueckeStatus==='familienversicherung'){
         kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:11px;color:var(--tx2)">'+
-          '<span style="color:var(--green);font-weight:600">✓ KV-Lücke ('+r.kvLueckeJahre+' J.)</span> '+
-          'Familienversicherung möglich · Gewinnanteil ~'+eur(r.kvGainMonatlich)+'/Mo &lt; 505 €'+
+          '<span style="color:var(--green);font-weight:600">✓ Krankenversicherungs-Lücke ('+r.kvLueckeJahre+' Jahre)</span> '+
+          'Familienversicherung möglich · Gewinnanteil ~'+eur(r.kvGainMonatlich)+'/Monat &lt; 505 €'+
           '</div>';
       } else if(r.kvLueckeStatus==='pkv'){
         kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--surf2);border:1px solid var(--brd);font-size:11px;color:var(--tx2)">'+
-          '<span style="font-weight:600">PKV ('+r.kvLueckeJahre+' J.)</span> · Beiträge bitte in monatlichen Ausgaben erfassen</div>';
+          '<span style="font-weight:600">Private Krankenversicherung ('+r.kvLueckeJahre+' Jahre)</span> · Beiträge bitte in monatlichen Ausgaben erfassen</div>';
       }
     }
     var deferredHtml='';
@@ -5763,22 +5763,22 @@ function rpRenderTabRente(r1,r2,store,el) {
       '<div style="font-size:11px;font-weight:600;color:var(--tx3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Haushalt gesamt</div>'+
       '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">HH-Einkommen</div>'+
+          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Einkommen</div>'+
           '<div style="font-size:16px;font-weight:700;font-family:var(--mono)">'+eur(hhEink+hhEntn)+'</div>'+
           '<div style="font-size:11px;color:var(--tx3)">Rente + Entnahme</div>'+
         '</div>'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">HH-Ausgaben</div>'+
+          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Ausgaben</div>'+
           '<div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--red)">'+eur(hhAusg)+'</div>'+
           '<div style="font-size:11px;color:var(--tx3)">Beide zusammen</div>'+
         '</div>'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">HH-Depot</div>'+
+          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Depot</div>'+
           '<div style="font-size:16px;font-weight:700;font-family:var(--mono)">'+eur(hhDepot)+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">P1 + P2</div>'+
+          '<div style="font-size:11px;color:var(--tx3)">Person 1 + Person 2</div>'+
         '</div>'+
         '<div class="rp-al '+(hhLuecke>0?'luecke':'ok')+'" style="margin:0;border-radius:10px">'+
-          '<div class="rp-al-lbl">'+(hhLuecke>0?'HH-Rentenlücke':'Kein HH-Defizit')+'</div>'+
+          '<div class="rp-al-lbl">'+(hhLuecke>0?'Haushalt-Rentenlücke':'Kein Haushalt-Defizit')+'</div>'+
           '<div class="rp-al-val">'+(hhLuecke>0?eur(hhLuecke):'✓')+'</div>'+
         '</div>'+
       '</div>'+
@@ -5796,7 +5796,7 @@ function rpRenderIncomeHtml(r) {
   if(!r)return'';
   var colors={gesetzlich:'var(--blue)',direkt:'var(--green)',ruerup:'var(--purple)',weitere:'var(--amber)'};
   var sources=[
-    {key:'gesetzlich',lbl:'Gesetzl. Rente',val:r.gesetzlicheMonatsrente,aktiv:true},
+    {key:'gesetzlich',lbl:'Gesetzliche Rente',val:r.gesetzlicheMonatsrente,aktiv:true},
     {key:'direkt',lbl:'Betriebsrente',val:r.direktzusageMonatlich,aktiv:r.direktzusageAktiv},
     {key:'ruerup',lbl:'Rürup',val:r.ruerupMonatlich,aktiv:r.ruerupAktiv},
   ].filter(function(s){return s.val>0;});
@@ -5817,9 +5817,9 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
     var grIco=w.guardrailAktiv?' <span style="font-size:10px;color:var(--amber)" title="Guardrail aktiv">⚠</span>':'';
     return '<tr class="'+(w.alter===r.targetRetirementAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
   }).join('');
-  var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% SWR'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
+  var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
   el.innerHTML='<div style="margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
-    '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Mo</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+r.targetRetirementAge)+'</div></div>'+
     '</div></div>'+
@@ -5889,10 +5889,10 @@ function rpRenderTabHaushalt(r1,r2,store,el) {
   if(r2&&isGemeinsam){
     splHtml='<div class="rp-rc" style="margin-top:10px">'+
       '<div class="rp-rc-title">Ehegattensplitting (gemeinsame Veranlagung)</div>'+
-      '<div class="rp-row"><span class="rl">Anteil '+n1+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil1)+'/Mo</span></div>'+
-      '<div class="rp-row"><span class="rl">Anteil '+n2+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil2)+'/Mo</span></div>'+
-      '<div class="rp-row total"><span>Steuerersparnis gesamt</span><span style="font-family:var(--mono);color:var(--green)">'+eur(splVorteilGes)+'/Mo · '+eur(splVorteilGes*12)+'/J.</span></div>'+
-      '<div style="font-size:11px;color:var(--tx3);margin-top:6px">Das Splitting-Verfahren teilt das gemeinsame zvE durch 2, berechnet die Steuer und verdoppelt sie — günstig bei unterschiedlichen Einkommen.</div>'+
+      '<div class="rp-row"><span class="rl">Anteil '+n1+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil1)+'/Monat</span></div>'+
+      '<div class="rp-row"><span class="rl">Anteil '+n2+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil2)+'/Monat</span></div>'+
+      '<div class="rp-row total"><span>Steuerersparnis gesamt</span><span style="font-family:var(--mono);color:var(--green)">'+eur(splVorteilGes)+'/Monat · '+eur(splVorteilGes*12)+'/Jahr</span></div>'+
+      '<div style="font-size:11px;color:var(--tx3);margin-top:6px">Das Splitting-Verfahren teilt das gemeinsame zu versteuernde Einkommen durch 2, berechnet die Steuer und verdoppelt sie — günstig bei unterschiedlichen Einkommen.</div>'+
     '</div>';
   } else if(r2){
     splHtml='<div class="rp-rc" style="margin-top:10px">'+
@@ -5907,8 +5907,8 @@ function rpRenderTabHaushalt(r1,r2,store,el) {
   if(r2){
     witweHtml='<div class="rp-rc" style="margin-top:10px">'+
       '<div class="rp-rc-title">Witwenrente §46 SGB VI (Große Witwenrente)</div>'+
-      '<div class="rp-row"><span class="rl">'+n2+' erhält bei Tod von '+n1+'</span><span class="rv">'+eur(witwe1)+'/Mo</span></div>'+
-      '<div class="rp-row"><span class="rl">'+n1+' erhält bei Tod von '+n2+'</span><span class="rv">'+eur(witwe2)+'/Mo</span></div>'+
+      '<div class="rp-row"><span class="rl">'+n2+' erhält bei Tod von '+n1+'</span><span class="rv">'+eur(witwe1)+'/Monat</span></div>'+
+      '<div class="rp-row"><span class="rl">'+n1+' erhält bei Tod von '+n2+'</span><span class="rv">'+eur(witwe2)+'/Monat</span></div>'+
       '<div style="font-size:11px;color:var(--tx3);margin-top:6px">55% der gesetzlichen Brutto-Rente des Verstorbenen (§46 Abs. 2 SGB VI). Brutto-Betrag vor Steuern und KV-Abzügen.</div>'+
     '</div>';
   }
@@ -5919,14 +5919,14 @@ function rpRenderTabHaushalt(r1,r2,store,el) {
       (r2?'<div class="rp-row"><span class="rl">'+n2+' Rente Netto</span><span class="rv">'+eur(r2.gesamtEinkommen)+'</span></div>':'')+
       '<div class="rp-row"><span class="rl">Depot-Entnahme</span><span class="rv">'+eur(hhEntn)+'</span></div>'+
       ((r1&&r1.erbMieteMonatlich>0)||(r2&&r2.erbMieteMonatlich>0)?'<div class="rp-row"><span class="rl">Erbimmobilie Miete</span><span class="rv">'+eur((r1?r1.erbMieteMonatlich:0)+(r2?r2.erbMieteMonatlich:0))+'</span></div>':'')+
-      '<div class="rp-row total"><span>HH-Einkommen</span><span style="font-family:var(--mono)">'+eur(hhEink+hhEntn)+'</span></div>'+
+      '<div class="rp-row total"><span>Haushalt-Einkommen</span><span style="font-family:var(--mono)">'+eur(hhEink+hhEntn)+'</span></div>'+
     '</div>'+
     '<div class="rp-rc">'+
       '<div class="rp-rc-title">Haushalt Ausgaben & Lage</div>'+
       '<div class="rp-row"><span class="rl">Ausgaben gesamt</span><span class="rv" style="color:var(--red)">'+eur(hhAusg)+'</span></div>'+
-      '<div class="rp-row"><span class="rl">HH-Depot</span><span class="rv">'+eur(hhDepot)+'</span></div>'+
+      '<div class="rp-row"><span class="rl">Haushalt-Depot</span><span class="rv">'+eur(hhDepot)+'</span></div>'+
       '<div class="rp-al '+(hhLuecke>0?'luecke':'ok')+'" style="margin-top:12px">'+
-        '<div class="rp-al-lbl">'+(hhLuecke>0?'HH-Rentenlücke':'Kein HH-Defizit')+'</div>'+
+        '<div class="rp-al-lbl">'+(hhLuecke>0?'Haushalt-Rentenlücke':'Kein Haushalt-Defizit')+'</div>'+
         '<div class="rp-al-val">'+(hhLuecke>0?eur(hhLuecke):'✓')+'</div>'+
       '</div>'+
     '</div>'+
