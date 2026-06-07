@@ -1752,6 +1752,29 @@ function rpCalcIncomeTax(zvE, isSplit) {
   return 0.45 * zvE - 19246.2;
 }
 
+// ── Sozialversicherungs-/Steuer-Stammwerte (gesetzlich fix, Stand 2026) ──────
+// R13: Zentrale Wahrheitsquelle. Beim jährlichen Update NUR hier ändern — diese
+// Werte waren früher in rpCalcNetAmounts und im KV-Lücken-Block mehrfach hartkodiert.
+// Hinweis: Der individuell pflegbare KV-Zusatzbeitrag liegt NICHT hier, sondern in
+// retirement.assumptions.kvZusatzbeitrag (Nutzer-editierbar).
+const SV_SAETZE = {
+  kvAllgemein:             14.6,    // allg. KV-Beitragssatz § 241 SGB V (%)
+  pvBasis:                 3.6,     // PV-Basissatz § 55 SGB XI (%)
+  pvKinderlosZuschlag:     0.6,     // Zuschlag für Kinderlose ab 23 J. (%)
+  pvKindAbschlag:          0.25,    // Abschlag je Kind ab dem 2., max. bis 5. Kind (%)
+  kvFreibetragBav:         197.75,  // Freibetrag Versorgungsbezüge § 226 SGB V (1/20 Bezugsgröße, €/Monat)
+  werbungskostenPauschale: 102,     // § 9a Abs. 1 Nr. 3 EStG (€/Jahr, pro Person)
+};
+
+// PV-Beitragssatz nach Kinderzahl (§ 55 SGB XI) als Dezimalbruch.
+// 0 K=4,2 / 1=3,6 / 2=3,35 / 3=3,10 / 4=2,85 / 5+=2,60 (%)
+function pvSatzNachKindern(kinderAnzahl) {
+  const k = kinderAnzahl || 0;
+  if (k === 0) return (SV_SAETZE.pvBasis + SV_SAETZE.pvKinderlosZuschlag) / 100;
+  const abschlaege = Math.min(Math.max(0, k - 1), 4);  // ab 2. Kind, max. bis 5. Kind
+  return (SV_SAETZE.pvBasis - abschlaege * SV_SAETZE.pvKindAbschlag) / 100;
+}
+
 // ── Netto-Berechnung aller Rentenquellen (GKV, aktuelles Recht 2026) ─────────
 // type: 'gesetzlich' | 'betriebsrente' | 'ruerup' | 'bav' | 'privat'
 // Quellen:
@@ -1772,14 +1795,12 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
            : retirementYear >  2005 ? Math.min(0.80, 0.50 + (retirementYear - 2005) * 0.02)
            : 0.50;
 
-  // Sozialversicherungssätze 2026
+  // Sozialversicherungssätze 2026 — zentral aus SV_SAETZE (R13)
   const kvZusatz   = (opts && opts.kvZusatzbeitrag != null) ? opts.kvZusatzbeitrag : 2.9;
-  const kvHalb     = (14.6 + kvZusatz) / 2 / 100;  // Gesetzl. Rente: Rentner zahlt Hälfte
-  const kvVoll     = (14.6 + kvZusatz) / 100;  // bAV/Versorgungsbezug: voller Satz (kein DRV-Zuschuss), folgt dem Zusatzbeitrag
-  const kvFreibetr = 197.75;   // 2026: 1/20 Bezugsgröße (€3.955), §226 SGB V
-  // PV-Satz gestaffelt nach Kinderzahl (§ 55 SGB XI): Basis 3,6 %, +0,6 % kinderlos,
-  // −0,25 %/Kind ab dem 2. Kind (max. bis 5. Kind). 0 K=4,2 / 1=3,6 / 2=3,35 / 3=3,10 / 4=2,85 / 5+=2,60
-  const pvSatz = kinderAnzahl >= 5 ? 0.026 : kinderAnzahl === 4 ? 0.0285 : kinderAnzahl === 3 ? 0.031 : kinderAnzahl === 2 ? 0.0335 : kinderAnzahl === 1 ? 0.036 : 0.042;
+  const kvHalb     = (SV_SAETZE.kvAllgemein + kvZusatz) / 2 / 100;  // Gesetzl. Rente: Rentner zahlt Hälfte
+  const kvVoll     = (SV_SAETZE.kvAllgemein + kvZusatz) / 100;  // bAV/Versorgungsbezug: voller Satz (kein DRV-Zuschuss), folgt dem Zusatzbeitrag
+  const kvFreibetr = SV_SAETZE.kvFreibetragBav;   // 1/20 Bezugsgröße, §226 SGB V
+  const pvSatz     = pvSatzNachKindern(kinderAnzahl);  // gestaffelt nach Kinderzahl, §55 SGB XI
 
   const g = amounts.gesetzlich || 0;
   const d = amounts.direkt     || 0;
@@ -1821,7 +1842,7 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
     (g + ru) * bA * 12          // Gesetzl. + Rürup: Kohortenversteuerung
     + (d + wBavTotal) * 12      // bAV: 100% steuerpflichtig
     + wPrivTotal * ertragsanteil * 12  // Private RV: Ertragsanteil
-    - 102                       // Werbungskostenpauschale §9a Abs. 1 Nr. 3 EStG (pro Person)
+    - SV_SAETZE.werbungskostenPauschale  // §9a Abs. 1 Nr. 3 EStG (pro Person)
   );
   const estJahr  = rpCalcIncomeTax(stpflichtigJahr, false);
   const estMonat = estJahr / 12;
@@ -2158,11 +2179,20 @@ const Calculator = {
     };
 
     const person       = store.persons.find(pe => pe.id === personId);
-    const _rawYear  = person?.birthDate ? parseInt(person.birthDate.split('.').pop()) : NaN;
+    const _bdParts  = person?.birthDate ? String(person.birthDate).split('.') : [];
+    const _rawYear  = _bdParts.length ? parseInt(_bdParts[_bdParts.length - 1]) : NaN;
     const birthYear = (_rawYear >= 1900 && _rawYear <= 2100) ? _rawYear : 1988;
-    const currentYear  = new Date().getFullYear();
-    const currentAge   = currentYear - birthYear;
-    const yearsToRetire = p.targetRetirementAge - currentAge;
+    // R11: Geburtsmonat einbeziehen (Format TT.MM.JJJJ). Zuverlässig nur bei
+    // vollständigem Datum (3 Teile); sonst Jahresmitte als Fallback (max. ±6 Monate
+    // statt ±12 bei reiner Jahresrechnung).
+    const _rawMonth  = _bdParts.length === 3 ? parseInt(_bdParts[1]) : NaN;
+    const birthMonth = (_rawMonth >= 1 && _rawMonth <= 12) ? _rawMonth : 6;
+    const _now         = new Date();
+    const currentYear  = _now.getFullYear();
+    const currentAge   = currentYear - birthYear;  // ganzzahlig — für Anzeige-Labels
+    // Exaktes Alter inkl. Monat als Basis der Restlaufzeit bis zur Rente (R11).
+    const currentAgeExact = currentAge + (_now.getMonth() + 1 - birthMonth) / 12;
+    const yearsToRetire = p.targetRetirementAge - currentAgeExact;
 
     // Gesetzliche Rente berechnen
     const rente    = profile.gesetzlicheRente;
@@ -2242,7 +2272,7 @@ const Calculator = {
     const weightedRealReturn = ((1 + weightedReturn / 100) / (1 + (p.inflationRate||2.3) / 100) - 1) * 100;
     const monthlyReturn = Math.pow(1 + weightedRealReturn / 100, 1/12) - 1;  // real, monatlich
 
-    const _now = new Date();
+    // _now bereits oben (R11) deklariert
     // Sparraten: savingsPlans nach personId filtern (kein personId → Person 1); asset.monthlyPlan nach ownerId filtern
     const monthlySavings = ((store.savingsPlans || [])
           .filter(sp => (sp.personId || 'person_1') === personId)
@@ -2453,10 +2483,15 @@ const Calculator = {
     // Freistellungsauftrag (§ 20 Abs. 9 EStG): 1000 € / 2000 € gemeinsam je Jahr
     const freistellungMonat = (store.settings.steuerlicheVeranlagung === 'gemeinsam') ? 2000/12 : 1000/12;
     const taxableGainFraction = swr > 0 ? Math.max(0, gainRatio * 0.70 - freistellungMonat / swr) : gainRatio * 0.70;
-    // Günstigerprüfung §32d Abs. 6 EStG: persönlicher Grenzsteuersatz wenn < 26,375%
-    const abgeltungSatz = 0.26375;
+    // Günstigerprüfung §32d Abs. 6 EStG (R7): Tarif statt Abgeltung nur, wenn der
+    // persönliche ESt-Grenzsatz < 25 % liegt. Vergleichsschwelle ist die reine
+    // Kapitalertragsteuer (25 %, OHNE Soli) — denn marginalRate stammt aus rpCalcIncomeTax
+    // und enthält ebenfalls keinen Soli; für Rentner fällt auf den Tarif i.d.R. kein Soli
+    // an. Gewinnt die Abgeltung, gilt dagegen der volle Satz inkl. Soli (26,375 %).
+    const abgeltungSatz = 0.26375;          // 25 % KapESt + 5,5 % Soli (Soli bei Abgeltung immer)
+    const kapestSchwelle = 0.25;            // reine KapESt ohne Soli — Schwelle für Günstigerprüfung
     const grenzSatz = netResult.marginalRate || abgeltungSatz;
-    const effectiveTaxRate = taxableGainFraction * Math.min(abgeltungSatz, grenzSatz);
+    const effectiveTaxRate = taxableGainFraction * (grenzSatz < kapestSchwelle ? grenzSatz : abgeltungSatz);
     const swrNetto         = r2(swr * (1 - effectiveTaxRate));
 
     // Entnahmebetrag je Strategie
@@ -2582,8 +2617,8 @@ const Calculator = {
         const bemessungsgrundlage = Math.max(gkvMindestBmg, Math.min(kvGainMonatlich, 5512.50));
         const kvZusatzFreiw = assumptions.kvZusatzbeitrag != null ? assumptions.kvZusatzbeitrag : 2.9;
         const kinderAnzahl  = store.settings && store.settings.kinder ? (store.settings.kinder.anzahl||0) : 0;
-        const pvSatzFreiw   = kinderAnzahl >= 5 ? 0.026 : kinderAnzahl === 4 ? 0.0285 : kinderAnzahl === 3 ? 0.031 : kinderAnzahl === 2 ? 0.0335 : kinderAnzahl === 1 ? 0.036 : 0.042;
-        kvFreiwilligKosten  = r2(bemessungsgrundlage * ((14.6 + kvZusatzFreiw) / 100 + pvSatzFreiw));
+        const pvSatzFreiw   = pvSatzNachKindern(kinderAnzahl);  // zentral, §55 SGB XI (R13)
+        kvFreiwilligKosten  = r2(bemessungsgrundlage * ((SV_SAETZE.kvAllgemein + kvZusatzFreiw) / 100 + pvSatzFreiw));
       }
     } else if (kvStatus === 'pkv') {
       kvLueckeStatus = 'pkv'; // PKV-Beitrag muss der Nutzer manuell in Ausgaben erfassen
