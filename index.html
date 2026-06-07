@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260607e">
+<link rel="stylesheet" href="style.css?v=20260607f">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 0607e</div>
+      <div class="sb-ver">v12.0 · build 0607f</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -628,8 +628,8 @@
               <div class="rp-sub">Kinder</div>
               <div class="st-stamm-grid" style="grid-template-columns:repeat(3,1fr)">
                 <div class="fg" style="margin:0"><label class="fl">Anzahl</label><input class="fi" id="st-k-anzahl" type="number" min="0" max="5" step="1" placeholder="0" oninput="stSaveStammdaten();stUpdateKinderFields()"></div>
-                <div class="fg" style="margin:0"><label class="fl">Ausb. Kosten/Mo</label><input class="fi" id="st-k-kosten" type="number" min="0" step="50" placeholder="800" oninput="stSaveStammdaten()"></div>
-                <div class="fg" style="margin:0"><label class="fl">Ausb. Dauer (J.)</label><input class="fi" id="st-k-dauer" type="number" min="1" max="8" step="1" placeholder="4" oninput="stSaveStammdaten()"></div>
+                <div class="fg" style="margin:0"><label class="fl">Ausbildungskosten/Monat</label><input class="fi" id="st-k-kosten" type="number" min="0" step="50" placeholder="800" oninput="stSaveStammdaten()"></div>
+                <div class="fg" style="margin:0"><label class="fl">Ausbildungsdauer (Jahre)</label><input class="fi" id="st-k-dauer" type="number" min="1" max="8" step="1" placeholder="4" oninput="stSaveStammdaten()"></div>
               </div>
               <div id="st-kinder-alter" style="display:none">
                 <div class="st-stamm-grid">
@@ -1421,8 +1421,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260607e"></script>
-<script src="app.js?v=20260607e"></script>
+<script src="store.js?v=20260607f"></script>
+<script src="app.js?v=20260607f"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
