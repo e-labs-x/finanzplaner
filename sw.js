@@ -1,14 +1,17 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20260607c';
+const CACHE_NAME = 'fp-20260607d';
 
+// Bewusst OHNE ?v-Marker: Für JS/CSS gilt unten Network-First (echte Version kommt immer
+// frisch aus dem Netz + wird unter ihrer ?v-URL gecacht). Der SHELL-Precache ist nur der
+// allererste Offline-Fallback → muss nicht pro Deploy gepflegt werden (war früher veraltet).
 const SHELL = [
   './',
   './index.html',
-  './style.css?v=20260526f',
-  './store.js?v=20260526f',
-  './app.js?v=20260526f',
+  './style.css',
+  './store.js',
+  './app.js',
 ];
 
 // Beim Installieren: App-Shell vorläufig cachen

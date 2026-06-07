@@ -2772,13 +2772,19 @@ const Calculator = {
 
   getAusgabenAvg() {
     const store = Store.get();
+    // M4: Buchungen archivierter Objekte ausschließen (z. B. verkauftes Auto) — konsistent
+    // mit getMonthSummary/getCategoryTrend/Cashflow/Reports. Sonst blähen weggefallene
+    // Kosten die Renten-Ausgaben-Notfallschätzung auf.
+    const archObj = new Set((store.objects || []).filter(o => o.status === 'archiviert').map(o => o.id));
     const now = new Date();
     let total = 0, months = 0;
     for (let mi = 0; mi < 12; mi++) {
       const d  = new Date(now.getFullYear(), now.getMonth() - mi, 1);
       const ds = String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
       let monthTotal = 0;
-      store.transactions.forEach(tx => { if (tx.date === ds) monthTotal += tx.amount; });
+      store.transactions.forEach(tx => {
+        if (tx.date === ds && !(tx.objectId && archObj.has(tx.objectId))) monthTotal += tx.amount;
+      });
       if (monthTotal !== 0) { total += monthTotal; months++; }
     }
     return months > 0 ? Math.round(Math.max(0, total) / months) : 0;

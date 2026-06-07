@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-06-07 (3) — Renten-Audit R1–R15 komplett abgearbeitet
+Letzte Aktualisierung: 2026-06-07 (4) — Renten-Audit R1–R15 komplett + Sicherheit/Sync-Block erledigt abgearbeitet
 
 ---
 
@@ -124,10 +124,10 @@ _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfr
   - (b) ✅ Auto-Sicherungs-Historie wird jetzt ins Download-`.fpbackup` mit-exportiert (`download()` hängt `autoBackups` an; `import()` → `mergeAutoBackups()` stellt sie wieder her, dedupe nach timestamp, quota-sicher, abwärtskompatibel). Bewusst NUR im Download, nicht in `create()` (sonst Verschachtelung bei Auto-Backup/Azure-Push). Verifiziert headless (Export→Löschen→Import-Roundtrip).
   - (c) ✅ war bereits erledigt (M8): tägliches Backup läuft pro Kalendertag beim Start (`AzureSync.maybeDailyBackup()` in app.js init), unabhängig vom Sync.
   - Ziel erreicht: aktueller Stand cloud-gesichert (Azure+Soft Delete), Historie über `.fpbackup` wiederherstellbar.
-- [ ] Azure: HTTPS-only erzwingen
+- [x] Azure: HTTPS-only ✅ aktiviert (07.06., „Sichere Übertragung erforderlich" im Portal).
 - [x] Azure: Soft Delete für Blobs + Container ✅ aktiviert (30 Tage, 07.06.) — deckt auch Überschreibungen ab. Versioning nicht zusätzlich nötig (Soft Delete genügt für den Use-Case).
-- [ ] `sw.js`: SHELL-/Versionsmarker pflegen (kosmetisch)
-- [ ] Rente-Ausgabenbasis `getAusgabenAvg` bzgl. archivierter Objekte entscheiden (bewusst offen gelassen)
+- [x] `sw.js`: SHELL-Marker ✅ wartungsfrei gemacht (07.06., `?v=20260607d`) — `?v` aus SHELL entfernt; Network-First für JS/CSS sorgt für Frische, muss nicht mehr pro Deploy gepflegt werden.
+- [x] Rente-Ausgabenbasis `getAusgabenAvg` ✅ entschieden (07.06.): archivierte Objekte ausgeschlossen — konsistent mit allen anderen Übersichten (M4).
 
 ### Wartung / Sonstiges _(aus CLAUDE.md-Backlog)_
 - [ ] **Kategorien / Fixkosten** — UX-Überarbeitung des Eingabe-Flows (vereinfachen)
