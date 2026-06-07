@@ -49,7 +49,6 @@ function createDefaultStore() {
         name:      'Person 1',
         birthDate: '',   // Geburtsjahr — Tag/Monat ggf. anpassen
         isPrimary: true,
-        isActive:  true,
         gender:    'm',
       },
       {
@@ -57,7 +56,7 @@ function createDefaultStore() {
         name:      'Partner',
         birthDate: '',             // Bitte eintragen
         isPrimary: false,
-        isActive:  true,           // v2.0: Partner aktiv für gemeinsame Rentenplanung
+        // R14: kein isActive — der Partner wird allein über settings.partnerEnabled aktiviert
         gender:    null,
       },
     ],
@@ -1911,6 +1910,65 @@ function rpCalcNetAmounts(retirementYear, amounts, opts) {
   };
 }
 
+// ── Depot-Entnahme-Simulation (R10): EINE monatliche Engine als einzige Wahrheit ──
+// Früher rechneten Haltbarkeit + Worst-Case monatlich, der Verlaufs-Chart aber jährlich
+// → angezeigte Haltbarkeit ≠ Chart-Verlauf. Jetzt nutzen alle drei diese Funktion:
+// monatliche Verzinsung + monatliche (reale) Entnahme, optional Guardrails (−10 % unter
+// 80 %-Schwelle, zurück ab 95 %) und Post-Renten-Bonusse. Liefert die Haltbarkeit in
+// Monaten UND – bei collectPlan – Jahres-Snapshots für den Chart (konsistent getaktet).
+function _simDepot(opts) {
+  const start            = opts.start;
+  const entnahmeNetto    = opts.entnahmeNetto;
+  const monthlyReturn    = opts.monthlyReturn;
+  const effectiveTaxRate = opts.effectiveTaxRate;
+  const guardrailsAktiv  = !!opts.guardrailsAktiv;
+  const bonusMonate      = opts.bonusMonate || [];
+  const targetAge        = opts.targetAge;
+  const maxMonate        = opts.maxMonate || 720;
+  const collectPlan      = !!opts.collectPlan;
+
+  let d = start;
+  let monate = 0;
+  let entnahmeAktNetto = entnahmeNetto;
+  let grAktiv = false;
+  const grFloor = start * 0.80;
+  const grCeil  = start * 0.95;
+  const plan = [];
+  let jahrEntnahmeNetto = 0, jahrRendite = 0;
+  // Startpunkt = Rentenbeginn mit vollem Depot (noch keine Entnahme). Damit beginnt der
+  // Chart korrekt bei targetAge und die UI-Highlight-Zeile (alter === targetAge) existiert.
+  if (collectPlan) {
+    plan.push({ alter: targetAge, depot: Math.max(0, Math.round(d)),
+                entnahme: 0, rendite: 0, guardrailAktiv: false });
+  }
+
+  while (d > 0 && monate < maxMonate) {
+    bonusMonate.forEach(b => { if (monate === b.monat) d += b.wert; });
+    if (guardrailsAktiv) {
+      if (!grAktiv && d < grFloor)     { entnahmeAktNetto = r2(entnahmeNetto * 0.90); grAktiv = true; }
+      else if (grAktiv && d >= grCeil) { entnahmeAktNetto = entnahmeNetto; grAktiv = false; }
+    }
+    const bruttoM = entnahmeAktNetto > 0 ? r2(entnahmeAktNetto / (1 - effectiveTaxRate)) : 0;
+    jahrRendite       += d * monthlyReturn;
+    jahrEntnahmeNetto += entnahmeAktNetto;
+    d = d * (1 + monthlyReturn) - bruttoM;  // R9: real → Entnahme in heutiger Kaufkraft konstant
+    monate++;
+    if (collectPlan && monate % 12 === 0) {
+      plan.push({ alter: targetAge + monate / 12, depot: Math.max(0, Math.round(d)),
+                  entnahme: Math.round(jahrEntnahmeNetto), rendite: Math.round(jahrRendite),
+                  guardrailAktiv: grAktiv });
+      jahrEntnahmeNetto = 0; jahrRendite = 0;
+    }
+  }
+  // angebrochenes letztes Jahr für den Chart abschließen (Depot bis zum Aufbrauchen sichtbar)
+  if (collectPlan && monate % 12 !== 0) {
+    plan.push({ alter: targetAge + Math.ceil(monate / 12), depot: Math.max(0, Math.round(d)),
+                entnahme: Math.round(jahrEntnahmeNetto), rendite: Math.round(jahrRendite),
+                guardrailAktiv: grAktiv });
+  }
+  return { monate, plan };
+}
+
 const Calculator = {
 
   // ── Monatszusammenfassung ──
@@ -2326,11 +2384,24 @@ const Calculator = {
       .filter(rv => rv.modus === 'einmalig')
       .map(rv => {
         const ertrag = Math.max(0, (rv.einmalbetrag||0) - (rv.eigenbeitraege||0));
+        const _einmalAlter = rv.startAge || 67;
         let steuer = 0;
-        // bAV einmalig: §22 Nr. 5 EStG — voller Betrag steuerpflichtig (nicht nur Ertrag)
-        if (rv.type === 'bav') steuer = (rv.einmalbetrag||0) * ((rv.persSteuersatz||42)/100);
-        else if (rv.steuermodell === 'halbeinkuenfte') steuer = ertrag * 0.5 * ((rv.persSteuersatz||25)/100);
-        else if (rv.steuermodell === 'abgeltung')  steuer = ertrag * 0.26375;
+        if (rv.type === 'bav') {
+          // R12: bAV-Kapitalauszahlung (§22 Nr.5 EStG, voller Betrag steuerpflichtig) mit
+          // Fünftelregelung §34 EStG (Progressionsglättung) statt pauschalem Spitzensatz.
+          // Annahme: zusammengeballte Auszahlung als isolierte Einkunft (zvE-Basis 0) →
+          // Steuer = 5 × ESt(Betrag/5). Berücksichtigt Grundfreibetrag + Tarifzonen und ist
+          // bei großen Summen deutlich realistischer als pauschal 42 % auf den Vollbetrag.
+          steuer = 5 * rpCalcIncomeTax((rv.einmalbetrag||0) / 5, false);
+        } else if (rv.steuermodell === 'halbeinkuenfte') {
+          // R15: Halbeinkünfteverfahren (halber Satz) nur ab Alter 62 (§20 Abs.1 Nr.6 EStG).
+          // Bei früherer Auszahlung voller Ertrag steuerpflichtig. (Die zusätzliche 12-Jahre-
+          // Vertragsdauer ist mangels Vertragsbeginn-Daten nicht prüfbar — bewusst offen.)
+          const _halbFaktor = _einmalAlter >= 62 ? 0.5 : 1.0;
+          steuer = ertrag * _halbFaktor * ((rv.persSteuersatz||25)/100);
+        } else if (rv.steuermodell === 'abgeltung') {
+          steuer = ertrag * 0.26375;
+        }
         return {
           name: rv.name || 'Einmalig', startAge: rv.startAge || 67,
           nettoEinmalig: r2(Math.max(0, (rv.einmalbetrag||0) - steuer)),
@@ -2483,15 +2554,8 @@ const Calculator = {
     const luecke       = r2(Math.max(0, ausgabenEffektiv - gesamtEinkommen - erbMieteMonatlich));
     const lueckeVoll   = r2(Math.max(0, ausgaben - gesamtEinkommenVoll - erbMieteMonatlich));
 
-    let depotMonate = 0;
-    if (luecke > 0) {
-      let d = depotAtRetire;
-      while (d > 0 && depotMonate < 600) {
-        postRetBonusMonate.forEach(b => { if (depotMonate === b.monat) d += b.wert; });
-        d = d * (1 + monthlyReturn) - luecke;  // R9: real → Entnahme in heutiger Kaufkraft konstant
-        depotMonate++;
-      }
-    }
+    // R10: Die frühere luecke-Vorab-Schleife entfällt — ihr depotMonate-Ergebnis wurde
+    // ohnehin sofort von der strategiebasierten Haltbarkeit überschrieben (toter Doppel-Lauf).
 
     // Entnahme-Strategie aus Profil
     const entnahmeStrat  = profile.entnahmeStrategie || 'luecke';
@@ -2525,79 +2589,44 @@ const Calculator = {
     else if (entnahmeStrat === 'fest')  entnahmeMonatlich = entnahmeFest;
     else                                entnahmeMonatlich = luecke; // 'luecke'
 
-    // Depot-Haltbarkeit (per Entnahme-Strategie neu berechnen, mit Guardrails)
-    depotMonate = 0;
+    // R10: Haltbarkeit UND Verlaufs-Chart aus EINER monatlichen Simulation (siehe _simDepot),
+    // damit angezeigte Haltbarkeit und Chart-Verlauf konsistent sind.
+    const _guardrailsAktiv = guardrails && entnahmeStrat === 'swr';
+    let depotMonate = 0;
+    let entnahmePlan = [];
     if (entnahmeMonatlich > 0 && depotAtRetire > 0) {
-      const grFloorM = depotAtRetire * 0.80;
-      const grCeilM  = depotAtRetire * 0.95;
-      let entnahmeM = entnahmeMonatlich;
-      let grAktivM  = false;
-      let d = depotAtRetire;
-      while (d > 0 && depotMonate < 720) {
-        postRetBonusMonate.forEach(b => { if (depotMonate === b.monat) d += b.wert; });
-        if (guardrails && entnahmeStrat === 'swr') {
-          if (!grAktivM && d < grFloorM)      { entnahmeM = r2(entnahmeMonatlich * 0.90); grAktivM = true; }
-          else if (grAktivM && d >= grCeilM)  { entnahmeM = entnahmeMonatlich; grAktivM = false; }
-        }
-        d = d * (1 + monthlyReturn) - r2(entnahmeM / (1 - effectiveTaxRate));
-        // R9: real → Entnahme in heutiger Kaufkraft konstant (keine Inflations-Steigerung)
-        depotMonate++;
-      }
+      const _sim = _simDepot({
+        start: depotAtRetire, entnahmeNetto: entnahmeMonatlich, monthlyReturn,
+        effectiveTaxRate, guardrailsAktiv: _guardrailsAktiv, bonusMonate: postRetBonusMonate,
+        targetAge: p.targetRetirementAge, maxMonate: 720, collectPlan: true,
+      });
+      depotMonate  = _sim.monate;
+      entnahmePlan = _sim.plan.slice(0, 41);   // Chart auf max. ~40 Jahre begrenzen
+    } else if (depotAtRetire > 0) {
+      // Kein Entnahmebedarf (keine Lücke / Strategiebetrag 0): Depot wächst nur an. Verlauf
+      // trotzdem zeigen (40 Jahre); Haltbarkeit bleibt 0 (= „kein Verzehr nötig").
+      const _sim = _simDepot({
+        start: depotAtRetire, entnahmeNetto: 0, monthlyReturn,
+        effectiveTaxRate, guardrailsAktiv: false, bonusMonate: postRetBonusMonate,
+        targetAge: p.targetRetirementAge, maxMonate: 480, collectPlan: true,
+      });
+      entnahmePlan = _sim.plan.slice(0, 41);
     }
 
-    // Entnahmeplan (40 Jahre) — optional mit Guardrails
-    const entnahmePlan = [];
-    {
-      const grFloor  = depotAtRetire * 0.80; // Guardrail-Schwelle: −20%
-      const grCeil   = depotAtRetire * 0.95; // Erholung: 5% unter Plan reicht
-      let entnahmeAkt = entnahmeMonatlich;   // kann sich durch Guardrail ändern
-      let guardrailAktiv = false;
-      let d = depotAtRetire;
-      for (let y = 0; y <= Math.min(depotMonate > 0 ? Math.ceil(depotMonate/12) + 2 : 40, 40); y++) {
-        // Post-Rente-Bonusse (Erbimmobilie / einmalige RV) im richtigen Jahr
-        const yBonus = postRetBonusMonate.filter(b => b.monat >= y*12 && b.monat < (y+1)*12).reduce((s,b)=>s+b.wert,0);
-        if (yBonus > 0) d += yBonus;
-        // Guardrail-Logik: nur bei SWR-Strategie
-        if (guardrails && entnahmeStrat === 'swr' && entnahmeMonatlich > 0) {
-          if (!guardrailAktiv && d < grFloor) {
-            entnahmeAkt = r2(entnahmeMonatlich * 0.90); // −10%
-            guardrailAktiv = true;
-          } else if (guardrailAktiv && d >= grCeil) {
-            entnahmeAkt = entnahmeMonatlich; // wiederherstellen
-            guardrailAktiv = false;
-          }
-        }
-        const bruttoAkt = entnahmeAkt > 0 ? r2(entnahmeAkt / (1 - effectiveTaxRate)) : 0;
-        const alter = p.targetRetirementAge + y;
-        const renditeJ = d * (Math.pow(1 + weightedRealReturn/100, 1) - 1);
-        d = d * (1 + weightedRealReturn/100) - bruttoAkt * 12;
-        entnahmePlan.push({ alter, depot: Math.max(0, Math.round(d)), entnahme: Math.round(entnahmeAkt * 12), rendite: Math.round(renditeJ), guardrailAktiv });
-        if (d <= 0) break;
-      }
-    }
-
-    // Worst-Case: −30% Depot-Schock zum Rentenbeginn (Sequence-of-Returns)
+    // Worst-Case: −30% Depot-Schock zum Rentenbeginn (Sequence-of-Returns). R10: ebenfalls
+    // über _simDepot (monatlich) — Haltbarkeit (wcDepotMonate) und Verlauf (wcVerlauf) sind
+    // konsistent. Bewusst ohne Guardrails/Bonus = pessimistisches Vergleichsszenario (wie zuvor).
     let wcDepotMonate = 0;
+    let wcVerlauf = [];
     const wcDepotStart = r2(depotAtRetire * 0.70);
-    const wcEntnahme = entnahmeMonatlich;
-    if (wcEntnahme > 0 && wcDepotStart > 0) {
-      let dWc = wcDepotStart;
-      let wcEntnahmeM = wcEntnahme;
-      while (dWc > 0 && wcDepotMonate < 720) {
-        dWc = dWc * (1 + monthlyReturn) - r2(wcEntnahmeM / (1 - effectiveTaxRate));
-        wcDepotMonate++;
-      }
-    }
-    const wcVerlauf = [];
-    {
-      let dWc = wcDepotStart;
-      let wcEntnahmeAkt = wcEntnahme;
-      const wcMax = Math.min(wcDepotMonate > 0 ? Math.ceil(wcDepotMonate/12)+2 : 40, 40);
-      for (let y = 0; y <= wcMax; y++) {
-        wcVerlauf.push({ alter: p.targetRetirementAge + y, depot: Math.max(0, Math.round(dWc)) });
-        dWc = dWc * (1 + weightedRealReturn/100) - r2(wcEntnahmeAkt / (1 - effectiveTaxRate)) * 12;
-        if (dWc <= 0) break;
-      }
+    if (entnahmeMonatlich > 0 && wcDepotStart > 0) {
+      const _simWc = _simDepot({
+        start: wcDepotStart, entnahmeNetto: entnahmeMonatlich, monthlyReturn,
+        effectiveTaxRate, guardrailsAktiv: false, bonusMonate: [],
+        targetAge: p.targetRetirementAge, maxMonate: 720, collectPlan: true,
+      });
+      wcDepotMonate = _simWc.monate;
+      wcVerlauf = _simWc.plan.slice(0, 41).map(s => ({ alter: s.alter, depot: s.depot }));
     }
 
     // Kaufkraft: Renteneinkommen in heutiger Kaufkraft; benötigte Summe nominal

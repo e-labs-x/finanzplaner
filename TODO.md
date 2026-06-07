@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-06-07 (2)
+Letzte Aktualisierung: 2026-06-07 (3) — Renten-Audit R1–R15 komplett abgearbeitet
 
 ---
 
@@ -111,12 +111,12 @@ _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfr
 - [x] **R7** — ✅ ERLEDIGT 07.06. (`?v=20260607a`): Günstigerprüfung §32d Soli-Schwelle auf 25 % korrigiert. Persönlicher ESt-Grenzsatz (ohne Soli) wird gegen reine KapESt 25 % verglichen; gewinnt die Abgeltung, gilt voller Satz inkl. Soli (26,375 %). Tarif-Option nicht mehr fälschlich fast immer „günstiger".
 - [x] **R8** — ✅ ERLEDIGT 06.06. (`?v=20260606w`, Commit 4af8946): KV-Lücke entfällt, da Rente ab Eintrittsalter bezogen wird → ab da KVdR-pflichtiger Rentner (DRV zahlt halbe KV, Depot-Entnahmen beitragsfrei). `kvLueckeJahre=0`; Berechnungsblock bleibt deaktiviert für evtl. späteren Rentenbeginn (Option B). Verifiziert: kvLueckeStatus=kein, Rente/Lücke unverändert.
 - [x] **R9** — ✅ ERLEDIGT 06.06. (`?v=20260606y`): Projektion durchgängig in heutiger Kaufkraft (reale Renditen, reale konstante Entnahme) → behob zu optimistische Depot-Haltbarkeit (Nutzer: 37→26 J.). Umschalter „heutiges/zukünftiges Geld" im Renten-Tab (zentrale rpToNominal-Transform; eine Wahrheit, zwei Anzeigen).
-- [ ] **R10** — Entnahme-Taktung: Haltbarkeit (monatlich) vs. Verlauf/Worst-Case (jährlich) inkonsistent
+- [x] **R10** — ✅ ERLEDIGT 07.06. (`?v=20260607c`): EINE monatliche Engine `_simDepot` als einzige Wahrheit für Haltbarkeit + Verlaufs-Chart + Worst-Case (vorher Chart jährlich, Haltbarkeit monatlich). Verlauf startet jetzt korrekt mit vollem Depot bei Rentenbeginn (vorher Depot nach 1 Jahr). Redundante luecke-Vorab-Schleife entfernt. Verifiziert headless (alt vs. neu): Haltbarkeit unverändert (keine Regression), Chart endet konsistent mit Haltbarkeit. Reine Taktungsdifferenz war in der Praxis klein (<0,4 J. bei 10–30 J.); strukturelle Garantie verhindert künftiges Auseinanderlaufen.
 - [x] **R11** — ✅ ERLEDIGT 07.06. (`?v=20260607a`): Geburtsmonat fließt in die Restlaufzeit ein (`currentAgeExact`), nicht mehr nur das Jahr → bis ±1 Jahr genauer bei EP-Akkumulation & Depot-Projektion. `currentAge` bleibt ganzzahlig für Anzeige-Labels (kein Ripple). Verifiziert: yearsToRetire 12,58 statt 13.
-- [ ] **R12** — bAV-Einmalauszahlung ohne Fünftelregelung §34 EStG
+- [x] **R12** — ✅ ERLEDIGT 07.06. (`?v=20260607c`): bAV-Einmalauszahlung mit Fünftelregelung §34 EStG (`5 × ESt(Betrag/5)` via rpCalcIncomeTax) statt pauschal 42 %. Annahme: zusammengeballte Auszahlung als isolierte Einkunft (zvE-Basis 0) — berücksichtigt Grundfreibetrag + Progressionszonen, bei großen Summen deutlich realistischer.
 - [x] **R13** — ✅ ERLEDIGT 07.06. (`?v=20260607a`): SV-Sätze zentralisiert in `SV_SAETZE` + `pvSatzNachKindern()` (Modul-Konstanten, Entscheidung: gesetzliche Fixwerte gehören in den Code, nicht in den Store). KV-Basissatz (war 3×), PV-Staffel (war 2× dupliziert), bAV-Freibetrag, Werbungskostenpauschale jetzt an EINER Stelle. Jahres-Update nur noch dort.
-- [ ] **R14** — `person_2.isActive` vs. `settings.partnerEnabled` inkonsistent (Verwirrungsgefahr)
-- [ ] **R15** — Halbeinkünfte-Modus ohne 12/62-Plausibilitätsprüfung
+- [x] **R14** — ✅ ERLEDIGT 07.06. (`?v=20260607c`): totes `person.isActive`-Feld aus beiden Personen-Defaults entfernt (nirgends gelesen). Partner wird allein über `settings.partnerEnabled` aktiviert → keine Verwirrung mehr.
+- [x] **R15** — ✅ ERLEDIGT 07.06. (`?v=20260607c`): Halbeinkünfteverfahren (halber Satz) nur noch ab Alter 62 (§20 Abs.1 Nr.6 EStG); bei früherer Auszahlung voller Ertrag besteuert. Die 12-Jahre-Vertragsdauer bleibt mangels Vertragsbeginn-Daten ungeprüft (im Code vermerkt).
 
 ### Sicherheit / Sync _(aus Audit 05.06.2026, offen-optional)_
 - [x] **Backup-Verhalten prüfen & absichern** — ✅ ERLEDIGT 07.06. (`?v=20260607b`):

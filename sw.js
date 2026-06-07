@@ -1,7 +1,7 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20260607b';
+const CACHE_NAME = 'fp-20260607c';
 
 const SHELL = [
   './',
