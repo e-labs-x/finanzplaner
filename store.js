@@ -1606,6 +1606,11 @@ const BackupManager = {
   /** Download als .fpbackup Datei — DOM-Trigger über fp:download-Event (app.js) */
   download(label) {
     const backup   = BackupManager.create(label);
+    // Auto-Sicherungs-Historie mit exportieren (Datensicherheit): liegt sonst nur im
+    // localStorage dieses Geräts und ist bei "Website-Daten löschen" verloren. Beim
+    // Import wird sie wiederhergestellt (mergeAutoBackups). Nur hier anhängen — NICHT in
+    // create(), sonst würden Auto-Backup/Azure-Push die Historie endlos selbst verschachteln.
+    backup.autoBackups = BackupManager.getAutoBackups();
     const json     = JSON.stringify(backup, null, 2);
     const date     = new Date().toLocaleDateString('de-DE').replace(/\./g, '-');
     const time     = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/:/g, '-');
@@ -1667,6 +1672,10 @@ const BackupManager = {
               ? 'Speicher voll — Import abgebrochen. Bitte alte Auto-Backups oder Browserdaten löschen und erneut versuchen.'
               : 'Import konnte nicht gespeichert werden: ' + setErr.message));
           }
+          // Auto-Sicherungs-Historie aus dem Backup wiederherstellen/mergen (Datensicherheit):
+          // nach Geräteverlust/„Website-Daten löschen" ist die Historie sonst weg. Best-effort —
+          // ein Fehler hier darf den erfolgreichen Daten-Import nicht scheitern lassen.
+          try { BackupManager.mergeAutoBackups(raw.autoBackups); } catch(e) {}
           resolve({
             ok: true,
             transactions: migrated.transactions?.length || 0,
@@ -1708,6 +1717,22 @@ const BackupManager = {
     try {
       return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
     } catch { return []; }
+  },
+
+  /** Beim Import mitgelieferte Auto-Sicherungs-Historie mit der lokalen zusammenführen.
+   *  Dedupe nach timestamp, neueste zuerst, auf MAX_AUTO_BACKUPS begrenzt — quota-sicher
+   *  (gleiche schrittweise Schreiblogik wie _saveAutoBackup). */
+  mergeAutoBackups(incoming) {
+    if (!Array.isArray(incoming) || incoming.length === 0) return;
+    let merged = BackupManager.getAutoBackups();
+    const seen = new Set(merged.map(b => b && b.timestamp));
+    incoming.forEach(b => {
+      if (b && b.timestamp && !seen.has(b.timestamp)) { merged.push(b); seen.add(b.timestamp); }
+    });
+    merged.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+    for (let keep = MAX_AUTO_BACKUPS; keep >= 1; keep--) {
+      try { localStorage.setItem(BACKUP_KEY, JSON.stringify(merged.slice(0, keep))); return; } catch(e) {}
+    }
   },
 
   restoreAutoBackup(index) {
