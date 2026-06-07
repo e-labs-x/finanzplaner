@@ -1141,8 +1141,10 @@ function speichern() {
   var cat = FP.Store.Categories.getAll().find(function(c) { return c.id === selCat; });
   var eurAmt = npCur === 'EUR' ? a : FP.Store.Currencies.toEUR(a, npCur);
   var finalAmt = isErstattet ? -eurAmt : eurAmt;
+  var _isoDate = document.getElementById('np-date').value || new Date().toISOString().split('T')[0];
   FP.Store.Transactions.add({
-    date: isoToMY(document.getElementById('np-date').value),
+    date: isoToMY(_isoDate),
+    dateISO: _isoDate,
     categoryId: selCat,
     subcategoryId: null,
     objectId:      document.getElementById('np-obj').value || null,
@@ -1189,19 +1191,43 @@ function reset() {
 }
 
 /* ── Einträge ── */
+var eShowMore = false;
+function eToggleMore() { eShowMore = !eShowMore; renderEntries(); }
+function fmtTxDate(tx) {
+  if (tx.dateISO) { var p = tx.dateISO.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; } // TT.MM.JJJJ
+  return tx.date; // MM.JJJJ (Altdaten ohne Tag)
+}
+function txSortKey(tx) {
+  if (tx.dateISO) return tx.dateISO;            // JJJJ-MM-TT
+  var p = (tx.date || '').split('.');           // MM.JJJJ
+  return (p[1] || '0000') + '-' + (p[0] || '00') + '-00';
+}
 function renderEntries() {
-  var txs  = FP.Store.Transactions.getAll().filter(function(t) { return t.source === 'manual'; }).slice(-12).reverse();
+  var all = FP.Store.Transactions.getAll().filter(function(t) { return t.source === 'manual'; });
+  all.sort(function(a, b) {
+    var ka = txSortKey(a), kb = txSortKey(b);
+    if (ka !== kb) return ka < kb ? 1 : -1;                       // Datum: neueste zuerst
+    return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;    // dann Erfassung: neueste zuerst
+  });
+  var now = new Date();
+  function myStr(d) { return ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear(); }
+  var prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  var twoSet = {}; twoSet[myStr(now)] = 1; twoSet[myStr(prev)] = 1;
+  function monthOf(tx) { return tx.dateISO ? (tx.dateISO.split('-')[1] + '.' + tx.dateISO.split('-')[0]) : tx.date; }
+  var twoMonthList = all.filter(function(tx) { return !!twoSet[monthOf(tx)]; });
+  var hasMore = twoMonthList.length > 20;
+  var shown = eShowMore ? twoMonthList : all.slice(0, 20);
   var cMap = {}; FP.Store.Categories.getAll().forEach(function(c) { cMap[c.id] = c; });
   var oMap = {}; FP.Store.Objects.getAll().forEach(function(o) { oMap[o.id] = o; });
-  document.getElementById('e-cnt').textContent = txs.length + ' Einträge';
+  document.getElementById('e-cnt').textContent = shown.length + ' von ' + all.length;
   var list = document.getElementById('e-list');
-  if (!txs.length) { list.innerHTML = '<div style="padding:28px 16px;text-align:center"><div style="font-size:32px;margin-bottom:8px;opacity:.4">✏️</div><div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">Noch nichts erfasst</div><div style="font-size:12px;color:var(--tx3)">Kategorie wählen, Betrag eingeben, speichern.</div></div>'; return; }
-  list.innerHTML = txs.map(function(tx) {
+  if (!all.length) { list.innerHTML = '<div style="padding:28px 16px;text-align:center"><div style="font-size:32px;margin-bottom:8px;opacity:.4">✏️</div><div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">Noch nichts erfasst</div><div style="font-size:12px;color:var(--tx3)">Kategorie wählen, Betrag eingeben, speichern.</div></div>'; return; }
+  var rowsHtml = shown.map(function(tx) {
     var cat = cMap[tx.categoryId]; var obj = oMap[tx.objectId];
-    var mo = tx.date.split('.'); var dateTx = MON[parseInt(mo[0])-1] + ' ' + mo[1];
+    var dateTx = fmtTxDate(tx);
     var grp = cat ? cat.group : 'freizeit';
     var objTag = obj ? '<span class="pill pill-obj" style="gap:4px">' + (OBJ_ICONS[obj.type]||'') + ' ' + esc(obj.name) + '</span>' : '';
-    return '<div class="e-row">'
+    return '<div class="e-row" style="cursor:pointer" onclick="editTx(\'' + tx.id + '\')">'
       + '<div class="e-bar" style="background:' + (cat ? cat.color : '#6B7280') + '"></div>'
       + '<div class="e-info">'
       + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + '</div>'
@@ -1210,9 +1236,13 @@ function renderEntries() {
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
       + objTag + '</div></div>'
       + '<div class="e-amt" style="color:' + (tx.amount < 0 ? 'var(--green)' : 'inherit') + '">' + (tx.amount < 0 ? '↩\u2009' : '') + eur(Math.abs(tx.amount)) + '</div>'
-      + '<button class="e-del" onclick="delTx(\'' + tx.id + '\')">✕</button>'
+      + '<button class="e-del" onclick="event.stopPropagation();delTx(\'' + tx.id + '\')">✕</button>'
       + '</div>';
   }).join('');
+  var moreBtn = hasMore
+    ? '<div style="padding:10px 12px;text-align:center"><button class="btn" style="font-size:13px" onclick="eToggleMore()">' + (eShowMore ? 'Weniger anzeigen' : 'Mehr anzeigen (letzte 2 Monate)') + '</button></div>'
+    : '';
+  list.innerHTML = rowsHtml + moreBtn;
 }
 function delTx(id) {
   var tx = FP.Store.Transactions.getAll().find(function(t){return t.id===id;});
@@ -1220,6 +1250,59 @@ function delTx(id) {
   renderEntries();
   toast('Eintrag gelöscht');
   if(tx) appLog('TX', 'Gelöscht: '+(tx.rawName||'')+ ' ' +eur(tx.amount));
+}
+
+/* ── Eintrag bearbeiten ── */
+var _etxId = null;
+function myToISO(my) {
+  var p = (my || '').split('.'); // MM.JJJJ
+  if (p.length === 2) return p[1] + '-' + p[0] + '-01';
+  return new Date().toISOString().split('T')[0];
+}
+function editTx(id) {
+  var tx = FP.Store.Transactions.getById(id);
+  if (!tx) return;
+  _etxId = id;
+  document.getElementById('etx-amt').value = Math.abs(Number(tx.amount) || 0);
+  document.getElementById('etx-typ').value = (Number(tx.amount) < 0) ? 'erstattung' : 'ausgabe';
+  var cats = FP.Store.Categories.getAll().filter(function(c) { return !c.hidden || c.id === tx.categoryId; });
+  document.getElementById('etx-cat').innerHTML = cats.map(function(c) {
+    return '<option value="' + c.id + '"' + (c.id === tx.categoryId ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  var objs = FP.Store.Objects.getAll();
+  document.getElementById('etx-obj').innerHTML = '<option value="">— kein Objekt —</option>' + objs.map(function(o) {
+    return '<option value="' + o.id + '"' + (o.id === tx.objectId ? ' selected' : '') + '>' + esc(o.name) + '</option>';
+  }).join('');
+  document.getElementById('etx-date').value = tx.dateISO || myToISO(tx.date);
+  document.getElementById('etx-note').value = tx.note || '';
+  openM('m-tx-edit');
+}
+function etxSave() {
+  if (!_etxId) return;
+  var val = parseFloat((document.getElementById('etx-amt').value || '').replace(',', '.'));
+  if (isNaN(val) || val <= 0) { toast('Bitte einen Betrag eingeben'); return; }
+  var typ   = document.getElementById('etx-typ').value;
+  var catId = document.getElementById('etx-cat').value;
+  var objId = document.getElementById('etx-obj').value || null;
+  var isoVal = document.getElementById('etx-date').value || new Date().toISOString().split('T')[0];
+  var note  = document.getElementById('etx-note').value.trim();
+  var cat   = FP.Store.Categories.getAll().find(function(c) { return c.id === catId; });
+  var signed = typ === 'erstattung' ? -val : val;
+  FP.Store.Transactions.update(_etxId, {
+    amount:     signed,
+    categoryId: catId,
+    objectId:   objId,
+    date:       isoToMY(isoVal),
+    dateISO:    isoVal,
+    note:       note,
+    rawName:    cat ? cat.name : ''
+  });
+  appLog('TX', 'Bearbeitet: ' + (cat ? cat.name : catId) + ' ' + eur(signed));
+  closeM('m-tx-edit');
+  toast('Eintrag aktualisiert');
+  _etxId = null;
+  renderEntries();
+  if (document.getElementById('p-auswertung') && document.getElementById('p-auswertung').classList.contains('active')) avRender();
 }
 
 /* ── Neue Kategorie ── */

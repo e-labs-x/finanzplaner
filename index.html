@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260607f">
+<link rel="stylesheet" href="style.css?v=20260607g">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 0607f</div>
+      <div class="sb-ver">v12.0 · build 0607g</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -1084,6 +1084,45 @@
   </div>
 </div>
 
+<!-- Modal: Eintrag bearbeiten -->
+<div class="modal-bg" id="m-tx-edit">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Eintrag bearbeiten</div>
+    <div class="fg">
+      <label class="fl">Betrag (€)</label>
+      <input class="fi" id="etx-amt" type="number" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="fg">
+      <label class="fl">Typ</label>
+      <select class="fi" id="etx-typ" style="appearance:auto">
+        <option value="ausgabe">Ausgabe</option>
+        <option value="erstattung">Rückbuchung / Erstattung</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Kategorie</label>
+      <select class="fi" id="etx-cat" style="appearance:auto"></select>
+    </div>
+    <div class="fg">
+      <label class="fl">Objekt (optional)</label>
+      <select class="fi" id="etx-obj" style="appearance:auto"></select>
+    </div>
+    <div class="fg">
+      <label class="fl">Datum</label>
+      <input class="fi" id="etx-date" type="date">
+    </div>
+    <div class="fg">
+      <label class="fl">Notiz</label>
+      <input class="fi" id="etx-note" type="text" maxlength="500" placeholder="Notiz…">
+    </div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeM('m-tx-edit')">Abbrechen</button>
+      <button class="btn btn-p" onclick="etxSave()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -1421,8 +1460,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20260607f"></script>
-<script src="app.js?v=20260607f"></script>
+<script src="store.js?v=20260607g"></script>
+<script src="app.js?v=20260607g"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

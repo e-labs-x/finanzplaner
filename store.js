@@ -1012,6 +1012,7 @@ const Store = (() => {
       const full = {
         id:            generateId('tx'),
         date:          tx.date || currentMonthStr(),
+        dateISO:       tx.dateISO || null,
         categoryId:    tx.categoryId,
         subcategoryId: tx.subcategoryId || null,
         objectId:      tx.objectId     || null,
