@@ -48,7 +48,7 @@ let amt = '', hasDec = false, decPos = 0;
 // ── Azure Blob Sync ───────────────────────────────────────────────────────────
 var AzureSync = (function() {
   var TOKEN_KEY    = 'fp_azure_sas';
-  var SESSION_KEY  = 'fp_dirty';       // sessionStorage: lokale Änderungen über Reload hinaus merken
+  var DIRTY_KEY    = 'fp_dirty';       // localStorage: ungesicherte lokale Änderung über App-Neustart hinweg merken (schützt offline-Änderungen vor Auto-Pull)
   var BACKUP_DATE_KEY = 'fp_backup_dt'; // localStorage: tägliches Backup-Datum (pro Kalendertag)
   var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
@@ -65,16 +65,18 @@ var AzureSync = (function() {
   var _conflictLocalBackup  = null;
   var _authErrShown = false;  // verhindert Toast-Spam bei wiederholtem 403 im Polling
 
-  // Lokale Änderungen über Page-Reload hinaus persistieren
-  try { if (sessionStorage.getItem(SESSION_KEY) === '1') { _dirtyLocal = true; _pendingPush = true; } } catch(e) {}
+  // Lokale Änderungen über App-Neustart hinweg persistieren — localStorage statt sessionStorage,
+  // sonst geht der Dirty-Flag beim Schließen verloren und ein Auto-Pull überschreibt offline
+  // gemachte, noch nicht hochgeladene Änderungen still (statt einen Konflikt zu erkennen).
+  try { if (localStorage.getItem(DIRTY_KEY) === '1') { _dirtyLocal = true; _pendingPush = true; } } catch(e) {}
 
   function _clearDirty() {
     _dirtyLocal = false;
-    try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
+    try { localStorage.removeItem(DIRTY_KEY); } catch(e) {}
   }
   function _setDirty() {
     _dirtyLocal = true;
-    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
+    try { localStorage.setItem(DIRTY_KEY, '1'); } catch(e) {}
   }
   // M8: localStorage statt sessionStorage → wirklich ein Backup pro Kalendertag (nicht pro Session).
   function _maybeDailyBackup(backup) {
@@ -89,6 +91,20 @@ var AzureSync = (function() {
   function maybeDailyBackup() { _maybeDailyBackup(null); }
 
   function _sas()    { return localStorage.getItem(TOKEN_KEY); }
+
+  // Ablaufdatum des SAS-Tokens aus dem Parameter se=… lesen (z.B. se=2027-06-15T...Z)
+  function _sasExpiry() {
+    var sas = _sas(); if (!sas) return null;
+    var m = /(?:^|[?&])se=([^&]+)/.exec(sas);
+    if (!m) return null;
+    var d = new Date(decodeURIComponent(m[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function _sasDaysLeft() {
+    var e = _sasExpiry(); if (!e) return null;
+    return Math.ceil((e.getTime() - Date.now()) / 86400000);
+  }
+
   function _cfg()    { var s = FP.Store.Settings.get().azureSync; return s || {}; }
   function _blobUrl(){ return _cfg().blobUrl; }
   function _active() { return _cfg().enabled && !!_sas() && !!_blobUrl(); }
@@ -514,7 +530,7 @@ var AzureSync = (function() {
     _clearDirty();
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, maybeDailyBackup: maybeDailyBackup };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, maybeDailyBackup: maybeDailyBackup, sasExpiry: _sasExpiry, sasDaysLeft: _sasDaysLeft };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -559,11 +575,43 @@ function azsRenderUI() {
         : 'Noch nicht synchronisiert';
     }
     if (auto) auto.checked = cfg.autoSync !== false;
+    var exp = document.getElementById('st-az-expiry');
+    if (exp) {
+      var e = AzureSync.sasExpiry(), days = AzureSync.sasDaysLeft();
+      if (e == null) { exp.textContent = 'unbekannt'; exp.style.color = 'var(--tx3)'; }
+      else {
+        exp.textContent = e.toLocaleDateString('de-DE') + ' (' + (days < 0 ? 'abgelaufen' : 'noch ' + days + ' Tag' + (days === 1 ? '' : 'e')) + ')';
+        exp.style.color = days < 0 ? 'var(--red)' : days <= 14 ? 'var(--amber)' : 'var(--tx2)';
+      }
+    }
   } else {
     setup.style.display = 'block';
     conn.style.display  = 'none';
     if (badge) { badge.textContent = 'Nicht verbunden'; badge.style.color = 'var(--tx3)'; }
   }
+  updateSasReminder();
+}
+
+// Globales Warnbanner oben in der App: gelb ab 14 Tagen vor SAS-Ablauf, rot wenn abgelaufen.
+function updateSasReminder() {
+  var bar = document.getElementById('sas-bar');
+  if (!bar) return;
+  var cfg = FP.Store.Settings.get().azureSync || {};
+  var connected = cfg.enabled && !!localStorage.getItem('fp_azure_sas') && !!cfg.blobUrl;
+  if (!connected) { bar.style.display = 'none'; return; }
+  var days = AzureSync.sasDaysLeft();
+  if (days == null) { bar.style.display = 'none'; return; }
+  if (days < 0) {
+    bar.className = 'sas-bar danger';
+    bar.textContent = '⚠ Cloud-Zugang abgelaufen — Sync gestoppt. Bitte einen neuen SAS-Token erzeugen und in den Einstellungen einfügen. (Tippen für Einstellungen)';
+  } else if (days <= 14) {
+    var ds = AzureSync.sasExpiry().toLocaleDateString('de-DE');
+    bar.className = 'sas-bar warn';
+    bar.textContent = 'Cloud-Zugang läuft in ' + days + ' Tag' + (days === 1 ? '' : 'en') + ' ab (' + ds + ') — bitte bald einen neuen SAS-Token besorgen. (Tippen für Einstellungen)';
+  } else {
+    bar.style.display = 'none'; return;
+  }
+  bar.style.display = 'block';
 }
 
 function azsConnect() {

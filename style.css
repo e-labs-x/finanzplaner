@@ -1508,3 +1508,8 @@ canvas#avc{display:block;width:100%;cursor:pointer}
   .rp2-filter-lbl{min-width:60px;font-size:10px}
   .rp2-tx-item{grid-template-columns:72px 1fr auto}
 }
+
+/* SAS-Ablauf-Warnbanner (Cloud-Sync-Zugang läuft bald ab / abgelaufen) */
+.sas-bar{margin:0 0 12px;padding:11px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:600;line-height:1.4;cursor:pointer;border:1px solid transparent}
+.sas-bar.warn{background:var(--amber-lt);color:var(--amber);border-color:var(--amber)}
+.sas-bar.danger{background:var(--red-lt);color:var(--red);border-color:var(--red)}

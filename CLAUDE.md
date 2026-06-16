@@ -72,8 +72,8 @@ Niemals klein anfangen und hoffen dass es reicht.
 |---|---|
 | `index.html` | Nur HTML-Gerüst, keine Logik |
 | `style.css` | Gesamtes Design-System + alle CSS-Tokens |
-| `store.js` | FP.Store + FP.Calculator + GHSync — **kein UI-Code** |
-| `app.js` | Gesamte UI-Logik (Tab-Renderer, Event-Handler) |
+| `store.js` | FP.Store + FP.Calculator — **kein UI-Code** |
+| `app.js` | Gesamte UI-Logik (Tab-Renderer, Event-Handler) + `AzureSync` (Cloud-Sync) |
 
 **Repo:** `C:\Users\enesc\finanzplaner-repo\`
 **Live-URL:** https://e-labs-x.github.io/finanzplaner/
@@ -133,7 +133,6 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 **Schlüsselfunktionen (store.js):**
 - `calcRente(personId, scenarioId)` → großes result-Objekt, alles in einem Pass
-- `GHSync.push() / GHSync.pull()` → GitHub Sync via API
 - `window.FP = { Store, Calculator, ... }` → Export am Ende von store.js
 
 **Schlüsselfunktionen (app.js):**
@@ -141,6 +140,7 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 - `rpQuickSave()` → liest DOM → schreibt Store → ruft rpRenderMain()
 - `rpFillForm()` → liest Store → befüllt DOM
 - `setSyncStatus(state, label)` → Sync-Indikator Sidebar + Bottom-Nav
+- `AzureSync.push() / AzureSync.pull()` → Cloud-Sync via Azure Blob (ETag/If-Match, 412 bei Konflikt; IIFE ganz oben in app.js)
 
 **Store-Schlüssel:** `localStorage('finanzplaner_v3')` — `LS_KEY_STORE`
 
@@ -158,13 +158,26 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 ---
 
-## GitHub Sync — Wichtige Regeln
+## Cloud-Sync (Azure Blob) — Wichtige Regeln
 
-- **Nach Pull:** `FP.Store.Settings.setGithubSync()` NICHT aufrufen → würde alte Daten zurückschreiben. Stattdessen `_origSetItem` direkt nutzen.
+Sync läuft über **Azure Blob Storage** (ersetzt seit 05.06.2026 die alte GitHub-API).
+Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die *Daten* liegen in Azure.
+
+- **Speicher:** Account `finanzplanersync` · Container `sync` · Blob `sync.fpbackup`
+  (`https://finanzplanersync.blob.core.windows.net/sync/sync.fpbackup`)
+- **SAS-Token:** in `localStorage('fp_azure_sas')` — NICHT im Store-JSON / Backup. Eingabefeld `type=password`.
+- **Settings:** `settings.azureSync = { enabled, blobUrl, lastETag, lastSync, autoSync }`
+- **Atomare Writes:** PUT mit `If-Match: <lastETag>` → `412` bei Konflikt → Konflikt-Dialog (`AzureSync.conflictChoose`), kein stilles Überschreiben.
+- **Nach Pull:** NICHT über den normalen `setAzureSync()`-Pfad zurückschreiben → `_origSetItem` direkt nutzen (sonst alte Daten zurück).
 - **Push-Loop:** `_justPushed=true` für 12s nach Push blockiert `schedulePush()`
 - **Startup-Lock:** 15s nach App-Start kein Auto-Push (`_pendingPush=true` wird danach nachgeholt)
-- **Polling:** alle 3 Min — kein `visibilitychange` (verursacht Loop auf iPhone-Webapp)
-- **Token:** in `localStorage('fp_gh_token')` — NICHT im Store-JSON
+- **Polling:** HEAD alle 3 Min (ETag-Vergleich)
+- **Token-Fehler:** 401/403 → `_authFailed()` zeigt „Token abgelaufen" + Toast (einmalig)
+- **Dirty-Flag:** `fp_dirty` in **localStorage** (`DIRTY_KEY`) — überlebt App-Neustart, schützt offline gemachte Änderungen vor stillem Überschreiben beim Auto-Pull (Konflikt statt Pull, wenn dirty).
+- **SAS-Ablauf-Erinnerung (16.06.):** `AzureSync.sasExpiry()`/`sasDaysLeft()` lesen `se=` aus dem Token; `updateSasReminder()` steuert das globale Banner `#sas-bar` (gelb ≤14 T., rot abgelaufen) + „Zugang gültig bis"-Zeile in den Einstellungen (`st-az-expiry`).
+- **Azure-Härtung erledigt (07.06.):** Container privat, CORS nur `e-labs-x.github.io`, HTTPS-only, Soft Delete 30 T. (Blobs + Container)
+- **Altlast:** `localStorage('fp_gh_token')` wird bei `load()` automatisch entfernt (Migration githubSync→azureSync)
+- **Offen (SAS-Härtung):** nur noch **engere Container-SAS `racwl`** (Least Privilege, kein Löschrecht) — muss im Azure-Portal erzeugt werden, kein Code. Siehe `TODO.md`.
 
 ---
 
