@@ -131,10 +131,10 @@ _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfr
 
 ### SAS-Härtung — eigene Session _(Sicherheit, aus Inventar-App-Vergleich 15.06.2026)_
 _Kontext: Die Inventar-App nutzt dieselbe Azure-SAS-Technik und hat diese drei Punkte am 15.06.2026 bereits umgesetzt — der Finanzplaner noch nicht. Das Juni-Audit hat nur die Umgebung gehärtet (Container privat, CORS, HTTPS, Soft Delete), nicht die SAS selbst. Wegen sensibler Finanzdaten in EIGENER, fokussierter Session umsetzen + headless verifizieren._
-- [ ] **Engere SAS (Least Privilege)** — ⚠ NUR im Azure-Portal machbar (kein Code): neuen Token erzeugen: Container-SAS auf `sync` mit `racwl` (KEIN Löschrecht `d`), https-only, kürzeres Ablaufdatum (z.B. 12 Monate). Aktuell breite Konto-/Dienst-SAS (Format `…blob.core.windows.net/?sv=…`). Nutzer muss die neue SAS auf allen Geräten neu einfügen. Hinweis: alte SAS bleibt bis Ablauf gültig — echtes Widerrufen nur via Stored Access Policy oder Key-Rotation.
+- [x] **Engere SAS (Least Privilege)** ✅ umgesetzt (16.06.2026) — neuer Konto-SAS-Token erzeugt: nur Dienst **Blob**, Ressourcentypen **Container+Objekt**, Berechtigungen **`racwl`** (Lesen/Schreiben/Liste/Hinzufügen/Erstellen — KEIN Löschen `d`), **Nur HTTPS**, Ablauf 12 Monate. Auf allen Geräten neu eingefügt. **Wichtig fürs nächste Mal:** Die App-`connect()` baut die Blob-URL aus dem Teil VOR `?` → braucht eine **Konto-SAS** (Format `…blob.core.windows.net/?sv=…`), KEINE Container-SAS (`…/sync?sv=…` würde zu `/sync/sync/...` doppeln). Hinweis: alte SAS bleibt bis Ablauf parallel gültig — echtes Widerrufen nur via Stored Access Policy oder Key-Rotation.
 - [x] **Ablauf-Erinnerung** ✅ umgesetzt (16.06.2026) — `_sasExpiry()`/`_sasDaysLeft()` lesen `se=` aus dem Token; globales Warnbanner `#sas-bar` (gelb ab ≤14 T., rot wenn abgelaufen) via `updateSasReminder()` + „Zugang gültig bis"-Zeile in den Einstellungen. Headless verifiziert (warn + danger). Vorbild: Inventar-App.
 - [x] **Dirty-Flag `fp_dirty` sessionStorage → localStorage** ✅ umgesetzt (16.06.2026) — überlebt App-Neustart, schützt offline gemachte Änderungen vor stillem Überschreiben beim Auto-Pull (`DIRTY_KEY` in `AzureSync`).
-- [ ] Nach „Engere SAS" auch `CLAUDE.md` (Abschnitt „Cloud-Sync") final nachziehen.
+- [x] `CLAUDE.md` (Abschnitt „Cloud-Sync") final nachgezogen (16.06.2026). **SAS-Härtung damit komplett (alle 3 Punkte).**
 
 ### Wartung / Sonstiges _(aus CLAUDE.md-Backlog)_
 - [ ] **Kategorien / Fixkosten** — UX-Überarbeitung des Eingabe-Flows (vereinfachen)

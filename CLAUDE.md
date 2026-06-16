@@ -177,7 +177,7 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 - **SAS-Ablauf-Erinnerung (16.06.):** `AzureSync.sasExpiry()`/`sasDaysLeft()` lesen `se=` aus dem Token; `updateSasReminder()` steuert das globale Banner `#sas-bar` (gelb ≤14 T., rot abgelaufen) + „Zugang gültig bis"-Zeile in den Einstellungen (`st-az-expiry`).
 - **Azure-Härtung erledigt (07.06.):** Container privat, CORS nur `e-labs-x.github.io`, HTTPS-only, Soft Delete 30 T. (Blobs + Container)
 - **Altlast:** `localStorage('fp_gh_token')` wird bei `load()` automatisch entfernt (Migration githubSync→azureSync)
-- **Offen (SAS-Härtung):** nur noch **engere Container-SAS `racwl`** (Least Privilege, kein Löschrecht) — muss im Azure-Portal erzeugt werden, kein Code. Siehe `TODO.md`.
+- **SAS-Härtung komplett (16.06.):** neuer **Konto-SAS** (nicht Container-SAS — die App braucht das Format `…blob.core.windows.net/?sv=…`) mit nur Blob, Ressourcentypen Container+Objekt, Rechten **`racwl`** (kein Löschen), Nur-HTTPS, 12 Mon. Ablauf — auf allen Geräten eingefügt. Plus Code-Teil (Ablauf-Erinnerung + Dirty-Flag→localStorage, s.o.).
 
 ---
 
