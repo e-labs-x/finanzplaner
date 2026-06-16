@@ -580,7 +580,7 @@ function azsRenderUI() {
       var e = AzureSync.sasExpiry(), days = AzureSync.sasDaysLeft();
       if (e == null) { exp.textContent = 'unbekannt'; exp.style.color = 'var(--tx3)'; }
       else {
-        exp.textContent = e.toLocaleDateString('de-DE') + ' (' + (days < 0 ? 'abgelaufen' : 'noch ' + days + ' Tag' + (days === 1 ? '' : 'e')) + ')';
+        exp.textContent = e.toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' (' + (days < 0 ? 'abgelaufen' : 'noch ' + days + ' Tag' + (days === 1 ? '' : 'e')) + ')';
         exp.style.color = days < 0 ? 'var(--red)' : days <= 14 ? 'var(--amber)' : 'var(--tx2)';
       }
     }
@@ -605,7 +605,7 @@ function updateSasReminder() {
     bar.className = 'sas-bar danger';
     bar.textContent = '⚠ Cloud-Zugang abgelaufen — Sync gestoppt. Bitte einen neuen SAS-Token erzeugen und in den Einstellungen einfügen. (Tippen für Einstellungen)';
   } else if (days <= 14) {
-    var ds = AzureSync.sasExpiry().toLocaleDateString('de-DE');
+    var ds = AzureSync.sasExpiry().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'});
     bar.className = 'sas-bar warn';
     bar.textContent = 'Cloud-Zugang läuft in ' + days + ' Tag' + (days === 1 ? '' : 'en') + ' ab (' + ds + ') — bitte bald einen neuen SAS-Token besorgen. (Tippen für Einstellungen)';
   } else {
