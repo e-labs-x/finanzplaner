@@ -571,7 +571,7 @@ function azsRenderUI() {
     if (badge) { badge.textContent = '✓ Azure verbunden'; badge.style.color = 'var(--green)'; }
     if (lbl) {
       lbl.textContent = cfg.lastSync
-        ? 'Letzter Sync: ' + new Date(cfg.lastSync).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+        ? 'Letzter Sync: ' + new Date(cfg.lastSync).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
         : 'Noch nicht synchronisiert';
     }
     if (auto) auto.checked = cfg.autoSync !== false;
