@@ -499,10 +499,9 @@ function drawConnectors(){
   const focusPhoto = view.querySelector('.tile-focus .tile-photo');
   if(!focusPhoto) return;
 
-  function centerOf(el){
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width/2 - viewRect.left, y: r.top + r.height/2 - viewRect.top };
-  }
+  function topOf(el){ const r=el.getBoundingClientRect(); return { x:r.left+r.width/2-viewRect.left, y:r.top-viewRect.top }; }
+  function bottomOf(el){ const r=el.getBoundingClientRect(); return { x:r.left+r.width/2-viewRect.left, y:r.bottom-viewRect.top }; }
+  function centerOf(el){ const r=el.getBoundingClientRect(); return { x:r.left+r.width/2-viewRect.left, y:r.top+r.height/2-viewRect.top }; }
   function addLine(a, b){
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
@@ -510,20 +509,51 @@ function drawConnectors(){
     line.setAttribute('class', 'connector-line');
     svg.appendChild(line);
   }
+  // Zeichnet eine Sammelleiste unter einer Gruppe (z.B. Eltern) und liefert den Ankerpunkt fuer den Stamm nach unten.
+  function groupBar(els, gap){
+    const pts = els.map(bottomOf);
+    const barY = Math.max(...pts.map(p=>p.y)) + gap;
+    pts.forEach(p=>addLine(p, { x:p.x, y:barY }));
+    if(pts.length>1){
+      const xs = pts.map(p=>p.x);
+      addLine({ x:Math.min(...xs), y:barY }, { x:Math.max(...xs), y:barY });
+    }
+    const stemX = pts.reduce((s,p)=>s+p.x, 0) / pts.length;
+    return { x:stemX, y:barY };
+  }
+  // Verbindet einen Ankerpunkt rechtwinklig mit einer Gruppe darunter (z.B. Kinder).
+  function dropToGroup(sourcePt, els, gap){
+    if(!els.length) return;
+    const pts = els.map(topOf);
+    const barY = Math.min(...pts.map(p=>p.y)) - gap;
+    addLine(sourcePt, { x:sourcePt.x, y:barY });
+    if(pts.length>1){
+      const xs = pts.map(p=>p.x);
+      addLine({ x:Math.min(...xs), y:barY }, { x:Math.max(...xs), y:barY });
+    }
+    pts.forEach(p=>addLine({ x:p.x, y:barY }, p));
+  }
 
-  const focusPt = centerOf(focusPhoto);
-  const parentPhotos = view.querySelectorAll('.row-parents .tile:not(.tile-add) .tile-photo');
-  const siblingPhotos = view.querySelectorAll('.row-siblings .tile:not(.tile-add) .tile-photo');
-  const spousePhotos = view.querySelectorAll('.row-center .tile:not(.tile-focus):not(.tile-add) .tile-photo');
-  const childPhotos = view.querySelectorAll('.row-children .tile:not(.tile-add) .tile-photo');
+  const parentPhotos = Array.from(view.querySelectorAll('.row-parents .tile:not(.tile-add) .tile-photo'));
+  const siblingPhotos = Array.from(view.querySelectorAll('.row-siblings .tile:not(.tile-add) .tile-photo'));
+  const spousePhotos = Array.from(view.querySelectorAll('.row-center .tile:not(.tile-focus):not(.tile-add) .tile-photo'));
+  const childPhotos = Array.from(view.querySelectorAll('.row-children .tile:not(.tile-add) .tile-photo'));
 
-  parentPhotos.forEach(pp=>{
-    const pt = centerOf(pp);
-    addLine(pt, focusPt);
-    siblingPhotos.forEach(sp=>addLine(pt, centerOf(sp)));
-  });
-  spousePhotos.forEach(sp=>addLine(focusPt, centerOf(sp)));
-  childPhotos.forEach(cp=>addLine(focusPt, centerOf(cp)));
+  if(parentPhotos.length){
+    const anchor = groupBar(parentPhotos, 22);
+    dropToGroup(anchor, [focusPhoto, ...siblingPhotos], 22);
+  }
+  spousePhotos.forEach(sp=>addLine(centerOf(focusPhoto), centerOf(sp)));
+  if(childPhotos.length){
+    let source;
+    if(spousePhotos.length===1){
+      const a = bottomOf(focusPhoto), b = bottomOf(spousePhotos[0]);
+      source = { x:(a.x+b.x)/2, y:Math.max(a.y,b.y) };
+    } else {
+      source = bottomOf(focusPhoto);
+    }
+    dropToGroup(source, childPhotos, 22);
+  }
 }
 window.addEventListener('resize', scheduleDrawConnectors);
 
