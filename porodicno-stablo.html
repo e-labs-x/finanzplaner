@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Porodično stablo</title>
+<style>
+:root{
+  --bg:#faf7f2;
+  --card:#ffffff;
+  --accent:#1f6f5c;
+  --accent-dark:#154d40;
+  --accent-light:#e3f1ec;
+  --text:#2b2b2b;
+  --text-light:#6b6b6b;
+  --danger:#b3402f;
+  --border:#e2ddd3;
+  --shadow:0 2px 10px rgba(0,0,0,0.10);
+  --radius:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:18px;line-height:1.4;}
+header{display:flex;align-items:center;gap:8px;padding:14px 18px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5;}
+header h1{flex:1;text-align:center;font-size:22px;margin:0;color:var(--accent-dark);}
+.icon-btn{font-size:26px;background:none;border:none;cursor:pointer;padding:8px 10px;border-radius:12px;color:var(--accent-dark);}
+.icon-btn:hover{background:var(--accent-light);}
+.icon-btn:disabled{opacity:0.3;cursor:default;}
+.icon-btn:disabled:hover{background:none;}
+
+main#view{max-width:1000px;margin:0 auto;padding:24px 16px 80px;display:flex;flex-direction:column;align-items:center;gap:28px;}
+.row{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:20px;width:100%;}
+.row-center{align-items:center;}
+
+.tile{width:120px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;padding-top:4px;}
+.tile-focus{width:170px;}
+.tile-photo{width:90px;height:90px;border-radius:50%;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--card);}
+.tile-focus .tile-photo{width:140px;height:140px;border:4px solid var(--accent);}
+.tile-photo img{width:100%;height:100%;object-fit:cover;}
+.avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:600;}
+.tile-focus .avatar-fallback{font-size:48px;}
+.tile-rel{font-size:14px;color:var(--text-light);margin-top:8px;}
+.tile-name{font-weight:600;margin-top:2px;font-size:17px;word-break:break-word;}
+.tile-focus .tile-name{font-size:20px;}
+.tile-year{font-size:14px;color:var(--text-light);}
+.tile-edit{position:absolute;top:0;right:8px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;box-shadow:var(--shadow);}
+.tile-action{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;font-size:14px;cursor:pointer;box-shadow:var(--shadow);top:-4px;}
+.tile-unlink{right:-4px;color:var(--danger);}
+.tile-star{left:-4px;font-size:18px;}
+
+.tile-add{width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--accent-dark);}
+.tile-add .tile-add-icon{width:90px;height:90px;border-radius:50%;border:3px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--card);}
+.tile-add .tile-add-label{margin-top:8px;font-size:14px;text-align:center;}
+.tile-add:hover .tile-add-icon{border-color:var(--accent);}
+
+.empty-state{text-align:center;padding:60px 20px;max-width:420px;}
+.empty-icon{font-size:60px;margin:0;}
+
+.btn{font-size:18px;padding:14px 22px;border-radius:12px;border:none;cursor:pointer;font-weight:600;}
+.btn-big{min-height:56px;width:100%;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-dark);}
+.btn-secondary{background:var(--accent-light);color:var(--accent-dark);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-text{background:none;color:var(--text-light);text-decoration:underline;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;}
+.overlay.hidden{display:none;}
+.modal{background:var(--card);border-radius:var(--radius);padding:26px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;}
+.modal h2{margin-top:0;color:var(--accent-dark);}
+.modal-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px;}
+.modal-actions-vertical{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
+
+form label{display:block;margin-bottom:14px;font-weight:600;font-size:16px;}
+form input[type=text], form input[type=number], form textarea{width:100%;font-size:17px;padding:10px;margin-top:6px;border:1px solid var(--border);border-radius:10px;font-family:inherit;}
+.radio-group{display:flex;gap:16px;font-weight:400;font-size:16px;margin-top:6px;flex-wrap:wrap;}
+.radio-group label{margin:0;display:flex;align-items:center;gap:6px;font-weight:400;}
+.foto-preview-img{max-width:140px;border-radius:12px;margin-top:8px;display:block;}
+
+.existing-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer;}
+.existing-row:hover{background:var(--accent-light);}
+.existing-avatar{width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.existing-avatar img{width:100%;height:100%;object-fit:cover;}
+#existing-search{width:100%;font-size:16px;padding:10px;border:1px solid var(--border);border-radius:10px;margin:10px 0;}
+
+.detail-photo{display:flex;justify-content:center;margin-bottom:12px;}
+.detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:50%;object-fit:cover;}
+.avatar-fallback-lg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:600;}
+.detail-year{color:var(--text-light);text-align:center;}
+.detail-notes{white-space:pre-wrap;}
+.settings-hint{font-size:14px;color:var(--text-light);}
+.hidden{display:none;}
+
+@media (max-width:480px){
+  .tile{width:100px;}
+  .tile-photo{width:76px;height:76px;}
+  .tile-focus .tile-photo{width:110px;height:110px;}
+  .tile-focus{width:140px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="btn-back" class="icon-btn" title="Nazad">←</button>
+  <button id="btn-home" class="icon-btn" title="Početna osoba">🏠</button>
+  <h1>🌳 Porodično stablo</h1>
+  <button id="btn-settings" class="icon-btn" title="Podešavanja">⚙️</button>
+</header>
+<main id="view"></main>
+
+<div id="modal-overlay" class="overlay hidden">
+  <div id="modal-box" class="modal"></div>
+</div>
+
+<script>
+const LS_KEY = 'porodicnoStablo_v1';
+let state = loadState();
+let historyStack = [];
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      return { people: parsed.people || {}, rootId: parsed.rootId || null, focusId: parsed.focusId || parsed.rootId || null };
+    }
+  }catch(e){}
+  return { people:{}, rootId:null, focusId:null };
+}
+function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function getPerson(id){ return state.people[id]; }
+function escapeHtml(str){
+  return String(str==null?'':str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function avatarColor(name){
+  let hash=0;
+  const s = name || '?';
+  for(let i=0;i<s.length;i++){ hash = s.charCodeAt(i) + ((hash<<5)-hash); }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 45%, 55%)`;
+}
+
+function getParents(id){ const p=getPerson(id); return (p.parentIds||[]).map(pid=>state.people[pid]).filter(Boolean); }
+function getChildren(id){ return Object.values(state.people).filter(p=>(p.parentIds||[]).includes(id)); }
+function getSpouses(id){ const p=getPerson(id); return (p.spouseIds||[]).map(sid=>state.people[sid]).filter(Boolean); }
+function getSiblings(id){
+  const p = getPerson(id);
+  const parentIds = p.parentIds || [];
+  if(!parentIds.length) return [];
+  const result = [];
+  Object.values(state.people).forEach(o=>{
+    if(o.id===id) return;
+    if((o.parentIds||[]).some(pid=>parentIds.includes(pid))) result.push(o);
+  });
+  return result;
+}
+
+function parentLabel(p){ return p.spol==='M' ? 'Otac' : p.spol==='Z' ? 'Majka' : 'Roditelj'; }
+function childLabel(p){ return p.spol==='M' ? 'Sin' : p.spol==='Z' ? 'Kćerka' : 'Dijete'; }
+function siblingLabel(p){ return p.spol==='M' ? 'Brat' : p.spol==='Z' ? 'Sestra' : 'Brat/Sestra'; }
+function spouseLabel(p){ return p.spol==='M' ? 'Suprug' : p.spol==='Z' ? 'Supruga' : 'Supružnik/Partner'; }
+
+function navigateTo(id){
+  if(id===state.focusId) return;
+  historyStack.push(state.focusId);
+  state.focusId = id;
+  saveState(); render();
+}
+function goBack(){
+  if(!historyStack.length) return;
+  state.focusId = historyStack.pop();
+  saveState(); render();
+}
+function goHome(){
+  if(state.rootId && state.rootId!==state.focusId) navigateTo(state.rootId);
+}
+function setAsHome(){
+  state.rootId = state.focusId;
+  saveState(); render();
+}
+
+function addPerson(data, type){
+  const id = uid();
+  const person = { id, ime:data.ime.trim(), godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
+  const focus = getPerson(state.focusId);
+  if(type==='parent'){
+    focus.parentIds = focus.parentIds || [];
+    focus.parentIds.push(id);
+  } else if(type==='child'){
+    person.parentIds = [state.focusId];
+  } else if(type==='spouse'){
+    person.spouseIds = [state.focusId];
+    focus.spouseIds = focus.spouseIds || [];
+    focus.spouseIds.push(id);
+  } else if(type==='sibling'){
+    person.parentIds = [...(focus.parentIds||[])];
+  }
+  state.people[id] = person;
+  saveState(); closeModal(); render();
+}
+function addRootPerson(data){
+  const id = uid();
+  state.people[id] = { id, ime:data.ime.trim(), godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
+  state.rootId = id;
+  state.focusId = id;
+  saveState(); closeModal(); render();
+}
+function updatePerson(id, data){
+  const p = getPerson(id);
+  p.ime = data.ime.trim();
+  p.godina = data.godina || '';
+  p.spol = data.spol || '';
+  p.biljeske = data.biljeske || '';
+  if(data.foto) p.foto = data.foto;
+  saveState(); closeModal(); render();
+}
+function deletePerson(id){
+  Object.values(state.people).forEach(p=>{
+    if(p.parentIds) p.parentIds = p.parentIds.filter(pid=>pid!==id);
+    if(p.spouseIds) p.spouseIds = p.spouseIds.filter(sid=>sid!==id);
+  });
+  delete state.people[id];
+  const remaining = Object.keys(state.people);
+  if(state.rootId===id) state.rootId = remaining[0] || null;
+  if(state.focusId===id) state.focusId = state.rootId;
+  historyStack = historyStack.filter(h=>h!==id && state.people[h]);
+  saveState(); closeModal(); render();
+}
+function linkExisting(type, existingId){
+  const focus = getPerson(state.focusId);
+  const other = getPerson(existingId);
+  if(type==='parent'){
+    focus.parentIds = focus.parentIds || [];
+    if(!focus.parentIds.includes(existingId)) focus.parentIds.push(existingId);
+  } else if(type==='child'){
+    other.parentIds = other.parentIds || [];
+    if(!other.parentIds.includes(state.focusId)) other.parentIds.push(state.focusId);
+  } else if(type==='spouse'){
+    focus.spouseIds = focus.spouseIds || [];
+    other.spouseIds = other.spouseIds || [];
+    if(!focus.spouseIds.includes(existingId)) focus.spouseIds.push(existingId);
+    if(!other.spouseIds.includes(state.focusId)) other.spouseIds.push(state.focusId);
+  } else if(type==='sibling'){
+    other.parentIds = Array.from(new Set([...(other.parentIds||[]), ...(focus.parentIds||[])]));
+  }
+  saveState(); closeModal(); render();
+}
+function unlinkRelation(type, otherId){
+  const focus = getPerson(state.focusId);
+  const other = getPerson(otherId);
+  if(type==='parent'){
+    focus.parentIds = (focus.parentIds||[]).filter(pid=>pid!==otherId);
+  } else if(type==='child'){
+    other.parentIds = (other.parentIds||[]).filter(pid=>pid!==state.focusId);
+  } else if(type==='spouse'){
+    focus.spouseIds = (focus.spouseIds||[]).filter(sid=>sid!==otherId);
+    other.spouseIds = (other.spouseIds||[]).filter(sid=>sid!==state.focusId);
+  }
+  saveState(); render();
+}
+
+function resizeImage(file, maxDim=400){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let {width, height} = img;
+        if(width>height){ if(width>maxDim){ height*=maxDim/width; width=maxDim; } }
+        else { if(height>maxDim){ width*=maxDim/height; height=maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img,0,0,width,height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function openModal(html){
+  document.getElementById('modal-box').innerHTML = html;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.getElementById('modal-box').innerHTML = '';
+}
+function showConfirm(message, onYes){
+  openModal(`
+    <h2>Potvrda</h2>
+    <p>${escapeHtml(message)}</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-big" id="confirm-yes">Da</button>
+      <button class="btn btn-text" onclick="closeModal()">Otkaži</button>
+    </div>
+  `);
+  document.getElementById('confirm-yes').addEventListener('click', onYes);
+}
+function confirmDeletePerson(id){
+  const p = getPerson(id);
+  showConfirm(`Da li ste sigurni da želite obrisati osobu "${p.ime}"? Ova radnja se ne može poništiti.`, ()=>deletePerson(id));
+}
+function confirmUnlink(type, id){
+  showConfirm('Ukloniti ovu vezu? Osoba neće biti obrisana, samo veza sa ovom osobom.', ()=>unlinkRelation(type,id));
+}
+
+function openAddFlow(type){
+  const titles = { parent:'roditelja', spouse:'supružnika/partnera', child:'dijete', sibling:'brata/sestru' };
+  openModal(`
+    <h2>Dodaj ${titles[type]}</h2>
+    <div class="modal-actions-vertical">
+      <button class="btn btn-primary btn-big" onclick="openPersonFormNew('${type}')">➕ Nova osoba</button>
+      <button class="btn btn-secondary btn-big" onclick="openExistingPicker('${type}')">🔗 Poveži postojeću osobu</button>
+      <button class="btn btn-text" onclick="closeModal()">Otkaži</button>
+    </div>
+  `);
+}
+function openPersonFormNew(type){
+  openModal(personFormTemplate(null, type));
+  wireFormEvents(null, type);
+}
+function openEditPerson(id){
+  openModal(personFormTemplate(id, null));
+  wireFormEvents(id, null);
+}
+function personFormTemplate(editId, type){
+  const p = editId ? getPerson(editId) : null;
+  const titleMap = { parent:'Dodaj roditelja', child:'Dodaj dijete', spouse:'Dodaj supružnika/partnera', sibling:'Dodaj brata/sestru', root:'Dodaj prvu osobu' };
+  const title = editId ? `Uredi: ${escapeHtml(p.ime)}` : (titleMap[type] || 'Dodaj osobu');
+  return `
+    <h2>${title}</h2>
+    <form id="person-form">
+      <label>Ime i prezime *<input required type="text" id="f-ime" value="${p?escapeHtml(p.ime):''}"></label>
+      <label>Godina rođenja<input type="number" id="f-godina" value="${p&&p.godina?escapeHtml(String(p.godina)):''}" min="1850" max="2026"></label>
+      <label>Spol
+        <div class="radio-group">
+          <label><input type="radio" name="f-spol" value="M" ${p&&p.spol==='M'?'checked':''}> Muško</label>
+          <label><input type="radio" name="f-spol" value="Z" ${p&&p.spol==='Z'?'checked':''}> Žensko</label>
+          <label><input type="radio" name="f-spol" value="" ${!p||!p.spol?'checked':''}> Ne znam</label>
+        </div>
+      </label>
+      <label>Fotografija<input type="file" id="f-foto" accept="image/*"></label>
+      <div id="f-foto-preview">${p&&p.foto?`<img src="${p.foto}" class="foto-preview-img">`:''}</div>
+      <label>Bilješke / informacije<textarea id="f-biljeske" rows="4">${p?escapeHtml(p.biljeske||''):''}</textarea></label>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-big">💾 Sačuvaj</button>
+        ${editId?`<button type="button" class="btn btn-danger" onclick="confirmDeletePerson('${editId}')">🗑️ Obriši osobu</button>`:''}
+        <button type="button" class="btn btn-text" onclick="closeModal()">Otkaži</button>
+      </div>
+    </form>
+  `;
+}
+function wireFormEvents(editId, type){
+  const form = document.getElementById('person-form');
+  let pendingFoto = editId ? getPerson(editId).foto : null;
+  document.getElementById('f-foto').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    pendingFoto = await resizeImage(file);
+    document.getElementById('f-foto-preview').innerHTML = `<img src="${pendingFoto}" class="foto-preview-img">`;
+  });
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const ime = document.getElementById('f-ime').value.trim();
+    if(!ime) return;
+    const godina = document.getElementById('f-godina').value;
+    const spol = form.querySelector('input[name="f-spol"]:checked')?.value || '';
+    const biljeske = document.getElementById('f-biljeske').value;
+    const data = { ime, godina, spol, biljeske, foto: pendingFoto };
+    if(editId) updatePerson(editId, data);
+    else if(type==='root') addRootPerson(data);
+    else addPerson(data, type);
+  });
+}
+
+function openExistingPicker(type){
+  const focus = getPerson(state.focusId);
+  const excludeIds = new Set([focus.id]);
+  if(type==='parent') (focus.parentIds||[]).forEach(id=>excludeIds.add(id));
+  if(type==='spouse') (focus.spouseIds||[]).forEach(id=>excludeIds.add(id));
+  if(type==='child') Object.values(state.people).filter(p=>(p.parentIds||[]).includes(focus.id)).forEach(p=>excludeIds.add(p.id));
+  const candidates = Object.values(state.people).filter(p=>!excludeIds.has(p.id));
+  const listHtml = candidates.length ? candidates.map(p=>`
+    <div class="existing-row" onclick="linkExisting('${type}','${p.id}')">
+      <div class="existing-avatar">${p.foto?`<img src="${p.foto}">`:`<div class="avatar-fallback" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`}</div>
+      <div>${escapeHtml(p.ime)}${p.godina?` (r. ${escapeHtml(String(p.godina))})`:''}</div>
+    </div>`).join('') : '<p>Nema drugih osoba za povezivanje.</p>';
+  openModal(`
+    <h2>Poveži postojeću osobu</h2>
+    <input type="text" id="existing-search" placeholder="Pretraži ime..." oninput="filterExistingList(this.value)">
+    <div id="existing-list">${listHtml}</div>
+    <div class="modal-actions"><button class="btn btn-text" onclick="closeModal()">Otkaži</button></div>
+  `);
+}
+function filterExistingList(q){
+  q = q.toLowerCase();
+  document.querySelectorAll('#existing-list .existing-row').forEach(row=>{
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function openPersonDetail(id){
+  const p = getPerson(id);
+  openModal(`
+    <h2>${escapeHtml(p.ime)}</h2>
+    <div class="detail-photo">${p.foto?`<img src="${p.foto}">`:`<div class="avatar-fallback-lg" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`}</div>
+    ${p.godina?`<p class="detail-year">Rođen/a: ${escapeHtml(String(p.godina))}.</p>`:''}
+    <p class="detail-notes">${p.biljeske?escapeHtml(p.biljeske).replace(/\n/g,'<br>'):'<em>Nema bilješki.</em>'}</p>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-big" onclick="openEditPerson('${id}')">✏️ Uredi</button>
+      <button class="btn btn-text" onclick="closeModal()">Zatvori</button>
+    </div>
+  `);
+}
+
+function openSettings(){
+  openModal(`
+    <h2>⚙️ Podešavanja</h2>
+    <p>Broj osoba u stablu: ${Object.keys(state.people).length}</p>
+    <div class="modal-actions-vertical">
+      <button class="btn btn-primary btn-big" onclick="exportBackup()">⬇️ Preuzmi sigurnosnu kopiju</button>
+      <button class="btn btn-secondary btn-big" onclick="document.getElementById('import-file-input').click()">⬆️ Učitaj sigurnosnu kopiju</button>
+      <input type="file" id="import-file-input" accept="application/json" class="hidden" onchange="importBackup(this.files[0])">
+    </div>
+    <p class="settings-hint">Savjet: Ako je folder "Preuzimanja" na ovom računaru povezan sa OneDrive-om, sigurnosne kopije će se automatski sačuvati i na OneDrive-u.</p>
+    <div class="modal-actions"><button class="btn btn-text" onclick="closeModal()">Zatvori</button></div>
+  `);
+}
+function exportBackup(){
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `porodicno-stablo-sigurnosna-kopija-${dateStr}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importBackup(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed || typeof parsed.people !== 'object') throw new Error('invalid');
+      showConfirm('Ovo će zamijeniti sve trenutne podatke sačuvanom kopijom. Nastaviti?', ()=>{
+        state = { people: parsed.people||{}, rootId: parsed.rootId||null, focusId: parsed.focusId||parsed.rootId||null };
+        historyStack = [];
+        saveState(); closeModal(); render();
+      });
+    }catch(err){
+      alert('Datoteka nije ispravna sigurnosna kopija.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function personTile(p, opts={}){
+  const isFocus = !!opts.focus;
+  const relLabel = opts.relLabel;
+  const photoHtml = p.foto
+    ? `<img src="${p.foto}" alt="">`
+    : `<div class="avatar-fallback" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`;
+  const godinaHtml = p.godina ? `<div class="tile-year">r. ${escapeHtml(String(p.godina))}</div>` : '';
+  const unlinkBtn = opts.unlink ? `<button class="tile-action tile-unlink" title="Ukloni vezu" onclick="event.stopPropagation(); confirmUnlink('${opts.unlink.type}','${opts.unlink.id}')">✕</button>` : '';
+  const starBtn = isFocus ? `<button class="tile-action tile-star" title="Postavi kao početnu osobu" onclick="event.stopPropagation(); setAsHome()">${state.rootId===p.id?'⭐':'☆'}</button>` : '';
+  const clickAction = isFocus ? `openPersonDetail('${p.id}')` : `navigateTo('${p.id}')`;
+  return `
+    <div class="tile ${isFocus?'tile-focus':''}" onclick="${clickAction}">
+      <div class="tile-photo">${photoHtml}${unlinkBtn}${starBtn}</div>
+      ${relLabel?`<div class="tile-rel">${escapeHtml(relLabel)}</div>`:''}
+      <div class="tile-name">${escapeHtml(p.ime)}</div>
+      ${godinaHtml}
+      <button class="tile-edit" title="Uredi" onclick="event.stopPropagation(); openEditPerson('${p.id}')">✏️</button>
+    </div>`;
+}
+function addTile(label, onclickFn){
+  return `<div class="tile tile-add" onclick="${onclickFn}"><div class="tile-add-icon">➕</div><div class="tile-add-label">${escapeHtml(label)}</div></div>`;
+}
+
+function render(){
+  const view = document.getElementById('view');
+  const ids = Object.keys(state.people);
+  document.getElementById('btn-back').disabled = historyStack.length===0;
+  document.getElementById('btn-home').disabled = !state.rootId || state.rootId===state.focusId;
+
+  if(ids.length===0){
+    view.innerHTML = `
+      <div class="empty-state">
+        <p class="empty-icon">🌳</p>
+        <h2>Dobrodošli!</h2>
+        <p>Započnite kreiranje vašeg porodičnog stabla.</p>
+        <button class="btn btn-primary btn-big" onclick="openPersonFormNew('root')">➕ Dodajte prvu osobu</button>
+      </div>`;
+    return;
+  }
+
+  let focus = getPerson(state.focusId);
+  if(!focus){
+    state.focusId = state.rootId && state.people[state.rootId] ? state.rootId : ids[0];
+    saveState();
+    focus = getPerson(state.focusId);
+  }
+
+  const parents = getParents(focus.id);
+  const siblings = getSiblings(focus.id);
+  const spouses = getSpouses(focus.id);
+  const children = getChildren(focus.id);
+
+  let html = '';
+
+  html += '<div class="row row-parents">';
+  parents.forEach(p=>{ html += personTile(p, { relLabel: parentLabel(p), unlink:{type:'parent', id:p.id} }); });
+  if(parents.length < 2){
+    html += addTile(parents.length===0?'Dodaj roditelja':'Dodaj drugog roditelja', "openAddFlow('parent')");
+  }
+  html += '</div>';
+
+  if(parents.length>0 || siblings.length>0){
+    html += '<div class="row row-siblings">';
+    siblings.forEach(s=>{ html += personTile(s, { relLabel: siblingLabel(s) }); });
+    if(parents.length>0){ html += addTile('Dodaj brata/sestru', "openAddFlow('sibling')"); }
+    html += '</div>';
+  }
+
+  html += '<div class="row row-center">';
+  html += personTile(focus, { focus:true });
+  spouses.forEach(s=>{ html += personTile(s, { relLabel: spouseLabel(s), unlink:{type:'spouse', id:s.id} }); });
+  html += addTile('Dodaj supružnika/partnera', "openAddFlow('spouse')");
+  html += '</div>';
+
+  html += '<div class="row row-children">';
+  children.forEach(c=>{ html += personTile(c, { relLabel: childLabel(c), unlink:{type:'child', id:c.id} }); });
+  html += addTile('Dodaj dijete', "openAddFlow('child')");
+  html += '</div>';
+
+  view.innerHTML = html;
+}
+
+document.getElementById('btn-back').addEventListener('click', goBack);
+document.getElementById('btn-home').addEventListener('click', goHome);
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+
+render();
+</script>
+</body>
+</html>
