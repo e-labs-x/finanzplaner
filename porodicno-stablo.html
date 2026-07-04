@@ -27,13 +27,16 @@ header h1{flex:1;text-align:center;font-size:22px;margin:0;color:var(--accent-da
 .icon-btn:disabled{opacity:0.3;cursor:default;}
 .icon-btn:disabled:hover{background:none;}
 
-main#view{max-width:1000px;margin:0 auto;padding:24px 16px 80px;display:flex;flex-direction:column;align-items:center;gap:28px;}
+main#view{position:relative;max-width:1000px;margin:0 auto;}
+#connector-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible;}
+.connector-line{stroke:var(--accent);stroke-opacity:0.4;stroke-width:3;stroke-linecap:round;}
+#view-inner{position:relative;z-index:1;padding:24px 16px 80px;display:flex;flex-direction:column;align-items:center;gap:28px;width:100%;}
 .row{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:20px;width:100%;}
 .row-center{align-items:center;}
 
 .tile{width:120px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;padding-top:4px;}
 .tile-focus{width:170px;}
-.tile-photo{width:90px;height:90px;border-radius:50%;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--card);}
+.tile-photo{width:90px;height:90px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--card);}
 .tile-focus .tile-photo{width:140px;height:140px;border:4px solid var(--accent);}
 .tile-photo img{width:100%;height:100%;object-fit:cover;}
 .avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:600;}
@@ -48,7 +51,7 @@ main#view{max-width:1000px;margin:0 auto;padding:24px 16px 80px;display:flex;fle
 .tile-star{left:-4px;font-size:18px;}
 
 .tile-add{width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--accent-dark);}
-.tile-add .tile-add-icon{width:90px;height:90px;border-radius:50%;border:3px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--card);}
+.tile-add .tile-add-icon{width:90px;height:90px;border-radius:18px;border:3px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--card);}
 .tile-add .tile-add-label{margin-top:8px;font-size:14px;text-align:center;}
 .tile-add:hover .tile-add-icon{border-color:var(--accent);}
 
@@ -78,12 +81,12 @@ form input[type=text], form input[type=number], form textarea{width:100%;font-si
 
 .existing-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer;}
 .existing-row:hover{background:var(--accent-light);}
-.existing-avatar{width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;}
+.existing-avatar{width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;}
 .existing-avatar img{width:100%;height:100%;object-fit:cover;}
 #existing-search{width:100%;font-size:16px;padding:10px;border:1px solid var(--border);border-radius:10px;margin:10px 0;}
 
 .detail-photo{display:flex;justify-content:center;margin-bottom:12px;}
-.detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:50%;object-fit:cover;}
+.detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:22px;object-fit:cover;}
 .avatar-fallback-lg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:600;}
 .detail-year{color:var(--text-light);text-align:center;}
 .detail-notes{white-space:pre-wrap;}
@@ -105,7 +108,10 @@ form input[type=text], form input[type=number], form textarea{width:100%;font-si
   <h1>🌳 Porodično stablo</h1>
   <button id="btn-settings" class="icon-btn" title="Podešavanja">⚙️</button>
 </header>
-<main id="view"></main>
+<main id="view">
+  <svg id="connector-svg"></svg>
+  <div id="view-inner"></div>
+</main>
 
 <div id="modal-overlay" class="overlay hidden">
   <div id="modal-box" class="modal"></div>
@@ -463,7 +469,7 @@ function personTile(p, opts={}){
   const isFocus = !!opts.focus;
   const relLabel = opts.relLabel;
   const photoHtml = p.foto
-    ? `<img src="${p.foto}" alt="">`
+    ? `<img src="${p.foto}" alt="" onload="scheduleDrawConnectors()">`
     : `<div class="avatar-fallback" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`;
   const godinaHtml = p.godina ? `<div class="tile-year">r. ${escapeHtml(String(p.godina))}</div>` : '';
   const unlinkBtn = opts.unlink ? `<button class="tile-action tile-unlink" title="Ukloni vezu" onclick="event.stopPropagation(); confirmUnlink('${opts.unlink.type}','${opts.unlink.id}')">✕</button>` : '';
@@ -482,8 +488,47 @@ function addTile(label, onclickFn){
   return `<div class="tile tile-add" onclick="${onclickFn}"><div class="tile-add-icon">➕</div><div class="tile-add-label">${escapeHtml(label)}</div></div>`;
 }
 
-function render(){
+function scheduleDrawConnectors(){ requestAnimationFrame(drawConnectors); }
+function drawConnectors(){
+  const svg = document.getElementById('connector-svg');
   const view = document.getElementById('view');
+  if(!svg || !view) return;
+  svg.innerHTML = '';
+  const viewRect = view.getBoundingClientRect();
+
+  const focusPhoto = view.querySelector('.tile-focus .tile-photo');
+  if(!focusPhoto) return;
+
+  function centerOf(el){
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width/2 - viewRect.left, y: r.top + r.height/2 - viewRect.top };
+  }
+  function addLine(a, b){
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('class', 'connector-line');
+    svg.appendChild(line);
+  }
+
+  const focusPt = centerOf(focusPhoto);
+  const parentPhotos = view.querySelectorAll('.row-parents .tile:not(.tile-add) .tile-photo');
+  const siblingPhotos = view.querySelectorAll('.row-siblings .tile:not(.tile-add) .tile-photo');
+  const spousePhotos = view.querySelectorAll('.row-center .tile:not(.tile-focus):not(.tile-add) .tile-photo');
+  const childPhotos = view.querySelectorAll('.row-children .tile:not(.tile-add) .tile-photo');
+
+  parentPhotos.forEach(pp=>{
+    const pt = centerOf(pp);
+    addLine(pt, focusPt);
+    siblingPhotos.forEach(sp=>addLine(pt, centerOf(sp)));
+  });
+  spousePhotos.forEach(sp=>addLine(focusPt, centerOf(sp)));
+  childPhotos.forEach(cp=>addLine(focusPt, centerOf(cp)));
+}
+window.addEventListener('resize', scheduleDrawConnectors);
+
+function render(){
+  const view = document.getElementById('view-inner');
   const ids = Object.keys(state.people);
   document.getElementById('btn-back').disabled = historyStack.length===0;
   document.getElementById('btn-home').disabled = !state.rootId || state.rootId===state.focusId;
@@ -496,6 +541,7 @@ function render(){
         <p>Započnite kreiranje vašeg porodičnog stabla.</p>
         <button class="btn btn-primary btn-big" onclick="openPersonFormNew('root')">➕ Dodajte prvu osobu</button>
       </div>`;
+    scheduleDrawConnectors();
     return;
   }
 
@@ -539,6 +585,7 @@ function render(){
   html += '</div>';
 
   view.innerHTML = html;
+  scheduleDrawConnectors();
 }
 
 document.getElementById('btn-back').addEventListener('click', goBack);
