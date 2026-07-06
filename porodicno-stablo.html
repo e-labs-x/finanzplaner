@@ -36,11 +36,10 @@ main#view{position:relative;max-width:1000px;margin:0 auto;}
 
 .tile{width:120px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;padding-top:4px;}
 .tile-focus{width:170px;}
-.tile-photo{width:90px;height:90px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--card);}
-.tile-focus .tile-photo{width:140px;height:140px;border:4px solid var(--accent);}
+.tile-photo{width:90px;height:90px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--border);}
+.tile-focus .tile-photo{width:140px;height:140px;border-width:5px;}
 .tile-photo img{width:100%;height:100%;object-fit:cover;}
-.avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:600;}
-.tile-focus .avatar-fallback{font-size:48px;}
+.avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:18%;box-sizing:border-box;}
 .tile-rel{font-size:14px;color:var(--text-light);margin-top:8px;}
 .tile-name{font-weight:600;margin-top:2px;font-size:17px;word-break:break-word;}
 .tile-focus .tile-name{font-size:20px;}
@@ -81,13 +80,13 @@ form input[type=text], form input[type=number], form textarea{width:100%;font-si
 
 .existing-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer;}
 .existing-row:hover{background:var(--accent-light);}
-.existing-avatar{width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;}
+.existing-avatar{width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;border:2px solid var(--border);box-sizing:border-box;}
 .existing-avatar img{width:100%;height:100%;object-fit:cover;}
 #existing-search{width:100%;font-size:16px;padding:10px;border:1px solid var(--border);border-radius:10px;margin:10px 0;}
 
 .detail-photo{display:flex;justify-content:center;margin-bottom:12px;}
-.detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:22px;object-fit:cover;}
-.avatar-fallback-lg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:56px;font-weight:600;}
+.detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:22px;object-fit:cover;border:5px solid var(--border);box-sizing:border-box;}
+.avatar-fallback-lg{display:flex;align-items:center;justify-content:center;padding:18%;box-sizing:border-box;}
 .detail-year{color:var(--text-light);text-align:center;}
 .detail-notes{white-space:pre-wrap;}
 .settings-hint{font-size:14px;color:var(--text-light);}
@@ -138,12 +137,16 @@ function getPerson(id){ return state.people[id]; }
 function escapeHtml(str){
   return String(str==null?'':str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function avatarColor(name){
-  let hash=0;
-  const s = name || '?';
-  for(let i=0;i<s.length;i++){ hash = s.charCodeAt(i) + ((hash<<5)-hash); }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 45%, 55%)`;
+function genderStyle(spol){
+  if(spol==='M') return { border:'#3d6ea5', bg:'#dce8f4', fg:'#3d6ea5', shape:'m' };
+  if(spol==='Z') return { border:'#b5566f', bg:'#f6e2e8', fg:'#b5566f', shape:'f' };
+  return { border:'#9a9a9a', bg:'#e9e9e6', fg:'#8a8a8a', shape:'n' };
+}
+function silhouetteSvg(shape, fg){
+  const body = shape==='f'
+    ? '<path d="M50,46 L38,60 L29,93 L71,93 L62,60 Z"/>'
+    : '<path d="M50,46 L35,50 L32,93 L68,93 L65,50 Z"/>';
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" fill="${fg}" aria-hidden="true"><circle cx="50" cy="27" r="16"/>${body}</svg>`;
 }
 
 function getParents(id){ const p=getPerson(id); return (p.parentIds||[]).map(pid=>state.people[pid]).filter(Boolean); }
@@ -392,7 +395,7 @@ function openExistingPicker(type){
   const candidates = Object.values(state.people).filter(p=>!excludeIds.has(p.id));
   const listHtml = candidates.length ? candidates.map(p=>`
     <div class="existing-row" onclick="linkExisting('${type}','${p.id}')">
-      <div class="existing-avatar">${p.foto?`<img src="${p.foto}">`:`<div class="avatar-fallback" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`}</div>
+      <div class="existing-avatar" style="border-color:${genderStyle(p.spol).border}">${p.foto?`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;">`:`<div class="avatar-fallback" style="background:${genderStyle(p.spol).bg}">${silhouetteSvg(genderStyle(p.spol).shape, genderStyle(p.spol).fg)}</div>`}</div>
       <div>${escapeHtml(p.ime)}${p.godina?` (r. ${escapeHtml(String(p.godina))})`:''}</div>
     </div>`).join('') : '<p>Nema drugih osoba za povezivanje.</p>';
   openModal(`
@@ -413,7 +416,7 @@ function openPersonDetail(id){
   const p = getPerson(id);
   openModal(`
     <h2>${escapeHtml(p.ime)}</h2>
-    <div class="detail-photo">${p.foto?`<img src="${p.foto}">`:`<div class="avatar-fallback-lg" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`}</div>
+    <div class="detail-photo">${p.foto?`<img src="${p.foto}" style="border-color:${genderStyle(p.spol).border}">`:`<div class="avatar-fallback-lg" style="background:${genderStyle(p.spol).bg};border-color:${genderStyle(p.spol).border}">${silhouetteSvg(genderStyle(p.spol).shape, genderStyle(p.spol).fg)}</div>`}</div>
     ${p.godina?`<p class="detail-year">Rođen/a: ${escapeHtml(String(p.godina))}.</p>`:''}
     <p class="detail-notes">${p.biljeske?escapeHtml(p.biljeske).replace(/\n/g,'<br>'):'<em>Nema bilješki.</em>'}</p>
     <div class="modal-actions">
@@ -468,16 +471,17 @@ function importBackup(file){
 function personTile(p, opts={}){
   const isFocus = !!opts.focus;
   const relLabel = opts.relLabel;
+  const gs = genderStyle(p.spol);
   const photoHtml = p.foto
     ? `<img src="${p.foto}" alt="" onload="scheduleDrawConnectors()">`
-    : `<div class="avatar-fallback" style="background:${avatarColor(p.ime)}">${escapeHtml((p.ime||'?').charAt(0).toUpperCase())}</div>`;
+    : `<div class="avatar-fallback" style="background:${gs.bg}">${silhouetteSvg(gs.shape, gs.fg)}</div>`;
   const godinaHtml = p.godina ? `<div class="tile-year">r. ${escapeHtml(String(p.godina))}</div>` : '';
   const unlinkBtn = opts.unlink ? `<button class="tile-action tile-unlink" title="Ukloni vezu" onclick="event.stopPropagation(); confirmUnlink('${opts.unlink.type}','${opts.unlink.id}')">✕</button>` : '';
   const starBtn = isFocus ? `<button class="tile-action tile-star" title="Postavi kao početnu osobu" onclick="event.stopPropagation(); setAsHome()">${state.rootId===p.id?'⭐':'☆'}</button>` : '';
   const clickAction = isFocus ? `openPersonDetail('${p.id}')` : `navigateTo('${p.id}')`;
   return `
     <div class="tile ${isFocus?'tile-focus':''}" onclick="${clickAction}">
-      <div class="tile-photo">${photoHtml}${unlinkBtn}${starBtn}</div>
+      <div class="tile-photo" style="border-color:${gs.border}">${photoHtml}${unlinkBtn}${starBtn}</div>
       ${relLabel?`<div class="tile-rel">${escapeHtml(relLabel)}</div>`:''}
       <div class="tile-name">${escapeHtml(p.ime)}</div>
       ${godinaHtml}
