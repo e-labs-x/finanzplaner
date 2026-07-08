@@ -554,10 +554,43 @@ function openPersonDetail(id){
   `);
 }
 
+function reachableIds(rootId){
+  const seen = new Set();
+  if(!rootId || !state.people[rootId]) return seen;
+  seen.add(rootId);
+  const queue = [rootId];
+  while(queue.length){
+    const id = queue.shift();
+    const p = getPerson(id);
+    const neighbors = [...(p.parentIds||[]), ...(p.spouseIds||[]), ...(p.siblingIds||[])];
+    Object.values(state.people).forEach(o=>{ if((o.parentIds||[]).includes(id)) neighbors.push(o.id); });
+    neighbors.forEach(nid=>{
+      if(nid && state.people[nid] && !seen.has(nid)){ seen.add(nid); queue.push(nid); }
+    });
+  }
+  return seen;
+}
+function removeOrphans(){
+  const reach = reachableIds(state.rootId);
+  const orphanIds = Object.keys(state.people).filter(id=>!reach.has(id));
+  if(!orphanIds.length) return;
+  showConfirm(`Ovo će trajno obrisati ${orphanIds.length} osoba koje trenutno nisu povezane sa stablom. Nastaviti?`, ()=>{
+    orphanIds.forEach(id=>{ delete state.people[id]; });
+    saveState(); closeModal(); render();
+  });
+}
 function openSettings(){
+  const total = Object.keys(state.people).length;
+  const reach = reachableIds(state.rootId);
+  const orphanCount = total - reach.size;
+  const orphanHint = orphanCount>0
+    ? `<p class="settings-hint">Od toga ${orphanCount} osoba trenutno nije povezano sa stablom (npr. iz ranijeg testiranja).</p>
+       <button class="btn btn-secondary btn-big" onclick="removeOrphans()">🗑️ Ukloni nepovezane osobe (${orphanCount})</button>`
+    : '';
   openModal(`
     <h2>⚙️ Podešavanja</h2>
-    <p>Broj osoba u stablu: ${Object.keys(state.people).length}</p>
+    <p>Broj osoba u stablu: ${total}</p>
+    ${orphanHint}
     <div class="modal-actions-vertical">
       <button class="btn btn-primary btn-big" onclick="exportBackup()">⬇️ Preuzmi sigurnosnu kopiju</button>
       <button class="btn btn-secondary btn-big" onclick="document.getElementById('import-file-input').click()">⬆️ Učitaj sigurnosnu kopiju</button>
@@ -674,6 +707,13 @@ function drawConnectors(){
   if(parentPhotos.length){
     const anchor = groupBar(parentPhotos, 14);
     dropToGroup(anchor, [focusPhoto, ...siblingPhotos], 14);
+  } else if(siblingPhotos.length){
+    const group = [focusPhoto, ...siblingPhotos];
+    const pts = group.map(topOf);
+    const barY = Math.min(...pts.map(p=>p.y)) - 14;
+    pts.forEach(p=>addLine(p, { x:p.x, y:barY }));
+    const xs = pts.map(p=>p.x);
+    addLine({ x:Math.min(...xs), y:barY }, { x:Math.max(...xs), y:barY });
   }
   spousePhotos.forEach(sp=>addLine(centerOf(focusPhoto), centerOf(sp)));
   if(childPhotos.length){
