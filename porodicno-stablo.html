@@ -157,11 +157,19 @@ function getSpouses(id){ const p=getPerson(id); return (p.spouseIds||[]).map(sid
 function getSiblings(id){
   const p = getPerson(id);
   const parentIds = p.parentIds || [];
-  if(!parentIds.length) return [];
+  const seen = new Set();
   const result = [];
-  Object.values(state.people).forEach(o=>{
-    if(o.id===id) return;
-    if((o.parentIds||[]).some(pid=>parentIds.includes(pid))) result.push(o);
+  if(parentIds.length){
+    Object.values(state.people).forEach(o=>{
+      if(o.id===id) return;
+      if((o.parentIds||[]).some(pid=>parentIds.includes(pid)) && !seen.has(o.id)){ seen.add(o.id); result.push(o); }
+    });
+  }
+  (p.siblingIds||[]).forEach(sid=>{
+    if(sid!==id && !seen.has(sid)){
+      const o = getPerson(sid);
+      if(o){ seen.add(sid); result.push(o); }
+    }
   });
   return result;
 }
@@ -268,13 +276,22 @@ function setAsHome(){
   saveState(); render();
 }
 
+function addParentToFocus(parentId){
+  const focus = getPerson(state.focusId);
+  const existingSiblings = getSiblings(state.focusId);
+  focus.parentIds = focus.parentIds || [];
+  if(!focus.parentIds.includes(parentId)) focus.parentIds.push(parentId);
+  existingSiblings.forEach(sib=>{
+    sib.parentIds = sib.parentIds || [];
+    if(!sib.parentIds.includes(parentId)) sib.parentIds.push(parentId);
+  });
+}
 function addPerson(data, type){
   const id = uid();
   const person = { id, ime:data.ime.trim(), prezime:data.prezime||'', djevojackoPrezime:data.djevojackoPrezime||'', godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
   const focus = getPerson(state.focusId);
   if(type==='parent'){
-    focus.parentIds = focus.parentIds || [];
-    focus.parentIds.push(id);
+    addParentToFocus(id);
   } else if(type==='child'){
     person.parentIds = [state.focusId];
   } else if(type==='spouse'){
@@ -282,7 +299,13 @@ function addPerson(data, type){
     focus.spouseIds = focus.spouseIds || [];
     focus.spouseIds.push(id);
   } else if(type==='sibling'){
-    person.parentIds = [...(focus.parentIds||[])];
+    if((focus.parentIds||[]).length){
+      person.parentIds = [...focus.parentIds];
+    } else {
+      person.siblingIds = [state.focusId];
+      focus.siblingIds = focus.siblingIds || [];
+      focus.siblingIds.push(id);
+    }
   }
   state.people[id] = person;
   saveState(); closeModal(); render();
@@ -321,8 +344,7 @@ function linkExisting(type, existingId){
   const focus = getPerson(state.focusId);
   const other = getPerson(existingId);
   if(type==='parent'){
-    focus.parentIds = focus.parentIds || [];
-    if(!focus.parentIds.includes(existingId)) focus.parentIds.push(existingId);
+    addParentToFocus(existingId);
   } else if(type==='child'){
     other.parentIds = other.parentIds || [];
     if(!other.parentIds.includes(state.focusId)) other.parentIds.push(state.focusId);
@@ -332,7 +354,14 @@ function linkExisting(type, existingId){
     if(!focus.spouseIds.includes(existingId)) focus.spouseIds.push(existingId);
     if(!other.spouseIds.includes(state.focusId)) other.spouseIds.push(state.focusId);
   } else if(type==='sibling'){
-    other.parentIds = Array.from(new Set([...(other.parentIds||[]), ...(focus.parentIds||[])]));
+    if((focus.parentIds||[]).length){
+      other.parentIds = Array.from(new Set([...(other.parentIds||[]), ...(focus.parentIds||[])]));
+    } else {
+      focus.siblingIds = focus.siblingIds || [];
+      other.siblingIds = other.siblingIds || [];
+      if(!focus.siblingIds.includes(existingId)) focus.siblingIds.push(existingId);
+      if(!other.siblingIds.includes(state.focusId)) other.siblingIds.push(state.focusId);
+    }
   }
   saveState(); closeModal(); render();
 }
@@ -699,12 +728,10 @@ function render(){
   }
   html += '</div>';
 
-  if(parents.length>0 || siblings.length>0){
-    html += '<div class="row row-siblings">';
-    siblings.forEach(s=>{ html += personTile(s, { relLabel: siblingLabel(s) }); });
-    if(parents.length>0){ html += addTile('Dodaj brata/sestru', "openAddFlow('sibling')"); }
-    html += '</div>';
-  }
+  html += '<div class="row row-siblings">';
+  siblings.forEach(s=>{ html += personTile(s, { relLabel: siblingLabel(s) }); });
+  html += addTile('Dodaj brata/sestru', "openAddFlow('sibling')");
+  html += '</div>';
 
   html += '<div class="row row-center">';
   html += personTile(focus, { focus:true });
