@@ -36,8 +36,9 @@ main#view{position:relative;max-width:1000px;margin:0 auto;}
 
 .tile{width:82px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;padding-top:4px;}
 .tile-focus{width:104px;}
-.tile-photo{width:58px;height:58px;border-radius:13px;overflow:hidden;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--border);}
+.tile-photo{width:58px;height:58px;border-radius:13px;box-shadow:var(--shadow);background:var(--card);position:relative;display:flex;align-items:center;justify-content:center;border:3px solid var(--border);}
 .tile-focus .tile-photo{width:84px;height:84px;border-width:4px;}
+.tile-photo-inner{width:100%;height:100%;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .tile-photo img{width:100%;height:100%;object-fit:cover;}
 .avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:18%;box-sizing:border-box;}
 .tile-rel{width:100%;font-size:11px;color:var(--text-light);margin-top:5px;}
@@ -46,7 +47,7 @@ main#view{position:relative;max-width:1000px;margin:0 auto;}
 .tile-year{width:100%;font-size:11px;color:var(--text-light);}
 .tile-edit{position:absolute;top:-4px;right:2px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:11px;cursor:pointer;box-shadow:var(--shadow);}
 .tile-action{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;box-shadow:var(--shadow);top:-4px;}
-.tile-unlink{right:-4px;color:var(--danger);}
+.tile-unlink{left:-4px;color:var(--danger);}
 .tile-star{left:-4px;font-size:13px;}
 
 .tile-add{width:82px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--accent-dark);}
@@ -642,7 +643,7 @@ function personTile(p, opts={}){
   const clickAction = isFocus ? `openPersonDetail('${p.id}')` : `navigateTo('${p.id}')`;
   return `
     <div class="tile ${isFocus?'tile-focus':''}" data-role="${opts.role||''}" onclick="${clickAction}">
-      <div class="tile-photo" style="border-color:${gs.border}">${photoHtml}${unlinkBtn}${starBtn}</div>
+      <div class="tile-photo" style="border-color:${gs.border}"><div class="tile-photo-inner">${photoHtml}</div>${unlinkBtn}${starBtn}</div>
       ${relLabel?`<div class="tile-rel">${escapeHtml(relLabel)}</div>`:''}
       <div class="tile-name">${escapeHtml(fullName(p))}</div>
       ${godinaHtml}
