@@ -31,7 +31,7 @@ main#view{position:relative;max-width:1000px;margin:0 auto;}
 #connector-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible;}
 .connector-line{stroke:var(--accent);stroke-opacity:0.4;stroke-width:3;stroke-linecap:round;}
 #view-inner{position:relative;z-index:1;padding:16px 12px 60px;display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;}
-.row{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:12px;width:100%;}
+.row{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:safe center;align-items:flex-start;gap:12px;width:100%;padding:2px 2px 8px;}
 .row-center{align-items:center;}
 
 .tile{width:82px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;position:relative;padding-top:4px;}
@@ -641,7 +641,7 @@ function personTile(p, opts={}){
   const starBtn = isFocus ? `<button class="tile-action tile-star" title="Postavi kao početnu osobu" onclick="event.stopPropagation(); setAsHome()">${state.rootId===p.id?'⭐':'☆'}</button>` : '';
   const clickAction = isFocus ? `openPersonDetail('${p.id}')` : `navigateTo('${p.id}')`;
   return `
-    <div class="tile ${isFocus?'tile-focus':''}" onclick="${clickAction}">
+    <div class="tile ${isFocus?'tile-focus':''}" data-role="${opts.role||''}" onclick="${clickAction}">
       <div class="tile-photo" style="border-color:${gs.border}">${photoHtml}${unlinkBtn}${starBtn}</div>
       ${relLabel?`<div class="tile-rel">${escapeHtml(relLabel)}</div>`:''}
       <div class="tile-name">${escapeHtml(fullName(p))}</div>
@@ -699,10 +699,10 @@ function drawConnectors(){
     pts.forEach(p=>addLine({ x:p.x, y:barY }, p));
   }
 
-  const parentPhotos = Array.from(view.querySelectorAll('.row-parents .tile:not(.tile-add) .tile-photo'));
-  const siblingPhotos = Array.from(view.querySelectorAll('.row-siblings .tile:not(.tile-add) .tile-photo'));
-  const spousePhotos = Array.from(view.querySelectorAll('.row-center .tile:not(.tile-focus):not(.tile-add) .tile-photo'));
-  const childPhotos = Array.from(view.querySelectorAll('.row-children .tile:not(.tile-add) .tile-photo'));
+  const parentPhotos = Array.from(view.querySelectorAll('[data-role="parent"] .tile-photo'));
+  const siblingPhotos = Array.from(view.querySelectorAll('[data-role="sibling"] .tile-photo'));
+  const spousePhotos = Array.from(view.querySelectorAll('[data-role="spouse"] .tile-photo'));
+  const childPhotos = Array.from(view.querySelectorAll('[data-role="child"] .tile-photo'));
 
   if(parentPhotos.length){
     const anchor = groupBar(parentPhotos, 14);
@@ -762,29 +762,27 @@ function render(){
   let html = '';
 
   html += '<div class="row row-parents">';
-  parents.forEach(p=>{ html += personTile(p, { relLabel: parentLabel(p), unlink:{type:'parent', id:p.id} }); });
+  parents.forEach(p=>{ html += personTile(p, { relLabel: parentLabel(p), unlink:{type:'parent', id:p.id}, role:'parent' }); });
   if(parents.length < 2){
     html += addTile(parents.length===0?'Dodaj roditelja':'Dodaj drugog roditelja', "openAddFlow('parent')");
   }
   html += '</div>';
 
-  html += '<div class="row row-siblings">';
-  siblings.forEach(s=>{ html += personTile(s, { relLabel: siblingLabel(s) }); });
-  html += addTile('Dodaj brata/sestru', "openAddFlow('sibling')");
-  html += '</div>';
-
   html += '<div class="row row-center">';
-  html += personTile(focus, { focus:true });
-  spouses.forEach(s=>{ html += personTile(s, { relLabel: spouseLabel(s), unlink:{type:'spouse', id:s.id} }); });
+  siblings.forEach(s=>{ html += personTile(s, { relLabel: siblingLabel(s), role:'sibling' }); });
+  html += addTile('Dodaj brata/sestru', "openAddFlow('sibling')");
+  html += personTile(focus, { focus:true, role:'focus' });
+  spouses.forEach(s=>{ html += personTile(s, { relLabel: spouseLabel(s), unlink:{type:'spouse', id:s.id}, role:'spouse' }); });
   html += addTile('Dodaj supružnika/partnera', "openAddFlow('spouse')");
   html += '</div>';
 
   html += '<div class="row row-children">';
-  children.forEach(c=>{ html += personTile(c, { relLabel: childLabel(c), unlink:{type:'child', id:c.id} }); });
+  children.forEach(c=>{ html += personTile(c, { relLabel: childLabel(c), unlink:{type:'child', id:c.id}, role:'child' }); });
   html += addTile('Dodaj dijete', "openAddFlow('child')");
   html += '</div>';
 
   view.innerHTML = html;
+  view.querySelectorAll('.row').forEach(row=>row.addEventListener('scroll', scheduleDrawConnectors, { passive:true }));
   scheduleDrawConnectors();
 }
 
