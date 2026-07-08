@@ -40,10 +40,10 @@ main#view{position:relative;max-width:1000px;margin:0 auto;}
 .tile-focus .tile-photo{width:84px;height:84px;border-width:4px;}
 .tile-photo img{width:100%;height:100%;object-fit:cover;}
 .avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:18%;box-sizing:border-box;}
-.tile-rel{font-size:11px;color:var(--text-light);margin-top:5px;}
-.tile-name{font-weight:600;margin-top:1px;font-size:13px;word-break:break-word;}
+.tile-rel{width:100%;font-size:11px;color:var(--text-light);margin-top:5px;}
+.tile-name{width:100%;font-weight:600;margin-top:1px;font-size:13px;word-break:break-word;}
 .tile-focus .tile-name{font-size:15px;}
-.tile-year{font-size:11px;color:var(--text-light);}
+.tile-year{width:100%;font-size:11px;color:var(--text-light);}
 .tile-edit{position:absolute;top:-4px;right:2px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:24px;height:24px;font-size:11px;cursor:pointer;box-shadow:var(--shadow);}
 .tile-action{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;box-shadow:var(--shadow);top:-4px;}
 .tile-unlink{right:-4px;color:var(--danger);}
@@ -88,6 +88,8 @@ form input[type=text], form input[type=number], form textarea{width:100%;font-si
 .detail-photo img, .avatar-fallback-lg{width:160px;height:160px;border-radius:22px;object-fit:cover;border:5px solid var(--border);box-sizing:border-box;}
 .avatar-fallback-lg{display:flex;align-items:center;justify-content:center;padding:18%;box-sizing:border-box;}
 .detail-year{color:var(--text-light);text-align:center;}
+.detail-maiden{color:var(--text-light);text-align:center;margin-top:-8px;font-style:italic;}
+.detail-relation{background:var(--accent-light);color:var(--accent-dark);padding:10px 14px;border-radius:10px;text-align:center;}
 .detail-notes{white-space:pre-wrap;}
 .settings-hint{font-size:14px;color:var(--text-light);}
 .hidden{display:none;}
@@ -168,6 +170,84 @@ function parentLabel(p){ return p.spol==='M' ? 'Otac' : p.spol==='Z' ? 'Majka' :
 function childLabel(p){ return p.spol==='M' ? 'Sin' : p.spol==='Z' ? 'Kćerka' : 'Dijete'; }
 function siblingLabel(p){ return p.spol==='M' ? 'Brat' : p.spol==='Z' ? 'Sestra' : 'Brat/Sestra'; }
 function spouseLabel(p){ return p.spol==='M' ? 'Suprug' : p.spol==='Z' ? 'Supruga' : 'Supružnik/Partner'; }
+function fullName(p){
+  if(!p) return '';
+  return p.prezime ? `${p.ime} ${p.prezime}` : p.ime;
+}
+
+function ancestorsWithDistance(personId, maxDepth){
+  const result = new Map([[personId, 0]]);
+  let frontier = [personId];
+  let depth = 0;
+  while(frontier.length && depth < maxDepth){
+    depth++;
+    const next = [];
+    frontier.forEach(id=>{
+      const p = getPerson(id);
+      (p.parentIds||[]).forEach(pid=>{
+        if(!result.has(pid)){ result.set(pid, depth); next.push(pid); }
+      });
+    });
+    frontier = next;
+  }
+  return result;
+}
+function findSideParent(rootId, ancestorId){
+  const root = getPerson(rootId);
+  for(const pid of (root.parentIds||[])){
+    const parent = getPerson(pid);
+    if(parent && (parent.parentIds||[]).includes(ancestorId)) return parent;
+  }
+  return null;
+}
+function computeRelationship(rootId, targetId){
+  if(rootId===targetId) return null;
+  const root = getPerson(rootId);
+  const target = getPerson(targetId);
+  if(!root || !target) return null;
+  if((root.spouseIds||[]).includes(targetId)) return spouseLabel(target);
+
+  const ancR = ancestorsWithDistance(rootId, 3);
+  const ancT = ancestorsWithDistance(targetId, 3);
+
+  if(ancR.has(targetId)){
+    const d = ancR.get(targetId);
+    if(d===1) return parentLabel(target);
+    if(d===2) return target.spol==='M' ? 'Djed' : target.spol==='Z' ? 'Baka' : 'Djed/Baka';
+    if(d===3) return target.spol==='M' ? 'Pradjed' : target.spol==='Z' ? 'Prababa' : 'Pradjed/Prababa';
+    return null;
+  }
+  if(ancT.has(rootId)){
+    const d = ancT.get(rootId);
+    if(d===1) return childLabel(target);
+    if(d===2) return target.spol==='M' ? 'Unuk' : target.spol==='Z' ? 'Unuka' : 'Unuk/Unuka';
+    if(d===3) return target.spol==='M' ? 'Praunuk' : target.spol==='Z' ? 'Praunuka' : 'Praunuk/Praunuka';
+    return null;
+  }
+  let best = null;
+  ancR.forEach((a, id)=>{
+    if(id===rootId) return;
+    if(ancT.has(id)){
+      const b = ancT.get(id);
+      if(!best || (a+b) < (best.a+best.b)) best = { id, a, b };
+    }
+  });
+  if(!best) return null;
+  if(best.a===1 && best.b===1) return siblingLabel(target);
+  if(best.a===2 && best.b===1){
+    if(target.spol==='Z') return 'Tetka';
+    if(target.spol==='M'){
+      const sideParent = findSideParent(rootId, best.id);
+      if(sideParent && sideParent.spol==='M') return 'Stric';
+      if(sideParent && sideParent.spol==='Z') return 'Ujak';
+      return 'Stric/Ujak';
+    }
+    return 'Tetka/Stric/Ujak';
+  }
+  if(best.a===1 && best.b===2) return target.spol==='M' ? 'Nećak' : target.spol==='Z' ? 'Nećakinja' : 'Nećak/Nećakinja';
+  if(best.a===2 && best.b===2) return target.spol==='M' ? 'Rođak' : target.spol==='Z' ? 'Rođaka' : 'Rođak/Rođaka';
+  return null;
+}
 
 function navigateTo(id){
   if(id===state.focusId) return;
@@ -190,7 +270,7 @@ function setAsHome(){
 
 function addPerson(data, type){
   const id = uid();
-  const person = { id, ime:data.ime.trim(), godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
+  const person = { id, ime:data.ime.trim(), prezime:data.prezime||'', djevojackoPrezime:data.djevojackoPrezime||'', godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
   const focus = getPerson(state.focusId);
   if(type==='parent'){
     focus.parentIds = focus.parentIds || [];
@@ -209,7 +289,7 @@ function addPerson(data, type){
 }
 function addRootPerson(data){
   const id = uid();
-  state.people[id] = { id, ime:data.ime.trim(), godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
+  state.people[id] = { id, ime:data.ime.trim(), prezime:data.prezime||'', djevojackoPrezime:data.djevojackoPrezime||'', godina:data.godina||'', spol:data.spol||'', foto:data.foto||null, biljeske:data.biljeske||'', parentIds:[], spouseIds:[] };
   state.rootId = id;
   state.focusId = id;
   saveState(); closeModal(); render();
@@ -217,6 +297,8 @@ function addRootPerson(data){
 function updatePerson(id, data){
   const p = getPerson(id);
   p.ime = data.ime.trim();
+  p.prezime = data.prezime || '';
+  p.djevojackoPrezime = data.djevojackoPrezime || '';
   p.godina = data.godina || '';
   p.spol = data.spol || '';
   p.biljeske = data.biljeske || '';
@@ -311,7 +393,7 @@ function showConfirm(message, onYes){
 }
 function confirmDeletePerson(id){
   const p = getPerson(id);
-  showConfirm(`Da li ste sigurni da želite obrisati osobu "${p.ime}"? Ova radnja se ne može poništiti.`, ()=>deletePerson(id));
+  showConfirm(`Da li ste sigurni da želite obrisati osobu "${fullName(p)}"? Ova radnja se ne može poništiti.`, ()=>deletePerson(id));
 }
 function confirmUnlink(type, id){
   showConfirm('Ukloniti ovu vezu? Osoba neće biti obrisana, samo veza sa ovom osobom.', ()=>unlinkRelation(type,id));
@@ -339,11 +421,18 @@ function openEditPerson(id){
 function personFormTemplate(editId, type){
   const p = editId ? getPerson(editId) : null;
   const titleMap = { parent:'Dodaj roditelja', child:'Dodaj dijete', spouse:'Dodaj supružnika/partnera', sibling:'Dodaj brata/sestru', root:'Dodaj prvu osobu' };
-  const title = editId ? `Uredi: ${escapeHtml(p.ime)}` : (titleMap[type] || 'Dodaj osobu');
+  const title = editId ? `Uredi: ${escapeHtml(fullName(p))}` : (titleMap[type] || 'Dodaj osobu');
+  let prefillPrezime = p ? (p.prezime||'') : '';
+  if(!p && (type==='child' || type==='sibling')){
+    const focus = getPerson(state.focusId);
+    prefillPrezime = focus && focus.prezime ? focus.prezime : '';
+  }
   return `
     <h2>${title}</h2>
     <form id="person-form">
-      <label>Ime i prezime *<input required type="text" id="f-ime" value="${p?escapeHtml(p.ime):''}"></label>
+      <label>Ime *<input required type="text" id="f-ime" value="${p?escapeHtml(p.ime):''}"></label>
+      <label>Prezime<input type="text" id="f-prezime" value="${escapeHtml(prefillPrezime)}"></label>
+      <label>Djevojačko prezime (opcionalno)<input type="text" id="f-djevojacko" value="${p?escapeHtml(p.djevojackoPrezime||''):''}"></label>
       <label>Godina rođenja<input type="number" id="f-godina" value="${p&&p.godina?escapeHtml(String(p.godina)):''}" min="1850" max="2026"></label>
       <label>Spol
         <div class="radio-group">
@@ -376,10 +465,12 @@ function wireFormEvents(editId, type){
     e.preventDefault();
     const ime = document.getElementById('f-ime').value.trim();
     if(!ime) return;
+    const prezime = document.getElementById('f-prezime').value.trim();
+    const djevojackoPrezime = document.getElementById('f-djevojacko').value.trim();
     const godina = document.getElementById('f-godina').value;
     const spol = form.querySelector('input[name="f-spol"]:checked')?.value || '';
     const biljeske = document.getElementById('f-biljeske').value;
-    const data = { ime, godina, spol, biljeske, foto: pendingFoto };
+    const data = { ime, prezime, djevojackoPrezime, godina, spol, biljeske, foto: pendingFoto };
     if(editId) updatePerson(editId, data);
     else if(type==='root') addRootPerson(data);
     else addPerson(data, type);
@@ -396,7 +487,7 @@ function openExistingPicker(type){
   const listHtml = candidates.length ? candidates.map(p=>`
     <div class="existing-row" onclick="linkExisting('${type}','${p.id}')">
       <div class="existing-avatar" style="border-color:${genderStyle(p.spol).border}">${p.foto?`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;">`:`<div class="avatar-fallback" style="background:${genderStyle(p.spol).bg}">${silhouetteSvg(genderStyle(p.spol).shape, genderStyle(p.spol).fg)}</div>`}</div>
-      <div>${escapeHtml(p.ime)}${p.godina?` (r. ${escapeHtml(String(p.godina))})`:''}</div>
+      <div>${escapeHtml(fullName(p))}${p.godina?` (r. ${escapeHtml(String(p.godina))})`:''}</div>
     </div>`).join('') : '<p>Nema drugih osoba za povezivanje.</p>';
   openModal(`
     <h2>Poveži postojeću osobu</h2>
@@ -414,10 +505,18 @@ function filterExistingList(q){
 
 function openPersonDetail(id){
   const p = getPerson(id);
+  const maidenHtml = p.djevojackoPrezime ? `<p class="detail-maiden">rođ. ${escapeHtml(p.djevojackoPrezime)}</p>` : '';
+  let relHtml = '';
+  if(state.rootId && state.rootId !== id){
+    const rel = computeRelationship(state.rootId, id);
+    if(rel) relHtml = `<p class="detail-relation">Odnos prema ${escapeHtml(fullName(getPerson(state.rootId)))}: <strong>${escapeHtml(rel)}</strong></p>`;
+  }
   openModal(`
-    <h2>${escapeHtml(p.ime)}</h2>
+    <h2>${escapeHtml(fullName(p))}</h2>
+    ${maidenHtml}
     <div class="detail-photo">${p.foto?`<img src="${p.foto}" style="border-color:${genderStyle(p.spol).border}">`:`<div class="avatar-fallback-lg" style="background:${genderStyle(p.spol).bg};border-color:${genderStyle(p.spol).border}">${silhouetteSvg(genderStyle(p.spol).shape, genderStyle(p.spol).fg)}</div>`}</div>
     ${p.godina?`<p class="detail-year">Rođen/a: ${escapeHtml(String(p.godina))}.</p>`:''}
+    ${relHtml}
     <p class="detail-notes">${p.biljeske?escapeHtml(p.biljeske).replace(/\n/g,'<br>'):'<em>Nema bilješki.</em>'}</p>
     <div class="modal-actions">
       <button class="btn btn-primary btn-big" onclick="openEditPerson('${id}')">✏️ Uredi</button>
@@ -483,7 +582,7 @@ function personTile(p, opts={}){
     <div class="tile ${isFocus?'tile-focus':''}" onclick="${clickAction}">
       <div class="tile-photo" style="border-color:${gs.border}">${photoHtml}${unlinkBtn}${starBtn}</div>
       ${relLabel?`<div class="tile-rel">${escapeHtml(relLabel)}</div>`:''}
-      <div class="tile-name">${escapeHtml(p.ime)}</div>
+      <div class="tile-name">${escapeHtml(fullName(p))}</div>
       ${godinaHtml}
       <button class="tile-edit" title="Uredi" onclick="event.stopPropagation(); openEditPerson('${p.id}')">✏️</button>
     </div>`;
