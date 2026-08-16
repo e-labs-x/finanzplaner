@@ -1,6 +1,48 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-06-07 (4) — Renten-Audit R1–R15 komplett + Sicherheit/Sync-Block erledigt abgearbeitet
+Letzte Aktualisierung: 2026-08-16 — iOS-Rotationsfix (body nicht mehr position:fixed), unter Beobachtung
+
+---
+
+## 🔍 Unter Beobachtung — iOS-Rotationsfix (seit 16.08.2026, `?v=20260816d`, Commit `a0db27d`)
+
+**Symptom:** iPhone (Pro Max, installierte PWA). App im Hochformat geöffnet, dann ins Querformat gedreht →
+Einträge der Seitenleiste reagieren nicht oder man trifft daneben. Quer geöffnet: alles korrekt.
+Neuladen im Querformat behebt es. **iPad nie betroffen.**
+
+**Ursache:** Nach einer Drehung erneuert iOS die Hit-Test-Regionen einer fest positionierten Ebene nicht —
+gezeichnet wird das neue Layout, für Berührungen gilt die alte Geometrie. Die Ebene war `body { position: fixed }`,
+seit Juni der Schutz gegen Apples Pull-to-Refresh.
+
+**Was NICHT geholfen hat** (beides auf dem Gerät verifiziert, nicht nochmal probieren):
+- `0816a` — `width/height:100%` vom body entfernt (Box war überbestimmt), `#app` von `100dvh` auf `100%`,
+  Sidebar unter 768px ohne `display:none` (kein Struktur-Wechsel mehr beim Drehen). Sachlich richtig, **wirkungslos**.
+- `0816b` / `0816c` — erzwungener Layout-Neuaufbau nach `orientationchange`, erst synchron, dann über zwei
+  `requestAnimationFrame` mit tatsächlich gezeichnetem Zwischenbild. Per Diagnose-Abzeichen auf dem iPhone
+  bestätigt: **Event kommt an, Neuaufbau läuft, Problem bleibt.** Ein Reflow reicht iOS nicht.
+
+**Was jetzt drin ist (`0816d`):** `body` ist nicht mehr `position: fixed`, sondern `height: 100%`.
+Pull-to-Refresh-Schutz ohne fixed: `overflow: hidden` auf html+body (kein Dokument-Scroll),
+`overscroll-behavior: none` dort, `overscroll-behavior: contain` auf `.page`.
+Verifiziert: Layout in vier Größen pixelgleich zum Stand `c76031c`; kein Dokument-/body-Scroll; Seiten scrollen intern.
+
+**Offen — auf dem Gerät zu beobachten:** Kommt Apples Pull-to-Refresh / das Überscrollen zurück?
+Besonders auf dem **iPad** gegenprüfen, dort war es ursprünglich das Ärgernis.
+
+**Rückweg, falls es stört** (setzt nur den body-Teil zurück, behält die 0816a-Korrekturen, holt das
+Diagnose-Abzeichen NICHT zurück):
+```
+cd C:\Users\enesc\finanzplaner-repo
+git checkout f36a179 -- style.css
+```
+Danach `?v=` in index.html + `CACHE_NAME` in sw.js + `sb-ver` bumpen, committen, pushen.
+Wiederherstellungspunkte: Tag `vor-rotationsfix` (Stand vor der Sitzung) und `rotationsfix-0816d`.
+Dateikopien: `…\Finanzen App\files\*_2026-08-16.*` (vorher) und `*_2026-08-16_nach-rotationsfix.*` (nachher).
+
+**Rückfall-Plan, falls das Drehen weiterhin kaputt ist:** automatisches Neuladen nach der Drehung —
+nur auf iOS, nur wenn die 768px-Grenze überschritten wird (iPad also nie), Tab + Scrollposition über
+`sessionStorage` wiederherstellen, kein Neuladen bei offener Eingabe (`amt` / `np-note`), Schleifenschutz
+über eine Sperrzeit nach dem Start.
 
 ---
 
