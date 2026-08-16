@@ -143,18 +143,27 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--tx); overscroll-behavior-y: none; }
+html { height: 100%; }
+html, body { overflow: hidden; background: var(--bg); color: var(--tx); overscroll-behavior-y: none; }
 /* body fest aus dem Dokument-Scroll nehmen → iOS-Safari hat keinen Dokument-Scroll mehr,
    an dem Pull-to-Refresh ansetzen könnte. Gescrollt wird nur in inneren Containern (.page,
-   .rp-sidebar, .rp-main). Visuell identisch (body füllte den Viewport ohnehin schon). */
-body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
+   .rp-sidebar, .rp-main). Visuell identisch (body füllte den Viewport ohnehin schon).
+   WICHTIG (iOS-Rotation): hier KEIN width/height. Die vier Kanten (top/right/bottom/left: 0)
+   bestimmen die Größe allein und werden bei jeder Viewport-Änderung zwingend neu aufgelöst.
+   Mit zusätzlichem width/height: 100% ist die Box überbestimmt — iOS behielt nach dem Drehen
+   die alte Geometrie für die Tap-Bereiche bei: sichtbares Layout stimmte, Berührungen gingen
+   ins Leere (Sidebar-Einträge auf dem iPhone im Querformat). */
+body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
 button, input, select, textarea { font-family: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; }
 
 /* ════════════════════════════════════════
    SHELL — Haupt-Layout
 ════════════════════════════════════════ */
-#app { display: flex; height: 100dvh; }
+/* height: 100% statt 100dvh — der body ist durch seine vier Kanten bereits exakt der Viewport.
+   dvh wird auf iOS nach einer Drehung verzögert nachgeführt und war Mit-Ursache dafür, dass
+   Tap-Bereiche nach der Rotation nicht zum gezeichneten Layout passten. */
+#app { display: flex; height: 100%; }
 
 /* ════════════════════════════════════════
    SIDEBAR — Desktop & Tablet (≥ 768px)
@@ -224,8 +233,8 @@ button { cursor: pointer; border: none; background: none; }
 
 .sb-foot { padding: 8px; border-top: 1px solid var(--sidebar-border); flex-shrink: 0; }
 
-/* Hide sidebar on mobile */
-@media (max-width: 767px) { #sidebar { display: none; } }
+/* Sidebar auf dem Handy ausblenden: siehe Block „Mobile: Sidebar ohne Struktur-Wechsel"
+   weiter unten (muss nach der .expanded-Regel stehen, um sie zu überschreiben). */
 
 /* ── Sidebar Tooltip ── */
 #sb-tooltip {
@@ -261,6 +270,28 @@ button { cursor: pointer; border: none; background: none; }
 /* Tablet: slim by default */
 @media (min-width: 768px) and (max-width: 1023px) {
   #sidebar { width: var(--nav-col); min-width: var(--nav-col); }
+}
+
+/* Mobile: Sidebar ohne Struktur-Wechsel ausblenden.
+   Früher `display: none` — beim Drehen ins Querformat entstand die Sidebar dadurch neu
+   (none → flex). Genau dieser Struktur-Wechsel passiert auf dem iPad nie (dort liegt auch das
+   Hochformat über 768px) und war auf dem iPhone ein Auslöser für veraltete Tap-Bereiche.
+   Jetzt bleibt das Element durchgehend im Layout und wird nur auf 0 Breite gesetzt —
+   optisch identisch, aber strukturell derselbe Pfad wie auf dem iPad.
+   `#sidebar.expanded` muss mit aufgeführt werden, sonst erzwingt eine gespeicherte
+   „aufgeklappt"-Einstellung im Hochformat die volle Breite (jene Regel hat !important). */
+@media (max-width: 767px) {
+  #sidebar, #sidebar.expanded {
+    width: 0 !important;
+    min-width: 0 !important;
+    border-right: none;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    transition: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 /* ════════════════════════════════════════
