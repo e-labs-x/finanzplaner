@@ -144,16 +144,20 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { height: 100%; }
-html, body { overflow: hidden; background: var(--bg); color: var(--tx); overscroll-behavior-y: none; }
-/* body fest aus dem Dokument-Scroll nehmen → iOS-Safari hat keinen Dokument-Scroll mehr,
-   an dem Pull-to-Refresh ansetzen könnte. Gescrollt wird nur in inneren Containern (.page,
-   .rp-sidebar, .rp-main). Visuell identisch (body füllte den Viewport ohnehin schon).
-   WICHTIG (iOS-Rotation): hier KEIN width/height. Die vier Kanten (top/right/bottom/left: 0)
-   bestimmen die Größe allein und werden bei jeder Viewport-Änderung zwingend neu aufgelöst.
-   Mit zusätzlichem width/height: 100% ist die Box überbestimmt — iOS behielt nach dem Drehen
-   die alte Geometrie für die Tap-Bereiche bei: sichtbares Layout stimmte, Berührungen gingen
-   ins Leere (Sidebar-Einträge auf dem iPhone im Querformat). */
-body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
+html, body { overflow: hidden; background: var(--bg); color: var(--tx); overscroll-behavior: none; }
+/* KEIN position:fixed auf dem body (Stand 16.08.2026).
+   Vorgeschichte: fixed war der Schutz gegen Apples Pull-to-Refresh — es nahm dem Dokument
+   den Scroll, an dem die Geste ansetzt. Genau diese fest positionierte Ebene vermisst iOS
+   nach einer Drehung aber nicht neu: das neue Layout wurde gezeichnet, die Berührungs-
+   Bereiche blieben die alten (iPhone quer → Einträge der Seitenleiste reagierten nicht).
+   Nachweislich half nur ein Neuladen; ein erzwungener Layout-Neuaufbau nach der Drehung
+   reichte iOS nicht (Versuche 0816b und 0816c, beide auf dem Gerät verifiziert).
+   Der Pull-to-Refresh-Schutz kommt jetzt ohne fixed aus: html+body haben keinen eigenen
+   Scroll (overflow: hidden), overscroll-behavior: none unterbindet das Überscrollen, und
+   die inneren Scroll-Container tragen overscroll-behavior: contain (siehe .page), damit
+   deren Scroll-Ende nicht ans Dokument weitergereicht wird. Gescrollt wird ohnehin nur
+   in .page / .rp-sidebar / .rp-main. */
+body { height: 100%; font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
 button, input, select, textarea { font-family: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; }
 
@@ -368,7 +372,10 @@ button { cursor: pointer; border: none; background: none; }
    PAGES
 ════════════════════════════════════════ */
 #pages { flex: 1; overflow: hidden; }
-.page  { display: none; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: none; }
+/* overscroll-behavior: contain — das Scroll-Ende einer Seite wird nicht ans Dokument
+   weitergereicht. Zusammen mit overflow:hidden auf html/body ersetzt das den früheren
+   position:fixed-Trick als Pull-to-Refresh-Schutz (siehe Kommentar beim body). */
+.page  { display: none; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .page.active { display: block; }
 
 /* Padding innerhalb jeder Page */
