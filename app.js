@@ -2227,7 +2227,9 @@ function avInit(){
 /* ════════════════════════════════════════
    OBJEKTE TAB
 ════════════════════════════════════════ */
-var obS={selectedId:null,viewMode:'grid',sortBy:'default'};
+/* sortBy startet auf 'date' (neueste zuerst) — Wunsch 16.08.2026. Die Auswahl wird bewusst
+   nicht gespeichert: nach einem Neustart steht die Liste wieder auf Datum. */
+var obS={selectedId:null,viewMode:'grid',sortBy:'date'};
 var OB_TYPE_LABEL={fahrzeug:'Fahrzeug',reise:'Reise',projekt:'Projekt',person:'Person',geraet:'Gerät',sonstiges:'Sonstiges'};
 var OB_ICON_GRID='<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1.5"/><rect x="9" y="0" width="6" height="6" rx="1.5"/><rect x="0" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>';
 var OB_ICON_LIST='<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect x="0" y="2" width="15" height="2" rx="1"/><rect x="0" y="6.5" width="15" height="2" rx="1"/><rect x="0" y="11" width="15" height="2" rx="1"/></svg>';

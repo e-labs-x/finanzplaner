@@ -6,6 +6,8 @@ Letzte Aktualisierung: 2026-08-16 — iOS-Rotationsfix (body nicht mehr position
 
 ## 🔍 Unter Beobachtung — iOS-Rotationsfix (seit 16.08.2026, `?v=20260816d`, Commit `a0db27d`)
 
+_Läuft ab `?v=20260816e` unter dieser Nummer weiter (0816e = nur Objekt-Sortierung, am Fix nichts geändert)._
+
 **Symptom:** iPhone (Pro Max, installierte PWA). App im Hochformat geöffnet, dann ins Querformat gedreht →
 Einträge der Seitenleiste reagieren nicht oder man trifft daneben. Quer geöffnet: alles korrekt.
 Neuladen im Querformat behebt es. **iPad nie betroffen.**
