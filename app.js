@@ -8712,3 +8712,43 @@ function rp2ExportExcel(btn) {
   },{passive:true});
 })();
 
+/* ── iOS: Berührungs-Bereiche nach dem Drehen erneuern ────────────────────────
+   iOS/WebKit zeichnet nach einer Rotation das neue Layout, behält aber die alten
+   Hit-Test-Regionen: sichtbare Elemente reagieren gar nicht oder man trifft daneben
+   (iPhone quer, Einträge der Seitenleiste). Ein Neuladen behebt es zuverlässig, weil
+   das Layout dabei einmal komplett neu aufgebaut wird — genau das lösen wir hier
+   gezielt nach jeder Drehung aus, ohne neu zu laden.
+   Warum es überhaupt auftritt: der body ist position:fixed (Pull-to-Refresh-Schutz).
+   Solche Layer behandelt iOS gesondert und vermisst sie nach der Rotation nicht neu.
+   Ihn für einen Moment aus dem Layout zu nehmen zwingt WebKit, Layer UND
+   Berührungs-Bereiche neu aufzubauen. Der Wechsel läuft synchron innerhalb einer
+   Task (kein sichtbares Flackern, keine Überschneidung mit dem Chart-Redraw) und
+   nur auf iOS — Desktop und Android bleiben unberührt. */
+(function(){
+  if(!document.documentElement.classList.contains('ios')) return;
+  var t;
+  function rebuildLayout(){
+    // Scrollpositionen retten — ein display-Wechsel setzt sie sonst auf 0 zurück.
+    var saved=[];
+    document.querySelectorAll('.page, .rp-sidebar, .rp-main, .sb-scroll').forEach(function(el){
+      if(el.scrollTop) saved.push([el, el.scrollTop]);
+    });
+    var b=document.body;
+    b.style.display='none';
+    void b.offsetHeight;        // erzwingt den Reflow, während der Layer weg ist
+    b.style.display='';
+    saved.forEach(function(p){ p[0].scrollTop=p[1]; });
+  }
+  function schedule(){
+    clearTimeout(t);
+    // iOS meldet die Drehung, bevor die neue Größe endgültig feststeht → zweiter Durchlauf.
+    t=setTimeout(function(){ rebuildLayout(); setTimeout(rebuildLayout,350); },150);
+  }
+  window.addEventListener('orientationchange', schedule);
+  if(window.matchMedia){
+    var mq=window.matchMedia('(orientation: portrait)');
+    if(mq.addEventListener) mq.addEventListener('change', schedule);
+    else if(mq.addListener)  mq.addListener(schedule);   // ältere iOS-Versionen
+  }
+})();
+
