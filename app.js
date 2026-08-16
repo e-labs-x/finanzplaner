@@ -8721,13 +8721,32 @@ function rp2ExportExcel(btn) {
    Warum es überhaupt auftritt: der body ist position:fixed (Pull-to-Refresh-Schutz).
    Solche Layer behandelt iOS gesondert und vermisst sie nach der Rotation nicht neu.
    Ihn für einen Moment aus dem Layout zu nehmen zwingt WebKit, Layer UND
-   Berührungs-Bereiche neu aufzubauen. Der Wechsel läuft synchron innerhalb einer
-   Task (kein sichtbares Flackern, keine Überschneidung mit dem Chart-Redraw) und
-   nur auf iOS — Desktop und Android bleiben unberührt. */
+   Berührungs-Bereiche neu aufzubauen. Läuft nur auf iOS — Desktop und Android
+   bleiben unberührt.
+
+   0816c: Der Wechsel geschieht jetzt über zwei Frames statt synchron. Synchron
+   (display:none → sofort zurück) darf WebKit die Änderung zusammenfassen; es wird
+   nie ein Bild ohne den Inhalt gezeichnet, also findet auch kein echter Neuaufbau
+   statt — das war vermutlich der Grund, warum 0816b wirkungslos blieb.
+   Das Abzeichen oben ist eine vorübergehende Diagnose-Hilfe: Es zeigt, ob die
+   Drehung überhaupt gemeldet wird. Fliegt raus, sobald der Fall geklärt ist. */
 (function(){
   if(!document.documentElement.classList.contains('ios')) return;
-  var t;
-  function rebuildLayout(){
+  var t, badge, n=0;
+  function showBadge(txt){
+    if(!badge){
+      badge=document.createElement('div');
+      badge.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99999;'+
+        'background:rgba(17,17,17,.92);color:#fff;font:600 12px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;'+
+        'padding:7px 14px;border-radius:999px;pointer-events:none;opacity:0;transition:opacity .2s';
+      document.body.appendChild(badge);
+    }
+    badge.textContent=txt;
+    badge.style.opacity='1';
+    setTimeout(function(){ if(badge) badge.style.opacity='0'; },2000);
+  }
+  function rebuildLayout(quelle){
+    n++;
     // Scrollpositionen retten — ein display-Wechsel setzt sie sonst auf 0 zurück.
     var saved=[];
     document.querySelectorAll('.page, .rp-sidebar, .rp-main, .sb-scroll').forEach(function(el){
@@ -8735,20 +8754,30 @@ function rp2ExportExcel(btn) {
     });
     var b=document.body;
     b.style.display='none';
-    void b.offsetHeight;        // erzwingt den Reflow, während der Layer weg ist
-    b.style.display='';
-    saved.forEach(function(p){ p[0].scrollTop=p[1]; });
+    // Erst im übernächsten Frame zurück: dazwischen liegt ein tatsächlich gezeichnetes
+    // Bild ohne den Inhalt, das WebKit nicht wegoptimieren kann.
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        b.style.display='';
+        saved.forEach(function(p){ p[0].scrollTop=p[1]; });
+        showBadge('Neuaufbau #'+n+' · '+quelle);
+      });
+    });
   }
-  function schedule(){
+  function schedule(quelle){
     clearTimeout(t);
     // iOS meldet die Drehung, bevor die neue Größe endgültig feststeht → zweiter Durchlauf.
-    t=setTimeout(function(){ rebuildLayout(); setTimeout(rebuildLayout,350); },150);
+    t=setTimeout(function(){
+      rebuildLayout(quelle);
+      setTimeout(function(){ rebuildLayout(quelle+' 2.'); },600);
+    },150);
   }
-  window.addEventListener('orientationchange', schedule);
+  window.addEventListener('orientationchange', function(){ schedule('orient'); });
   if(window.matchMedia){
     var mq=window.matchMedia('(orientation: portrait)');
-    if(mq.addEventListener) mq.addEventListener('change', schedule);
-    else if(mq.addListener)  mq.addListener(schedule);   // ältere iOS-Versionen
+    var onMq=function(){ schedule('media'); };
+    if(mq.addEventListener) mq.addEventListener('change', onMq);
+    else if(mq.addListener)  mq.addListener(onMq);        // ältere iOS-Versionen
   }
 })();
 
