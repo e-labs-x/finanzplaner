@@ -1,6 +1,7 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 | **Stand:** Mai 2026
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20260816e`
+**Letzter Stand:** 16.08.2026 (Commit `fc74a16`) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
 
@@ -66,7 +67,7 @@ Niemals klein anfangen und hoffen dass es reicht.
 
 ---
 
-## Dateistruktur (seit v12.0 — 4 separate Dateien)
+## Dateistruktur (seit v12.0 — getrennte Dateien)
 
 | Datei | Inhalt |
 |---|---|
@@ -74,6 +75,9 @@ Niemals klein anfangen und hoffen dass es reicht.
 | `style.css` | Gesamtes Design-System + alle CSS-Tokens |
 | `store.js` | FP.Store + FP.Calculator — **kein UI-Code** |
 | `app.js` | Gesamte UI-Logik (Tab-Renderer, Event-Handler) + `AzureSync` (Cloud-Sync) |
+| `sw.js` | Service Worker — `CACHE_NAME` muss bei **jedem** Deploy mit `?v=` übereinstimmen |
+| `tests.html` | Selbsttests — **vor jedem Deploy im Browser öffnen und laufen lassen** |
+| `TODO.md` | Gepflegte Aufgabenliste + Befund-Dokumentation (z. B. iOS-Rotationsfix) |
 
 **Repo:** `C:\Users\enesc\finanzplaner-repo\`
 **Live-URL:** https://e-labs-x.github.io/finanzplaner/
@@ -90,14 +94,15 @@ Niemals klein anfangen und hoffen dass es reicht.
 
 **Backup vor jeder Session:**
 ```
-Alle 4 Dateien mit Datum in den files-Ordner kopieren:
+Alle 5 Deploy-Dateien (index.html, style.css, store.js, app.js, sw.js) mit Datum
+in den files-Ordner kopieren:
 C:\Users\enesc\OneDrive\Dokumente\07 Projekte\Claude\Finanzen\Finanzen App\files\
 ```
 
 **Nach Änderungen deployen:**
 ```
 cd C:\Users\enesc\finanzplaner-repo
-git add index.html style.css store.js app.js
+git add index.html style.css store.js app.js sw.js tests.html TODO.md
 git commit -m "Deploy: Finanzplaner vX.Y — Beschreibung"
 git push
 ```
@@ -184,9 +189,13 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 ## Feature-Backlog
 
 ### Abgeschlossen
-- ~~GHSync-Umbau~~ — erledigt 24.05.2026
-- ~~Best-Practices-Audit (33/33)~~ — erledigt 24.05.2026
-- ~~Fixkosten-Jahresansicht~~ — erledigt 26.05.2026
+Vollständige Chronik steht in `TODO.md` — hier nur die Meilensteine:
+- ~~GHSync-Umbau~~ (24.05.2026) · ~~Best-Practices-Audit 33/33~~ (24.05.2026) ·
+  ~~Fixkosten-Jahresansicht~~ (26.05.2026)
+- ~~Azure-Blob-Sync statt GitHub-API~~ (05.06.2026)
+- ~~SAS-Härtung komplett~~ (16.06.2026: Konto-SAS `racwl`, Ablauf-Erinnerung, Dirty-Flag)
+- ~~Renten-Audit R1–R15~~ (Stammwerte 2026, GFB, Migration v1→v2, Fünftelregelung u. a.)
+- ~~iOS-Rotationsfix~~ (16.08.2026, `?v=20260816d`) — **unter Beobachtung**, Befund in `TODO.md`
 
 ### Offen (Reihenfolge)
 
