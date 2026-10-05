@@ -184,10 +184,10 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 - **Polling:** HEAD alle 3 Min (ETag-Vergleich)
 - **Token-Fehler:** 401/403 → `_authFailed()` zeigt „Token abgelaufen" + Toast (einmalig)
 - **Dirty-Flag:** `fp_dirty` in **localStorage** (`DIRTY_KEY`) — überlebt App-Neustart, schützt offline gemachte Änderungen vor stillem Überschreiben beim Auto-Pull (Konflikt statt Pull, wenn dirty).
-- **SAS-Ablauf-Erinnerung (16.06.):** `AzureSync.sasExpiry()`/`sasDaysLeft()` lesen `se=` aus dem Token; `updateSasReminder()` steuert das globale Banner `#sas-bar` (gelb ≤14 T., rot abgelaufen) + „Zugang gültig bis"-Zeile in den Einstellungen (`st-az-expiry`).
-- **Azure-Härtung erledigt (07.06.):** Container privat, CORS nur `e-labs-x.github.io`, HTTPS-only, Soft Delete 30 T. (Blobs + Container)
+- **SAS-Ablauf-Erinnerung:** `AzureSync.sasExpiry()`/`sasDaysLeft()` lesen `se=` aus dem Token; `updateSasReminder()` steuert das globale Banner `#sas-bar` (gelb ≤14 T., rot abgelaufen) + „Zugang gültig bis"-Zeile in den Einstellungen (`st-az-expiry`).
+- **Das Token muss ein Konto-SAS sein**, kein Container-SAS: `connect()` baut die Blob-URL aus dem Teil vor `?`, braucht also das Format `…blob.core.windows.net/?sv=…`. Ein Container-SAS (`…/sync?sv=…`) führt zu `/sync/sync/…`. Rechte **`racwl`** (kein Löschen), nur Blob, Container+Objekt, Nur-HTTPS.
+- **Azure-Konfiguration:** Container privat, CORS nur `e-labs-x.github.io`, HTTPS-only, Soft Delete 30 T. (Blobs + Container)
 - **Altlast:** `localStorage('fp_gh_token')` wird bei `load()` automatisch entfernt (Migration githubSync→azureSync)
-- **SAS-Härtung komplett (16.06.):** neuer **Konto-SAS** (nicht Container-SAS — die App braucht das Format `…blob.core.windows.net/?sv=…`) mit nur Blob, Ressourcentypen Container+Objekt, Rechten **`racwl`** (kein Löschen), Nur-HTTPS, 12 Mon. Ablauf — auf allen Geräten eingefügt. Plus Code-Teil (Ablauf-Erinnerung + Dirty-Flag→localStorage, s.o.).
 
 ---
 
@@ -218,42 +218,6 @@ Vollständige Chronik steht in `TODO.md` — hier nur die Meilensteine:
 | I  | Bank-Integration         | Enable Banking + Azure Function                            |
 | —  | Google Fonts lokal       | Inter lokal hosten oder System Fonts — IP-Übermittlung an Google vermeiden |
 | —  | GitHub Data-Repo löschen | e-labs-x/finanzplaner-data (alt, GitHub Sync) — Repo löschen nach Übergangszeit |
-
----
-
-## Bank-Integration — Detailplan (Feature I)
-
-**Ziel:** Kontostände + Wertpapierpositionen automatisch aus Banken abrufen.
-**Anzeige:** Vermögens-Tab + Fixkosten-Tab (Kontostand-Kontext).
-**Kosten:** 0€ (Enable Banking kostenlos persönlich, Azure Functions Free Tier).
-
-**Banken:** ING, 1822direkt, BMW Bank, Finanzen.net Zero → Enable Banking (PSD2/OAuth)
-**Fidelity ESPP:** CSV-Import aus NetBenefits (kein EU-API-Zugang möglich)
-
-**Architektur:**
-- Kontostände werden als Asset-Snapshots gespeichert (renutzt `Assets.addSnapshot()`)
-- Azure Function hält Enable Banking Client-Secret sicher (gleicher Azure Account wie Sync)
-- Tokens in `localStorage('fp_bank_tokens')` — getrennt vom Store-JSON
-
-**Voraussetzungen (vor Session 1 anlegen):**
-- Enable Banking Developer-Account: enablebanking.com (kostenlos, ~5 Min)
-- Azure Account: bereits vorhanden (finanzplanersync)
-
-**Session 1 — Azure Function + OAuth** (~2h)
-- Function: Enable Banking OAuth-Flow + Saldo-Endpunkt
-- Erster Test mit ING
-
-**Session 2 — Store-Integration** (~2h)
-- `store.js`: neues Feld `bankConnections`
-- `BankSync.pull()` → holt Salden → schreibt `Assets.addSnapshot()`
-
-**Session 3 — Vermögens-Tab UI** (~2h)
-- Bereich "Verknüpfte Konten" + Sync-Button + letzter Sync-Zeitstempel
-- OAuth Connect-Flow (öffnet Bank-Login in neuem Tab)
-
-**Session 4 — Fidelity CSV + Fixkosten** (~1h)
-- CSV-Import-Dialog für Fidelity NetBenefits (Drag & Drop)
-- Fixkosten-Tab: ING-Kontostand als Kontext-Indikator
 
 ---
 

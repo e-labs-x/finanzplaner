@@ -145,10 +145,37 @@ nur auf iOS, nur wenn die 768px-Grenze überschritten wird (iPad also nie), Tab 
 - [ ] Autovervollständigung auf Beschreibungsfeld: Datalist aus den letzten 50 Beschreibungen
 - [ ] Smart-Kategorie-Vorschlag: Pille mit vorgeschlagener Kategorie beim Tippen, lernt aus Historie
 
-### I — Bank-Integration _(mehrere Sessions, Detailplan in CLAUDE.md)_
+### I — Bank-Integration _(mehrere Sessions, Detailplan unten)_
 - [ ] Enable Banking (PSD2/OAuth) + Azure Functions: Kontostände/Wertpapiere automatisch abrufen
 - [ ] **Hosting-Konsolidierung evaluieren** — Wenn für die Bank-Integration ohnehin Azure Functions aufgebaut werden: prüfen, ob das App-Hosting von **GitHub Pages → Azure Static Web Apps** ziehen sinnvoll ist (dann alles bei einem Anbieter, evtl. engere Integration mit Functions + Sync).
   - Kontext (06.06.2026): Heute bewusst NICHT umgestellt. Aktuell: Code auf GitHub Pages (`e-labs-x.github.io`), Daten-Sync auf Azure Blob — saubere, funktionierende Trennung. Eine Migration brächte **keinen funktionalen Mehrwert**, aber Risiko/Aufwand: URL-Wechsel (App auf allen Geräten neu installieren), Service-Worker-/Cache-Neuaufbau, CORS + Azure-Sync neu konfigurieren. GitHub Pages + Azure Functions können auch problemlos koexistieren → nur konsolidieren, wenn man einen klaren Grund hat.
+
+#### Detailplan Bank-Integration _(am 05.10.2026 aus `CLAUDE.md` hierher verschoben — unverändert)_
+
+**Ziel:** Kontostände + Wertpapierpositionen automatisch aus Banken abrufen.
+**Anzeige:** Vermögens-Tab + Fixkosten-Tab (Kontostand-Kontext).
+**Kosten:** 0 € (Enable Banking kostenlos persönlich, Azure Functions Free Tier).
+
+**Banken:** ING, 1822direkt, BMW Bank, Finanzen.net Zero → Enable Banking (PSD2/OAuth)
+**Fidelity ESPP:** CSV-Import aus NetBenefits (kein EU-API-Zugang möglich)
+
+**Architektur:**
+- Kontostände werden als Asset-Snapshots gespeichert (benutzt `Assets.addSnapshot()` erneut)
+- Azure Function hält Enable Banking Client-Secret sicher (gleicher Azure Account wie Sync)
+- Tokens in `localStorage('fp_bank_tokens')` — getrennt vom Store-JSON
+
+**Voraussetzungen (vor Session 1 anlegen):**
+- Enable Banking Developer-Account: enablebanking.com (kostenlos, ~5 Min)
+- Azure Account: bereits vorhanden (`finanzplanersync`)
+
+- [ ] **Session 1 — Azure Function + OAuth** (~2 h): Function mit Enable-Banking-OAuth-Flow +
+      Saldo-Endpunkt, erster Test mit ING
+- [ ] **Session 2 — Store-Integration** (~2 h): `store.js` neues Feld `bankConnections`;
+      `BankSync.pull()` holt Salden → schreibt `Assets.addSnapshot()`
+- [ ] **Session 3 — Vermögens-Tab UI** (~2 h): Bereich „Verknüpfte Konten" + Sync-Knopf +
+      letzter Sync-Zeitstempel; OAuth-Connect-Flow (Bank-Login in neuem Tab)
+- [ ] **Session 4 — Fidelity CSV + Fixkosten** (~1 h): CSV-Import-Dialog für Fidelity
+      NetBenefits (Drag & Drop); ING-Kontostand als Kontext-Indikator im Fixkosten-Tab
 
 ### Rente — Audit-Nacharbeiten _(Stand 06.06.2026)_
 _Voller Bericht: `…\Finanzen App\audit_rente_2026-06-06.md`. R1–R6 + Grundfreibetrag-Doppelabzug bereits erledigt & deployed (`?v=20260606v`)._
