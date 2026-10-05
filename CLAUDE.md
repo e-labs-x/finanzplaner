@@ -160,6 +160,11 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 - **Radii:** `--r` 14px, `--r-sm` 9px, `--r-lg` 18px, `--r-xl` 26px
 - **Dark Mode:** automatisch via `@media (prefers-color-scheme: dark)` — kein manueller Schalter
 - **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
+- **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
+  danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert
+  liefern, dann reagieren Charts nie auf iPhone-Drehung. Betrifft `ghDrawChart`, `ghDrawLineChart`,
+  `rpDrawVerlaufChart`, `rpDrawStichtagChart`, `rpDrawEntnahmeChart` (die `avChart`-Familie nutzt
+  `canvas.parentNode` und ist nicht betroffen).
 
 ---
 
