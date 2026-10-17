@@ -1953,7 +1953,7 @@ function avCatDetail(id,objId){
 
 function avCatBack(){
   var el=document.getElementById('av-kat-list');
-  if(el){el.style.maxHeight='420px';el.style.overflowY='auto';el.style.display='';el.style.flexDirection='';el.style.gap='';}
+  if(el){el.style.maxHeight='';el.style.overflowY='';el.style.display='';el.style.flexDirection='';el.style.gap='';}
   var bc=avBC();avRenderKat(bc);
 }
 
