@@ -75,6 +75,9 @@ function setupTestStore() {
   localStorage.removeItem('finanzplaner_v3');
   FP.Store.load(); // lädt Default-Store (person_1 = Person 1, person_2 = Partner)
 
+  // Default-Store hat kein Geburtsdatum mehr → festes Testdatum (gleicher Weg wie stSaveStammdaten)
+  FP.Store.get().persons.find(function(p) { return p.id === 'person_1'; }).birthDate = '15.03.1980';
+
   // Minimal-Gehalt damit calcRente sinnvoll rechnet
   FP.Store.Salary.set('person_1', '01.2026', { grossSalary: 4500, netSalary: 3000 });
   FP.Store.Salary.set('person_1', '02.2026', { grossSalary: 4500, netSalary: 3000 });
@@ -106,13 +109,15 @@ async function runTests() {
       assert(nachher === vorher + 1, 'Erwartet +1, bekam +' + (nachher - vorher));
     });
 
-    await test('Transaktion in Papierkorb verschieben', 'Store-CRUD', function() {
+    // Buchungen werden direkt gelöscht — der Papierkorb gilt nur für Kategorien, Objekte, Fixkosten.
+    await test('Transaktion löschen', 'Store-CRUD', function() {
       var tx = FP.Store.Transactions.add({ amount: 9.99, date: '05.2026', categoryId: 'cat_kaffee' });
       var vorher = FP.Store.Transactions.getAll().length;
-      FP.Store.Transactions.remove(tx.id);
+      assert(FP.Store.Transactions.delete(tx.id) === true, 'delete() meldet keinen Erfolg');
       var nachher = FP.Store.Transactions.getAll().length;
       assert(nachher === vorher - 1, 'Transaktion nicht aus Liste entfernt');
-      assert(FP.Trash.getAll().some(function(e) { return e.item.id === tx.id; }), 'Nicht im Papierkorb gelandet');
+      assert(!FP.Store.Transactions.getById(tx.id), 'Transaktion noch auffindbar');
+      assert(FP.Store.Transactions.delete(tx.id) === false, 'Zweites delete() meldet fälschlich Erfolg');
     });
 
     await test('Kategorie anlegen und wiederfinden', 'Store-CRUD', function() {
@@ -144,12 +149,14 @@ async function runTests() {
       assert(s.meta && typeof s.meta.version === 'number', 'meta.version fehlt');
     });
 
-    await test('Person 1 hat Geburtsjahr', 'Validierung', function() {
+    // Default-Store ist seit 07.06.2026 neutral (birthDate leer) — das Testdatum kommt aus setupTestStore().
+    await test('Geburtsdatum fließt ins Alter ein', 'Validierung', function() {
       var p = FP.Store.get().persons.find(function(x) { return x.id === 'person_1'; });
       assert(p, 'person_1 nicht gefunden');
-      assert(p.birthDate && p.birthDate.length > 0, 'birthDate leer');
-      var year = parseInt(p.birthDate.split('.').pop());
-      assert(year >= 1900 && year <= 2010, 'Geburtsjahr unplausibel: ' + year);
+      assert(p.birthDate === '15.03.1980', 'Test-Geburtsdatum fehlt: ' + p.birthDate);
+      var r = FP.Calculator.calcRente('person_1', null);
+      var erwartet = new Date().getFullYear() - 1980;
+      assert(r.currentAge === erwartet, 'currentAge ' + r.currentAge + ', erwartet ' + erwartet);
     });
 
     await test('System-Kategorien vorhanden', 'Validierung', function() {
