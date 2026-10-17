@@ -1480,7 +1480,7 @@ function eur(n) {
 }
 
 
-var avS={mode:'monat',month:new Date().getMonth()+1,year:new Date().getFullYear(),view:'donut',sortBy:'amt',sortDir:'desc',selCat:null,katView:'kategorien',expandedGroup:null};
+var avS={mode:'monat',month:new Date().getMonth()+1,year:new Date().getFullYear(),view:'donut',sortBy:'amt',sortDir:'desc',selCat:null,katView:'gruppen',expandedGroup:null};
 function avHeute(){avS.month=new Date().getMonth()+1;avS.year=new Date().getFullYear();avRender();}
 function avMode(m,el){avS.mode=m;avS.selCat=null;document.querySelectorAll('.av-mode-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRender();}
 function avView(v,el){avS.view=v;document.querySelectorAll('.av-view-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRenderViz(avBC());}
@@ -1675,10 +1675,11 @@ function avBCGrouped(bc){
     var cat=d.cat;
     var gid=cat.parentId&&catMap[cat.parentId]?cat.parentId:cat.id;
     var gcAt=catMap[gid]||cat;
-    if(!groups[gid])groups[gid]={cat:gcAt,total:0,count:0,children:[]};
+    if(!groups[gid])groups[gid]={cat:gcAt,total:0,count:0,children:[],direct:null};
     groups[gid].total+=d.total;
     groups[gid].count+=d.count;
     if(cat.parentId) groups[gid].children.push(d);
+    else groups[gid].direct=d; // direkt auf die Oberkategorie gebucht
   });
   return groups;
 }
@@ -1693,25 +1694,26 @@ function avRenderKatGruppen(bc){
   var html=items.map(function(g){
     var pct=(Math.abs(g.total)/total*100).toFixed(1);
     var color=g.cat.color||'#6B7280';
+    // Jede Gruppe klappt auf (gleiches Verhalten in jedem Zeitraum); aufgeklappt ergeben
+    // „· direkt" + Unterkategorien zusammen genau die Gruppensumme.
     var isOpen=avS.expandedGroup===g.cat.id;
-    var hasKids=g.children.length>0;
-    var arrow=hasKids?'<span class="av-kat-grp-arrow'+(isOpen?' open':'')+'">›</span>':'<span style="width:14px;flex-shrink:0"></span>';
-    var onclick=hasKids?'avToggleGroup(\''+g.cat.id+'\')':'avCatDetail(\''+g.cat.id+'\')';
-    var row='<div class="av-kat-grp" onclick="'+onclick+'">'+
-      arrow+
+    var row='<div class="av-kat-grp" onclick="avToggleGroup(\''+g.cat.id+'\')">'+
+      '<span class="av-kat-grp-arrow'+(isOpen?' open':'')+'">›</span>'+
       '<div class="av-kat-dot" style="background:'+color+'"></div>'+
       '<div class="av-kat-grp-name">'+esc(g.cat.name)+'</div>'+
       '<div class="av-row-bar-wrap"><div class="av-row-bar-track"><div class="av-row-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div></div>'+
       '<div class="av-kat-amt" style="color:'+(g.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(g.total))+'</div>'+
     '</div>';
-    if(isOpen&&hasKids){
+    if(isOpen){
       var kids=g.children.slice().sort(function(a,b){return Math.abs(b.total)-Math.abs(a.total);});
+      if(g.direct&&g.direct.total!==0)kids.unshift(g.direct);
       row+=kids.map(function(d){
-        var cpct=(Math.abs(d.total)/Math.abs(g.total)*100).toFixed(1);
+        var cpct=(Math.abs(d.total)/(Math.abs(g.total)||1)*100).toFixed(1);
         var cc=d.cat.color||'#6B7280';
+        var nm=d===g.direct&&g.children.length?d.cat.name+' · direkt':d.cat.name;
         return '<div class="av-kat-sub" onclick="avCatDetail(\''+d.cat.id+'\')">'+
           '<div class="av-kat-dot" style="background:'+cc+'"></div>'+
-          '<div class="av-kat-name">'+esc(d.cat.name)+'</div>'+
+          '<div class="av-kat-name">'+esc(nm)+'</div>'+
           '<div class="av-row-bar-wrap"><div class="av-row-bar-track"><div class="av-row-bar-fill" style="width:'+cpct+'%;background:'+cc+'"></div></div></div>'+
           '<div class="av-kat-amt" style="color:'+(d.total<0?'var(--green)':'var(--tx)')+'">'+eur(Math.abs(d.total))+'</div>'+
         '</div>';

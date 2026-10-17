@@ -764,7 +764,6 @@ button { cursor: pointer; border: none; background: none; }
 .av-tbl-h{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;display:flex;align-items:center;gap:2px;transition:color .12s}
 .av-tbl-h:hover{color:var(--tx)}.av-tbl-h.asc::after{content:' ↑'}.av-tbl-h.desc::after{content:' ↓'}
 .av-tbl-h.h-name{flex:1}.av-tbl-h.h-pct{width:38px;justify-content:flex-end}.av-tbl-h.h-amt{width:88px;justify-content:flex-end}
-.av-kat-list{overflow-y:auto;max-height:420px}
 .av-kat-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .1s}
 .av-kat-row:last-child{border-bottom:none}.av-kat-row:hover{background:var(--bg)}.av-kat-row.sel{background:var(--blue-lt)}
 .av-kat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
