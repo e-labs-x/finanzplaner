@@ -1481,7 +1481,6 @@ function eur(n) {
 
 
 var avS={mode:'monat',month:new Date().getMonth()+1,year:new Date().getFullYear(),view:'donut',sortBy:'amt',sortDir:'desc',selCat:null,katView:'kategorien',expandedGroup:null};
-var avHov=-1, avHovSub=-1, _avLayout=null;
 function avHeute(){avS.month=new Date().getMonth()+1;avS.year=new Date().getFullYear();avRender();}
 function avMode(m,el){avS.mode=m;avS.selCat=null;document.querySelectorAll('.av-mode-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRender();}
 function avView(v,el){avS.view=v;document.querySelectorAll('.av-view-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRenderViz(avBC());}
@@ -1557,205 +1556,71 @@ function avRender(){
     }
   }
   var pk=document.getElementById('av-picker');if(pk)pk.value=avS.year+'-'+String(avS.month).padStart(2,'0')+'-01';
-  avChart();avToepfe();var bc=avBC();avRenderKat(bc);avRenderViz(bc);
+  avKpis();var bc=avBC();avRenderKat(bc);avRenderViz(bc);
 }
-function avChart(){
-  var canvas=document.getElementById('avc');if(!canvas)return;
-  var dpr=window.devicePixelRatio||1;
-  var W=canvas.parentNode.getBoundingClientRect().width||canvas.parentNode.offsetWidth||600;var H=150;
-  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-  var pts,ci;
-  if(avS.mode==='monat'){
-    pts=FP.Calculator.getRollingMonths(avS.month,avS.year,12);
-  } else if(avS.mode==='quartal'){
-    var q=Math.ceil(avS.month/3);pts=[];
-    for(ci=(q-1)*3+1;ci<=q*3;ci++)pts.push({month:ci,year:avS.year,dateStr:String(ci).padStart(2,'0')+'.'+avS.year});
-  } else {
-    pts=[];
-    for(ci=1;ci<=12;ci++)pts.push({month:ci,year:avS.year,dateStr:String(ci).padStart(2,'0')+'.'+avS.year});
-  }
-  var n=pts.length;
-  var cs=getComputedStyle(document.documentElement);
-  var cTx=cs.getPropertyValue('--tx').trim()||'#1C1C1E';
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var store=FP.Store.get();var txs=store.transactions;
-  var cats={};store.categories.forEach(function(c){cats[c.id]=c;});
-  var fixVals=pts.map(function(p){
-    return txs.filter(function(t){var c=cats[t.categoryId];return t.date===p.dateStr&&t.amount>0&&c&&c.group==='fixkosten';}).reduce(function(s,t){return s+t.amount;},0);
+// Ausgaben netto über eine Monatsliste — gleiche Regeln wie Reports (rp2Render):
+// Erstattungen mindern, archivierte Objekte zählen nicht, Monate = Monate mit Buchungen.
+function avSum(ms){
+  var arch=_archObjSet(),set={},act={},total=0,count=0;
+  ms.forEach(function(m){set[m]=true;});
+  FP.Store.Transactions.getAll().forEach(function(tx){
+    if(!set[tx.date])return;
+    if(tx.objectId&&arch[tx.objectId])return;
+    total+=Number(tx.amount);count++;act[tx.date]=true;
   });
-  var freiVals=pts.map(function(p){
-    return txs.filter(function(t){var c=cats[t.categoryId];return t.date===p.dateStr&&t.amount>0&&(!c||c.group!=='fixkosten');}).reduce(function(s,t){return s+t.amount;},0);
-  });
-  var sparVals=pts.map(function(p,i){
-    var net=(store.salary&&store.salary.person_1&&store.salary.person_1[p.dateStr])?(store.salary.person_1[p.dateStr].netSalary||0):0;
-    return Math.max(0,net-fixVals[i]-freiVals[i]);
-  });
-  var totals=pts.map(function(p,i){return fixVals[i]+freiVals[i]+sparVals[i];});
-  // Grouped bars: maxV = größter Einzelwert (nicht Summe)
-  var allVals=fixVals.concat(freiVals).concat(sparVals);
-  var maxV=Math.max.apply(null,allVals.concat([1]));
-  var pL=8,pR=8,pT=32,pB=24,bW=(W-pL-pR)/n,cH=H-pT-pB;
-  var outerGap=Math.max(3,bW*0.14);
-  var innerW=bW-outerGap;
-  var subGap=1.5;
-  var subW=(innerW-2*subGap)/3;
-  _avLayout={pL:pL,bW:bW,outerGap:outerGap,subW:subW,subGap:subGap,n:n};
-  var cs2=getComputedStyle(document.documentElement);
-  var SEGS=[
-    {nc:cs2.getPropertyValue('--blue-lt').trim()||'#DBEAFE',hc:cs2.getPropertyValue('--blue-bd').trim()||'#93C5FD',ac:cs2.getPropertyValue('--blue').trim()||'#3B82F6'},
-    {nc:cs2.getPropertyValue('--green-lt').trim()||'#D1FAE5',hc:cs2.getPropertyValue('--green-mid').trim()||'#6EE7B7',ac:cs2.getPropertyValue('--green').trim()||'#059669'},
-    {nc:cs2.getPropertyValue('--purple-lt').trim()||'#EDE9FE',hc:cs2.getPropertyValue('--purple-mid').trim()||'#C4B5FD',ac:cs2.getPropertyValue('--purple').trim()||'#7C3AED'}
-  ];
-  pts.forEach(function(p,i){
-    var segsV=[fixVals[i],freiVals[i],sparVals[i]];
-    var isCur=avS.mode==='monat'&&p.month===avS.month&&p.year===avS.year;
-    var isHov=avHov===i;
-    var x=pL+i*bW+outerGap/2;
-    segsV.forEach(function(v,si){
-      if(v<=0)return;
-      var bh=Math.max(2,(v/maxV)*cH);
-      var bx=x+si*(subW+subGap);
-      var by=H-pB-bh;
-      ctx.fillStyle=isCur?SEGS[si].ac:(isHov?SEGS[si].hc:SEGS[si].nc);
-      // Abgerundete Oberkante
-      var r=Math.min(3,subW/2,bh/2);
-      ctx.beginPath();
-      ctx.moveTo(bx+r,by);
-      ctx.lineTo(bx+subW-r,by);
-      ctx.quadraticCurveTo(bx+subW,by,bx+subW,by+r);
-      ctx.lineTo(bx+subW,by+bh);
-      ctx.lineTo(bx,by+bh);
-      ctx.lineTo(bx,by+r);
-      ctx.quadraticCurveTo(bx,by,bx+r,by);
-      ctx.closePath();
-      ctx.fill();
-    });
-    // Monatsbezeichnung unten
-    ctx.font=(isCur?'700 ':'')+'10px Inter,sans-serif';
-    ctx.fillStyle=isCur?cTx:cTx3;
-    ctx.textAlign='center';ctx.textBaseline='bottom';
-    ctx.fillText(MON[p.month-1].slice(0,3),x+innerW/2,H);
-    // Horizontaler Einzelbetrag über dem gehoverten Balken
-    if(isHov&&avHovSub>=0){
-      var v=segsV[avHovSub];
-      if(v>0){
-        var bh2=Math.max(2,(v/maxV)*cH);
-        var bx2=x+avHovSub*(subW+subGap);
-        var barCX=bx2+subW/2;
-        // Text zentriert über Balken, aber innerhalb Canvas-Grenzen halten
-        var labelX=Math.min(Math.max(barCX,36),W-36);
-        ctx.font='700 10px Inter,sans-serif';
-        ctx.fillStyle=SEGS[avHovSub].ac;
-        ctx.textAlign='center';ctx.textBaseline='bottom';
-        ctx.fillText(eur(v),labelX,H-pB-bh2-4);
-      }
-    }
-  });
-  canvas.onclick=null;
-  canvas.onmousemove=function(e){
-    var r=canvas.getBoundingClientRect(),x=e.clientX-r.left;
-    avHov=Math.floor((x-pL)/bW);
-    avHovSub=-1;
-    if(_avLayout&&avHov>=0&&avHov<_avLayout.n){
-      var colX=_avLayout.pL+avHov*_avLayout.bW+_avLayout.outerGap/2;
-      var si=Math.floor((x-colX)/(_avLayout.subW+_avLayout.subGap));
-      if(si>=0&&si<=2)avHovSub=si;
-    }
-    avChart();
-  };
-  canvas.onmouseleave=function(){avHov=-1;avHovSub=-1;avChart();};
-  var vals=totals;var curV,prevV=0,prevLbl,nz,avg;
-  if(avS.mode==='monat'){
-    curV=vals[n-1]||0;prevV=vals[n-2]||0;prevLbl='Vormonat';
-    nz=vals.filter(function(v){return v>0;});avg=nz.length?nz.reduce(function(s,v){return s+v;},0)/nz.length:0;
-  } else if(avS.mode==='quartal'){
-    curV=vals.reduce(function(s,v){return s+v;},0);
-    var pq=Math.ceil(avS.month/3)-1,pqy=avS.year;if(pq<1){pq=4;pqy--;}
-    for(var mi=(pq-1)*3+1;mi<=pq*3;mi++){var ds=String(mi).padStart(2,'0')+'.'+pqy;prevV+=txs.filter(function(t){return t.date===ds&&t.amount>0;}).reduce(function(s,t){return s+t.amount;},0);}
-    prevLbl='Vorquartal';nz=vals.filter(function(v){return v>0;});avg=nz.length?nz.reduce(function(s,v){return s+v;},0)/nz.length:0;
-  } else {
-    curV=vals.reduce(function(s,v){return s+v;},0);
-    for(var mj=1;mj<=12;mj++){var dsj=String(mj).padStart(2,'0')+'.'+(avS.year-1);prevV+=txs.filter(function(t){return t.date===dsj&&t.amount>0;}).reduce(function(s,t){return s+t.amount;},0);}
-    prevLbl='Vorjahr';nz=vals.filter(function(v){return v>0;});avg=nz.length?nz.reduce(function(s,v){return s+v;},0)/nz.length:0;
-  }
-  var diff=curV-prevV;var avgLbl=avS.mode==='monat'?'Ø 12 Monate':'Ø Monat';
-  // Prozentuale Aufteilung für den aktuellen Zeitraum
-  var curFix=0,curFrei=0;
-  if(avS.mode==='monat'){
-    curFix=fixVals[n-1]||0;curFrei=freiVals[n-1]||0;
-  } else {
-    fixVals.forEach(function(v){curFix+=v;});freiVals.forEach(function(v){curFrei+=v;});
-  }
-  var curSpar=Math.max(0,curV-curFix-curFrei);
-  // Nettolohn nur des aktuellen Zeitraums (nicht aller rolling pts)
-  var curNet=0;
-  var salaryPts=avS.mode==='monat'?[pts[n-1]]:pts;
-  salaryPts.forEach(function(p){var s=store.salary&&store.salary.person_1&&store.salary.person_1[p.dateStr];if(s)curNet+=s.netSalary||0;});
-  var pBase=curNet>0?curNet:curV; // Fallback auf Gesamt wenn kein Gehalt erfasst
-  var pFix=pBase>0?Math.round(curFix/pBase*100):0;
-  var pFrei=pBase>0?Math.round(curFrei/pBase*100):0;
-  var pSpar=pBase>0?Math.round(curSpar/pBase*100):0;
-  // Sparquote: nur sinnvoll wenn Gehalt erfasst
-  var sparquoteVal  = curNet>0 ? pSpar+'%' : '—';
-  var sparquoteClr  = curNet>0 ? (pSpar>=20?'var(--green)':pSpar>=10?'var(--amber)':'var(--red)') : 'var(--tx3)';
-  var sparquoteSub  = curNet>0 ? 'vom Netto' : 'Kein Gehalt';
-  // Fixkostenquote: relativ zu Netto wenn vorhanden, sonst zu Ausgaben
-  var fkqBase       = curNet>0 ? 'vom Netto' : 'der Ausgaben';
-  var fkqPct        = curNet>0 ? pFix : (curV>0?Math.round(curFix/curV*100):0);
-  var fkqClr        = fkqPct<=50?'var(--green)':fkqPct<=65?'var(--amber)':'var(--red)';
-  var st=document.getElementById('av-stats');
-  if(st)st.innerHTML=
-    '<div class="av-stat"><div class="av-stat-lbl">'+avLabel()+'</div><div class="av-stat-val">'+eur(curV)+'</div></div>'+
-    '<div class="av-stat"><div class="av-stat-lbl">'+prevLbl+'</div><div class="av-stat-val" style="color:'+(diff>0?'var(--red)':'var(--green)')+'">'+(diff>=0?'+':'')+eur(diff)+'</div></div>'+
-    '<div class="av-stat"><div class="av-stat-lbl">'+avgLbl+'</div><div class="av-stat-val">'+eur(avg)+'</div></div>'+
-    '<div class="av-stat"><div class="av-stat-lbl">Sparquote</div><div class="av-stat-val" style="color:'+sparquoteClr+'">'+sparquoteVal+'</div><div class="av-stat-sub">'+sparquoteSub+'</div></div>'+
-    '<div class="av-stat"><div class="av-stat-lbl">Fixkostenquote</div><div class="av-stat-val" style="color:'+fkqClr+'">'+fkqPct+'%</div><div class="av-stat-sub">'+fkqBase+'</div></div>'+
-    '<div class="av-legend">'+
-      '<span class="av-leg-item"><span class="av-leg-dot" style="background:var(--blue)"></span><span>Fixkosten<br><span style="color:var(--blue);font-weight:700">'+pFix+'%</span></span></span>'+
-      '<span class="av-leg-item"><span class="av-leg-dot" style="background:var(--green)"></span><span>Freizeit<br><span style="color:var(--green);font-weight:700">'+pFrei+'%</span></span></span>'+
-      '<span class="av-leg-item"><span class="av-leg-dot" style="background:var(--purple)"></span><span>Sparen<br><span style="color:var(--purple);font-weight:700">'+pSpar+'%</span></span></span>'+
-    '</div>';
+  return {total:total,count:count,months:Object.keys(act).length};
 }
-function avToepfe(){
-  var store=FP.Store.get();var bc=avBC();var cats={};store.categories.forEach(function(c){cats[c.id]=c;});
-  var fixT=0,freiT=0;
-  Object.values(bc).forEach(function(d){if(d.cat.group==='fixkosten')fixT+=d.total;else freiT+=d.total;});
-  var ms=avMonths();var net=0;
-  ms.forEach(function(m){var s=store.salary&&store.salary.person_1&&store.salary.person_1[m];if(s)net+=s.netSalary||0;});
-  var bud=store.budget||{fixPct:50,freiPct:30,sparPct:20};
-  var tp=[{cls:'fix',lbl:'Fixkosten',ist:fixT,soll:net*bud.fixPct/100},{cls:'frei',lbl:'Freizeit',ist:freiT,soll:net*bud.freiPct/100},{cls:'spar',lbl:'Sparen',ist:Math.max(0,net-fixT-freiT),soll:net*bud.sparPct/100}];
-  var el=document.getElementById('av-toepfe');
-  if(!el)return;
-  if(net===0){
-    el.innerHTML='<div style="grid-column:1/-1;padding:12px 14px;background:var(--amber-lt);border-radius:10px;font-size:12px;color:var(--amber);line-height:1.5">'+
-      'Kein Gehalt für diesen Zeitraum erfasst — Budget-Soll kann nicht berechnet werden.<br>'+
-      '<span style="cursor:pointer;text-decoration:underline" onclick="navTo(\'gehalt\')">Gehalt im Gehalt-Tab eintragen →</span>'+
-      '</div>'+
-      tp.map(function(t){
-        return '<div class="av-topf '+t.cls+'"><div class="av-topf-lbl">'+t.lbl+'</div>'+
-          '<div class="av-topf-valrow"><div class="av-topf-val">'+eur(t.ist)+'</div><span class="av-topf-badge none">—</span></div>'+
-          '<div class="av-topf-sub">Kein Gehalt erfasst</div>'+
-          '<div class="av-topf-bar"><div class="av-topf-fill" style="width:0%"></div></div></div>';
-      }).join('');
-    return;
+function avPrevMonths(){
+  var ms=[],i;
+  if(avS.mode==='quartal'){
+    var q=Math.ceil(avS.month/3)-1,y=avS.year;if(q<1){q=4;y--;}
+    for(i=(q-1)*3+1;i<=q*3;i++)ms.push(String(i).padStart(2,'0')+'.'+y);
+  } else {
+    for(i=1;i<=12;i++)ms.push(String(i).padStart(2,'0')+'.'+(avS.year-1));
   }
-  el.innerHTML=tp.map(function(t){
-    var p=t.soll>0?t.ist/t.soll*100:0;
-    var pBar=Math.min(100,p);
-    var ov=t.ist>t.soll&&t.soll>0;
-    var badgeCls=t.soll<=0?'none':ov?'over':p>=90?'warn':'ok';
-    var badgeTxt=t.soll>0?Math.round(p)+'%':'—';
-    return '<div class="av-topf '+t.cls+(ov?' over':'')+'">'+
-      '<div class="av-topf-lbl">'+t.lbl+'</div>'+
-      '<div class="av-topf-valrow">'+
-        '<div class="av-topf-val">'+eur(t.ist)+'</div>'+
-        '<span class="av-topf-badge '+badgeCls+'">'+badgeTxt+'</span>'+
-      '</div>'+
-      '<div class="av-topf-sub">'+(t.soll>0?'Soll\u2009'+eur(t.soll):'Kein Gehalt erfasst')+'</div>'+
-      '<div class="av-topf-bar"><div class="av-topf-fill" style="width:'+pBar.toFixed(1)+'%"></div></div>'+
-    '</div>';
-  }).join('');
+  return ms;
+}
+function avPctTxt(cur,base){
+  if(!(base>0))return '';
+  var p=Math.round((cur/base-1)*100);
+  return (p>0?'+':p<0?'−':'±')+Math.abs(p)+' %';
+}
+function avKpis(){
+  var el=document.getElementById('av-kpis');if(!el)return;
+  var cur=avSum(avMonths());
+  // Ø: Monat → letzte 12 Monate; Quartal/Jahr → Zeitraum, verglichen mit dem Vorzeitraum (Ø gegen Ø,
+  // damit ein angebrochenes Jahr fair gegen ein volles Vorjahr steht)
+  var avgLbl,avg,avgSub='';
+  if(avS.mode==='monat'){
+    var r12=avSum(FP.Calculator.getRollingMonths(avS.month,avS.year,12).map(function(p){return p.dateStr;}));
+    avg=r12.months?r12.total/r12.months:0;avgLbl='Ø 12 Monate';
+    var t=avPctTxt(cur.total,avg);if(t&&cur.count)avgSub=MON[avS.month-1]+' '+t+' zum Ø';
+  } else {
+    avg=cur.months?cur.total/cur.months:0;avgLbl='Ø / Monat';
+    var prev=avSum(avPrevMonths());
+    var t2=avPctTxt(avg,prev.months?prev.total/prev.months:0);
+    if(t2)avgSub=t2+' zum '+(avS.mode==='quartal'?'Vorquartal':'Vorjahr');
+  }
+  // Sparquote: nur Monate mit erfasstem Nettogehalt (sonst verzerrt ein Monat ohne Gehalt die Quote)
+  var net=0,spent=0,nSal=0;
+  avMonths().forEach(function(m){
+    var s=FP.Store.Salary.get('person_1',m);var n=s?(s.netSalary||0):0;
+    if(n>0){net+=n;spent+=avSum([m]).total;nSal++;}
+  });
+  var sqVal='—',sqSub='Kein Gehalt erfasst';
+  if(net>0){
+    var q=Math.round((net-spent)/net*100);
+    sqVal=(q<0?'−':'')+Math.abs(q)+' %';
+    sqSub='vom Netto'+(avS.mode==='monat'?'':' · '+nSal+' Monat'+(nSal===1?'':'e'));
+  }
+  function card(cls,lbl,val,sub){
+    return '<div class="rp2-kpi-card '+cls+'"><div class="cf-kpi-lbl">'+lbl+'</div>'+
+      '<div class="cf-kpi-val">'+val+'</div><div class="av-kpi-sub">'+(sub||' ')+'</div></div>';
+  }
+  el.innerHTML=
+    card('rp2-kpi-total','Ausgaben',eur(cur.total),cur.count+' Buchung'+(cur.count===1?'':'en'))+
+    card('rp2-kpi-avg',avgLbl,eur(avg),avgSub)+
+    card('av-kpi-spar','Sparquote',sqVal,sqSub);
 }
 // Aktualisiert Spalten-Header-Bezeichnung je nach View
 function avUpdateTblHeader(){
