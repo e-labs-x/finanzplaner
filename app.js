@@ -7746,6 +7746,19 @@ document.addEventListener('keydown',function(e){
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openSearch();}
 });
 
+// Betragssuche: Eingabe als Zahl lesen statt als Text vergleichen („14,50" = 14.5).
+// Mit Nachkommastellen → centgenau; ganze Zahl → alle Beträge mit diesem Euro-Teil (14 → 14,00–14,99).
+function amountMatches(q,amount){
+  var s=String(q||'').replace(/[€\s+\-]/g,'');
+  if(!/^\d[\d.,]*$/.test(s))return false;
+  if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');
+  else if(!/\.\d{1,2}$/.test(s))s=s.replace(/\./g,'');
+  var v=parseFloat(s),a=Math.abs(Number(amount));
+  if(isNaN(v)||isNaN(a))return false;
+  if(/\.\d/.test(s))return Math.round(a*100)===Math.round(v*100);
+  return Math.floor(a)===v;
+}
+
 function srSearch(q){
   q=(q||'').trim().toLowerCase();
   var el=document.getElementById('sr-results');
@@ -7766,7 +7779,7 @@ function srSearch(q){
       ||(tx.rawName&&tx.rawName.toLowerCase().includes(q))
       ||(obj&&obj.name.toLowerCase().includes(q))
       ||tx.date.includes(q)
-      ||String(Math.abs(tx.amount)).includes(q);
+      ||amountMatches(q,tx.amount);
   }).slice(0,30);
 
   if(txHits.length){
@@ -7792,7 +7805,7 @@ function srSearch(q){
 
   // ── Fixkosten
   var fkHits=(store.recurring||[]).filter(function(fc){
-    return fc.name.toLowerCase().includes(q)||(fc.validFrom&&fc.validFrom.includes(q));
+    return fc.name.toLowerCase().includes(q)||(fc.validFrom&&fc.validFrom.includes(q))||amountMatches(q,fc.amount);
   });
   if(fkHits.length){
     html+='<div class="sr-section-lbl">Fixkosten</div>';
@@ -8436,7 +8449,7 @@ function rp2Filter() {
     if (q) {
       var note = (tx.note || '').toLowerCase();
       var raw  = (tx.rawName || '').toLowerCase();
-      if (!note.includes(q) && !raw.includes(q)) return false;
+      if (!note.includes(q) && !raw.includes(q) && !amountMatches(q, tx.amount)) return false;
     }
     return true;
   });
