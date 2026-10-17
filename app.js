@@ -1849,6 +1849,7 @@ function avCatDetail(id,objId){
   avS.detail={id:id,objId:objId||null};
   // nicht avRender() — das setzt expandedGroup zurück; „Zurück" soll die Gruppe offen vorfinden
   if(avRenderDetail())avShowDetail(true);
+  else avCatBack(); // unbekannte Kategorie → Liste zeigen, kein veralteter Detail-Zustand
   var pg=document.getElementById('p-auswertung');if(pg)pg.scrollTop=0;
 }
 function avCatBack(){
@@ -1890,6 +1891,17 @@ function avRenderDetail(){
   } else {
     var nM=avSum(ms).months;
     avg=nM?total/nM:0;avgLbl='Ø / Monat';
+  }
+  // Vergleich wie in den Kacheln: Monat → gegen Ø 12 Monate; Quartal/Jahr → Ø gegen Ø des Vorzeitraums
+  var cmpSub='';
+  if(avS.mode==='monat'){
+    var tm=avPctTxt(total,avg);if(tm&&txs.length)cmpSub=MON[avS.month-1]+' '+tm+' zum Ø';
+  } else {
+    var pms=avPrevMonths(),pN=avSum(pms).months;
+    var pAvg=pN?sumOf(avCatTxs(pms,d.id,d.objId))/pN:0;
+    var pLbl=avS.mode==='quartal'?'Vorquartal':'Vorjahr';
+    var tp=avPctTxt(avg,pAvg);
+    cmpSub=tp?tp+' zum '+pLbl+' ('+eur(pAvg)+')':(pN?'im '+pLbl+' nicht gebucht':'');
   }
 
   // Neueste zuerst: Monat, dann Tag (dateISO, falls vorhanden), dann Erfassungszeit
@@ -1939,7 +1951,7 @@ function avRenderDetail(){
       (hasSubs&&!obj?'<div class="av-cd-hint">Nur direkt auf „'+esc(cat.name)+'" gebuchte Beträge — Unterkategorien stehen einzeln in der Gruppe.</div>':'')+
       '<div class="av-cd-stats">'+
         '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Gesamt</div><div class="av-cd-stat-val">'+eur(total)+'</div></div>'+
-        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">'+avgLbl+'</div><div class="av-cd-stat-val">'+eur(avg)+'</div></div>'+
+        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">'+avgLbl+'</div><div class="av-cd-stat-val">'+eur(avg)+'</div>'+(cmpSub?'<div class="av-cd-stat-sub">'+cmpSub+'</div>':'')+'</div>'+
         '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Buchungen</div><div class="av-cd-stat-val">'+txs.length+'</div></div>'+
       '</div>'+
     '</div>'+

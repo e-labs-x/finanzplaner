@@ -787,6 +787,7 @@ button { cursor: pointer; border: none; background: none; }
 .av-cd-stat:last-child{border-right:none}
 .av-cd-stat-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
 .av-cd-stat-val{font-size:14px;font-weight:700;color:var(--tx)}
+.av-cd-stat-sub{font-size:11px;color:var(--tx3);margin-top:3px;line-height:1.3;font-variant-numeric:tabular-nums}
 .av-cd-sec-lbl{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em}
 .av-cd-mo-hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 6px;font-size:12px;background:var(--surf2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd)}
 .av-cd-tx{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--brd)}
