@@ -1,6 +1,31 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-08-16 — iOS-Rotationsfix (body nicht mehr position:fixed), unter Beobachtung
+Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, Übersicht + Kategorie-Detail umgebaut (`?v=20261017h`)
+
+---
+
+## ⏭️ Nächste Sitzung — App-Check (Entscheidung offen)
+
+Anlass: am 17.10.2026 mehrere Fehler gefunden, fast alle **Widersprüche zwischen Ansichten**
+(Übersicht rechnete Einkommen mit, Gruppen ergaben aufgeklappt nicht ihre Summe, Detail ignorierte
+den Zeitraum, Lücken nach Umschalten, Betragssuche verglich „14.5" mit „14,50"). Nutzer wählt noch:
+- **A — Zahlen-Abgleich mit echten Daten** (empfohlen, ca. 1 h, ohne Agenten): jede Summe, die an
+  mehreren Stellen steht, nachrechnen — Home, Übersicht, Reports, Budget, Cashflow, Objekte, Fixkosten,
+  Suche — plus die zwei XLSX-Import-Wege (`source:excel` store.js vs `source:import` app.js, offen seit Juni).
+- **B — Voller Audit** nach `Finanzen App/audit_prompt_komplett.md` (OneDrive, 11 Blöcke, mehrere Agenten,
+  deutlich teurer — braucht ausdrückliche Agenten-Freigabe).
+- **C — erst A, dann B** in eigener Sitzung.
+Ergebnis jeweils als Befundliste; nichts ändern ohne OK.
+
+### Erledigt am 17.10.2026
+- [x] Betragssuche (`amountMatches`): „14,50" / „14.50" / „14" in globaler Suche, Fixkosten, Buchungsliste
+- [x] tests.html: 2 veraltete Tests korrigiert, 2 Papierkorb-Tests neu → 17/17
+- [x] Papierkorb für Buchungen (30 T., Wiederherstellen ohne Doppelung)
+- [x] Übersicht: 3 Kacheln (Ausgaben, Ø/Monat, Sparquote) statt Töpfe/Diagramm/6er-Leiste — auf den Cent wie Reports
+- [x] Übersicht: Gruppen als Start + erster Reiter, jede Gruppe klappt auf (inkl. „· direkt"), Liste ohne eigenen Scrollbereich
+- [x] Kategorie-Detail: folgt dem Zeitraum, eigener Container, Buchung antippen = bearbeiten, Tag sichtbar, Verlauf entfernt, Vorjahresvergleich
+- [x] Sichtkontrolle Übersicht + Detail durch Nutzer — „sieht gut aus" (17.10.); Rückweg: Tags `vor-uebersicht-umbau`, `vor-detail-umbau`
+- [ ] iOS-Rotationsfix: Rückmeldung vom Nutzer steht weiter aus (siehe unten)
 
 ---
 
