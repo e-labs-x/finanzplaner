@@ -918,11 +918,14 @@ const Store = (() => {
       return _state.transactions[idx];
     },
 
+    // Verschiebt in den Papierkorb — Liste und Papierkorb ändern sich in EINEM _save().
     delete(id) {
-      const len = _state.transactions.length;
-      _state.transactions = _state.transactions.filter(tx => tx.id !== id);
-      if (_state.transactions.length < len) { _save(); return true; }
-      return false;
+      const tx = _state.transactions.find(t => t.id === id);
+      if (!tx) return false;
+      Trash._add('transaction', tx);
+      _state.transactions = _state.transactions.filter(t => t.id !== id);
+      _save();
+      return true;
     },
 
     /** Bulk-Zuordnung: objectId auf gefilterte Transaktionen setzen */
@@ -1300,13 +1303,21 @@ const Store = (() => {
       if (entry.type === 'category')  _state.categories.push(entry.item);
       if (entry.type === 'object')    _state.objects.push(entry.item);
       if (entry.type === 'recurring') _state.recurring.push(entry.item);
+      if (entry.type === 'transaction') {
+        // Nur zurückholen, wenn sie nicht schon wieder da ist (Sync-Merge / Fixkosten-Generator)
+        const t = entry.item;
+        const dup = _state.transactions.some(x => x.id === t.id
+          || (t.source === 'recurring' && t.recurringId && x.source === 'recurring'
+              && x.recurringId === t.recurringId && x.date === t.date));
+        if (!dup) _state.transactions.push(t);
+      }
       // Aus deletedSystemCats entfernen falls vorhanden
       if (entry.type === 'category' && _state.settings.deletedSystemCats) {
         _state.settings.deletedSystemCats = _state.settings.deletedSystemCats.filter(id => id !== entry.item.id);
       }
       _state.trash = _state.trash.filter(e => e.id !== trashId);
       _save();
-      appLog('PAPIERKORB', 'Wiederhergestellt: ' + (entry.item.name || trashId));
+      appLog('PAPIERKORB', 'Wiederhergestellt: ' + (entry.item.name || entry.item.rawName || trashId));
     },
     permanentDelete(trashId) {
       if (!_state.trash) return;

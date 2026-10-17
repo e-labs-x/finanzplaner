@@ -1,7 +1,7 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261017a`
-**Letzter Stand:** 17.10.2026 (Commit `67da3a2`, Betragssuche) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261017b`
+**Letzter Stand:** 17.10.2026 (Betragssuche + Papierkorb für Buchungen) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
 

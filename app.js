@@ -1296,8 +1296,8 @@ function delTx(id) {
   var tx = FP.Store.Transactions.getAll().find(function(t){return t.id===id;});
   FP.Store.Transactions.delete(id);
   renderEntries();
-  toast('Eintrag gelöscht');
-  if(tx) appLog('TX', 'Gelöscht: '+(tx.rawName||'')+ ' ' +eur(tx.amount));
+  toast('In den Papierkorb verschoben');
+  if(tx) appLog('TX', 'In Papierkorb: '+(tx.rawName||'')+ ' ' +eur(tx.amount));
 }
 
 /* ── Eintrag bearbeiten ── */
@@ -2815,13 +2815,13 @@ function stRenderTrash(){
     el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Papierkorb ist leer.</div>';
     return;
   }
-  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost'};
+  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung'};
   var now=Date.now();
   el.innerHTML=items.map(function(e){
     var daysLeft=Math.max(0,30-Math.floor((now-new Date(e.deletedAt).getTime())/86400000));
     return '<div class="st-row">'+
       '<div class="st-row-info">'+
-        '<div class="st-row-name" style="opacity:0.7">'+esc(e.item.name)+'</div>'+
+        '<div class="st-row-name" style="opacity:0.7">'+esc(trashItemName(e))+'</div>'+
         '<div class="st-row-sub">'+typeLabel[e.type]+' · noch '+daysLeft+' Tag'+(daysLeft===1?'':'e')+'</div>'+
       '</div>'+
       '<div class="st-row-actions">'+
@@ -2831,18 +2831,29 @@ function stRenderTrash(){
     '</div>';
   }).join('');
 }
+// Buchungen haben kein name-Feld → „Kategorie · Bezeichnung · Betrag · Monat"
+function trashItemName(e){
+  var it=e.item||{};
+  if(e.type!=='transaction')return it.name||e.id;
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===it.categoryId;});
+  var parts=[cat?cat.name:'?'];
+  if(it.rawName&&(!cat||it.rawName!==cat.name))parts.push(it.rawName);
+  parts.push(eur(Math.abs(it.amount)),it.date);
+  return parts.join(' · ');
+}
 function stTrashRestore(id){
   FP.Trash.restore(id);
   stRenderCats();
   stRenderObjs();
   stRenderTrash();
   buildCats();
+  renderEntries();
   toast('Wiederhergestellt');
 }
 function stTrashDelete(id){
   if(!confirm('Endgültig löschen? Das kann nicht rückgängig gemacht werden.'))return;
   var entry=FP.Trash.getAll().find(function(e){return e.id===id;});
-  var name=entry&&entry.item&&entry.item.name?entry.item.name:id;
+  var name=entry?trashItemName(entry):id;
   FP.Trash.permanentDelete(id);
   appLog('PAPIERKORB','Endgültig gelöscht: '+name);
   stRenderTrash();

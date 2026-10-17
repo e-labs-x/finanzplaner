@@ -109,15 +109,36 @@ async function runTests() {
       assert(nachher === vorher + 1, 'Erwartet +1, bekam +' + (nachher - vorher));
     });
 
-    // Buchungen werden direkt gelöscht — der Papierkorb gilt nur für Kategorien, Objekte, Fixkosten.
-    await test('Transaktion löschen', 'Store-CRUD', function() {
+    await test('Transaktion in Papierkorb verschieben', 'Store-CRUD', function() {
       var tx = FP.Store.Transactions.add({ amount: 9.99, date: '05.2026', categoryId: 'cat_kaffee' });
       var vorher = FP.Store.Transactions.getAll().length;
       assert(FP.Store.Transactions.delete(tx.id) === true, 'delete() meldet keinen Erfolg');
       var nachher = FP.Store.Transactions.getAll().length;
       assert(nachher === vorher - 1, 'Transaktion nicht aus Liste entfernt');
       assert(!FP.Store.Transactions.getById(tx.id), 'Transaktion noch auffindbar');
+      assert(FP.Trash.getAll().some(function(e) { return e.type === 'transaction' && e.item.id === tx.id; }), 'Nicht im Papierkorb gelandet');
       assert(FP.Store.Transactions.delete(tx.id) === false, 'Zweites delete() meldet fälschlich Erfolg');
+    });
+
+    await test('Transaktion aus Papierkorb wiederherstellen', 'Store-CRUD', function() {
+      var tx = FP.Store.Transactions.add({ amount: 14.50, date: '05.2026', categoryId: 'cat_kaffee', note: 'Restore-Test' });
+      FP.Store.Transactions.delete(tx.id);
+      var entry = FP.Trash.getAll().find(function(e) { return e.item.id === tx.id; });
+      FP.Trash.restore(entry.id);
+      var back = FP.Store.Transactions.getById(tx.id);
+      assert(back, 'Nicht zurück in der Liste');
+      assert(back.amount === 14.5 && back.note === 'Restore-Test' && back.date === '05.2026', 'Felder nicht unverändert');
+      assert(!FP.Trash.getAll().some(function(e) { return e.id === entry.id; }), 'Noch im Papierkorb');
+    });
+
+    await test('Wiederherstellen erzeugt keine Doppelung', 'Store-CRUD', function() {
+      var tx = FP.Store.Transactions.add({ amount: 7, date: '05.2026', categoryId: 'cat_kaffee' });
+      FP.Store.Transactions.delete(tx.id);
+      FP.Store.get().transactions.push(JSON.parse(JSON.stringify(tx))); // z. B. per Sync-Merge zurückgekommen
+      var entry = FP.Trash.getAll().find(function(e) { return e.item.id === tx.id; });
+      FP.Trash.restore(entry.id);
+      var n = FP.Store.Transactions.getAll().filter(function(t) { return t.id === tx.id; }).length;
+      assert(n === 1, 'Buchung ' + n + '-mal vorhanden');
     });
 
     await test('Kategorie anlegen und wiederfinden', 'Store-CRUD', function() {
