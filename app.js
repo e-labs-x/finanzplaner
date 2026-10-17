@@ -1480,7 +1480,7 @@ function eur(n) {
 }
 
 
-var avS={mode:'monat',month:new Date().getMonth()+1,year:new Date().getFullYear(),view:'donut',sortBy:'amt',sortDir:'desc',selCat:null,katView:'gruppen',expandedGroup:null};
+var avS={mode:'monat',month:new Date().getMonth()+1,year:new Date().getFullYear(),view:'donut',sortBy:'amt',sortDir:'desc',selCat:null,katView:'gruppen',expandedGroup:null,detail:null};
 function avHeute(){avS.month=new Date().getMonth()+1;avS.year=new Date().getFullYear();avRender();}
 function avMode(m,el){avS.mode=m;avS.selCat=null;document.querySelectorAll('.av-mode-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRender();}
 function avView(v,el){avS.view=v;document.querySelectorAll('.av-view-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');avRenderViz(avBC());}
@@ -1556,7 +1556,10 @@ function avRender(){
     }
   }
   var pk=document.getElementById('av-picker');if(pk)pk.value=avS.year+'-'+String(avS.month).padStart(2,'0')+'-01';
-  avKpis();var bc=avBC();avRenderKat(bc);avRenderViz(bc);
+  avKpis();
+  if(avS.detail&&avRenderDetail()){avShowDetail(true);return;}
+  avS.detail=null;avShowDetail(false);
+  var bc=avBC();avRenderKat(bc);avRenderViz(bc);
 }
 // Ausgaben netto über eine Monatsliste — gleiche Regeln wie Reports (rp2Render):
 // Erstattungen mindern, archivierte Objekte zählen nicht, Monate = Monate mit Buchungen.
@@ -1840,244 +1843,112 @@ function avRenderViz(bc){
 }
 
 /* ── Kategorie-Detailansicht ── */
+// Detail hat einen eigenen Zustand (avS.detail) und einen eigenen Container (#av-cd) —
+// avRender() zeichnet es bei jedem Zeitraumwechsel/Drehen/Bearbeiten neu, statt die Liste zu verbiegen.
 function avCatDetail(id,objId){
-  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===id;});
-  if(!cat)return;
-  var obj=objId?FP.Store.Objects.getAll().find(function(o){return o.id===objId;}):null;
-  var years=FP.Calculator.getAvailableYears();
-  if(!years.length)return;
-
-  // Alle Buchungen dieser Kategorie (optional auf ein Objekt eingeschränkt), neueste zuerst
-  var store=FP.Store.get();
-  var allTxs=store.transactions.filter(function(tx){return tx.categoryId===id&&(!objId||tx.objectId===objId);});
-  allTxs.sort(function(a,b){
-    var ap=a.date.split('.'),bp=b.date.split('.');
-    return (parseInt(bp[1])*12+parseInt(bp[0]))-(parseInt(ap[1])*12+parseInt(ap[0]));
+  avS.detail={id:id,objId:objId||null};
+  // nicht avRender() — das setzt expandedGroup zurück; „Zurück" soll die Gruppe offen vorfinden
+  if(avRenderDetail())avShowDetail(true);
+  var pg=document.getElementById('p-auswertung');if(pg)pg.scrollTop=0;
+}
+function avCatBack(){
+  avS.detail=null;
+  avShowDetail(false);
+  avRenderKat(avBC()); // aufgeklappte Gruppe bleibt erhalten
+}
+function avShowDetail(on){
+  var card=document.querySelector('#p-auswertung .av-kat-card'),cd=document.getElementById('av-cd');
+  if(card)card.style.display=on?'none':'';
+  if(cd)cd.style.display=on?'':'none';
+}
+// Summe einer Kategorie über eine Monatsliste — gleiche Filter wie avBC (archivierte Objekte raus)
+function avCatTxs(ms,id,objId){
+  var set={},arch=_archObjSet();ms.forEach(function(m){set[m]=true;});
+  return FP.Store.Transactions.getAll().filter(function(tx){
+    if(!set[tx.date]||tx.categoryId!==id)return false;
+    return objId?tx.objectId===objId:!(tx.objectId&&arch[tx.objectId]);
   });
+}
+function avRenderDetail(){
+  var d=avS.detail;
+  var cat=FP.Store.Categories.getAll().find(function(c){return c.id===d.id;});
+  var el=document.getElementById('av-cd');
+  if(!cat||!el)return false;
+  var obj=d.objId?FP.Store.Objects.getAll().find(function(o){return o.id===d.objId;}):null;
+  var sumOf=function(list){return list.reduce(function(s,t){return s+Number(t.amount);},0);};
 
-  // Verlauf: kategorieweit – oder objekt-gefiltert aus allTxs aufgebaut
-  var trend;
-  if(objId){
-    var _tm={};
-    allTxs.forEach(function(tx){_tm[tx.date]=(_tm[tx.date]||0)+tx.amount;});
-    trend=Object.keys(_tm).map(function(ds){var p=ds.split('.');return {date:ds,year:parseInt(p[1]),month:parseInt(p[0]),total:_tm[ds]};})
-      .sort(function(a,b){return (a.year*12+a.month)-(b.year*12+b.month);});
+  var ms=avMonths();
+  var txs=avCatTxs(ms,d.id,d.objId);
+  var total=sumOf(txs);
+  // Ø mit demselben Nenner wie die Kachel oben (Monate mit irgendeiner Buchung) →
+  // die Ø-Werte aller Kategorien ergeben zusammen den Ø der Kachel.
+  var avgLbl,avg;
+  if(avS.mode==='monat'){
+    var r12=FP.Calculator.getRollingMonths(avS.month,avS.year,12).map(function(p){return p.dateStr;});
+    var n12=avSum(r12).months;
+    avg=n12?sumOf(avCatTxs(r12,d.id,d.objId))/n12:0;avgLbl='Ø 12 Monate';
   } else {
-    trend=FP.Calculator.getCategoryTrend(id,years[0],years[years.length-1]);
+    var nM=avSum(ms).months;
+    avg=nM?total/nM:0;avgLbl='Ø / Monat';
   }
 
-  // Aggregate by year
-  var byYear={};
-  trend.forEach(function(p){byYear[p.year]=(byYear[p.year]||0)+p.total;});
+  // Neueste zuerst: Monat, dann Tag (dateISO, falls vorhanden), dann Erfassungszeit
+  var key=function(t){var p=t.date.split('.');return p[1]+p[0]+(t.dateISO||'')+(t.createdAt||'');};
+  txs.sort(function(a,b){var ka=key(a),kb=key(b);return ka<kb?1:ka>kb?-1:0;});
 
-  var total=trend.reduce(function(s,p){return s+p.total;},0);
-  var activeYears=Object.values(byYear).filter(function(v){return v>0;});
-  var avgYear=activeYears.length?total/activeYears.length:0;
-  var avgMonth=trend.length?total/trend.length:0;
-
-  var el=document.getElementById('av-kat-list');
-  if(!el)return;
-  el.style.maxHeight='none';
-  el.style.overflowY='visible';
-  el.style.display='flex';
-  el.style.flexDirection='column';
-  el.style.gap='12px';
-
-  // Build transactions list grouped by month
-  var txByMonth={};
-  allTxs.forEach(function(tx){
-    if(!txByMonth[tx.date])txByMonth[tx.date]=[];
-    txByMonth[tx.date].push(tx);
+  var catMap={};FP.Store.Categories.getAll().forEach(function(c){catMap[c.id]=c;});
+  var objMap={};FP.Store.Objects.getAll().forEach(function(o){objMap[o.id]=o;});
+  var byMonth=[],cur=null;
+  txs.forEach(function(tx){
+    if(!cur||cur.date!==tx.date){cur={date:tx.date,txs:[]};byMonth.push(cur);}
+    cur.txs.push(tx);
   });
-  var catMap={};store.categories.forEach(function(c){catMap[c.id]=c;});
-  var objMap={};if(store.objects)store.objects.forEach(function(o){objMap[o.id]=o;});
-
-  var txHtml=Object.entries(txByMonth).map(function(e){
-    var dateStr=e[0],txs=e[1];
-    var parts=dateStr.split('.');
-    var mo=parseInt(parts[0]),yr=parseInt(parts[1]);
-    var moLbl=MON[mo-1]+' '+yr;
-    var monthTotal=txs.reduce(function(s,t){return s+t.amount;},0);
-    var rows=txs.map(function(tx){
+  var txHtml=byMonth.map(function(m){
+    var p=m.date.split('.');
+    var rows=m.txs.map(function(tx){
       var sub=tx.subcategoryId?catMap[tx.subcategoryId]:null;
-      var obj=tx.objectId?objMap[tx.objectId]:null;
+      var o=tx.objectId?objMap[tx.objectId]:null;
       var lbl=tx.rawName||(sub?sub.name:cat.name);
-      var noteParts=[sub?sub.name:null,obj?obj.name:null,tx.note||null].filter(Boolean);
+      var noteParts=[sub?sub.name:null,o&&!obj?o.name:null,tx.note||null].filter(Boolean);
+      // Bezeichnung wiederholt nur den Kategorienamen (steht schon im Kopf) → Notiz als Hauptzeile
+      if(lbl===cat.name&&noteParts.length){lbl=noteParts.join(' · ');noteParts=[];}
       var isRefund=tx.amount<0;
-      return '<div class="av-cd-tx">'+
+      var day=tx.dateISO&&tx.dateISO.length===10?tx.dateISO.substring(8)+'.'+tx.dateISO.substring(5,7)+'.':'';
+      return '<div class="av-cd-tx" onclick="editTx(\''+tx.id+'\')">'+
+        '<div class="av-cd-tx-day">'+day+'</div>'+
         '<div class="av-cd-tx-lbl">'+
-          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+lbl+'</div>'+
-          (noteParts.length?'<div class="av-cd-tx-note">'+noteParts.join(' · ')+'</div>':'')+
+          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+'</div>'+
+          (noteParts.length?'<div class="av-cd-tx-note">'+esc(noteParts.join(' · '))+'</div>':'')+
         '</div>'+
-        '<div class="av-cd-tx-amt" style="color:'+(isRefund?'var(--green)':'var(--tx)')+'">'+
-          (isRefund?'+ ':'')+eur(Math.abs(tx.amount))+
-        '</div>'+
+        '<div class="av-cd-tx-amt" style="color:'+(isRefund?'var(--green)':'var(--tx)')+'">'+(isRefund?'+ ':'')+eur(Math.abs(tx.amount))+'</div>'+
       '</div>';
     }).join('');
-    return '<div class="av-cd-mo-hdr">'+
-        '<span style="font-weight:700;color:var(--tx)">'+moLbl+'</span>'+
-        '<span style="font-weight:700;color:var(--tx)">'+eur(Math.abs(monthTotal))+'</span>'+
-      '</div>'+rows;
+    return '<div class="av-cd-mo-hdr"><span style="font-weight:700;color:var(--tx)">'+MON[parseInt(p[0])-1]+' '+p[1]+'</span>'+
+      '<span style="font-weight:700;color:var(--tx)">'+eur(Math.abs(sumOf(m.txs)))+'</span></div>'+rows;
   }).join('');
 
-  var color=cat.color||'#6B7280';
-  var icon=ICONS[cat.id]||'';
+  var hasSubs=FP.Store.Categories.getAll().some(function(c){return c.parentId===d.id;});
   el.innerHTML=
-    // ── Header-Card: Zurück + Name + 3 Kennzahlen ──
     '<div class="av-cd-card">'+
       '<div class="av-cd-back" onclick="avCatBack()">‹ Zurück</div>'+
       '<div class="av-cd-hdr">'+
-        '<div class="av-cd-dot" style="background:'+color+'"></div>'+
-        '<div class="av-cd-name">'+(icon||'')+'<span>'+cat.name+(obj?' · '+esc(obj.name):'')+'</span></div>'+
+        '<div class="av-cd-dot" style="background:'+(cat.color||'var(--cat-slate)')+'"></div>'+
+        '<div class="av-cd-name">'+(ICONS[cat.id]||'')+'<span>'+esc(cat.name+(obj?' · '+obj.name:''))+'</span></div>'+
+        '<div class="av-cd-period">'+avLabel()+'</div>'+
       '</div>'+
+      (hasSubs&&!obj?'<div class="av-cd-hint">Nur direkt auf „'+esc(cat.name)+'" gebuchte Beträge — Unterkategorien stehen einzeln in der Gruppe.</div>':'')+
       '<div class="av-cd-stats">'+
         '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Gesamt</div><div class="av-cd-stat-val">'+eur(total)+'</div></div>'+
-        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Ø / Monat</div><div class="av-cd-stat-val">'+eur(avgMonth)+'</div></div>'+
-        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Buchungen</div><div class="av-cd-stat-val">'+allTxs.length+'</div></div>'+
+        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">'+avgLbl+'</div><div class="av-cd-stat-val">'+eur(avg)+'</div></div>'+
+        '<div class="av-cd-stat"><div class="av-cd-stat-lbl">Buchungen</div><div class="av-cd-stat-val">'+txs.length+'</div></div>'+
       '</div>'+
     '</div>'+
-    // ── Verlauf-Chart ──
-    '<div class="av-cd-card" style="padding:14px 16px 12px">'+
-      '<div class="av-cd-sec-lbl">Verlauf</div>'+
-      '<canvas id="av-cd-canvas" style="display:block;width:100%;margin-top:8px"></canvas>'+
-    '</div>'+
-    // ── Buchungen ──
     '<div class="av-cd-card av-cd-tx-card">'+
-      '<div class="av-cd-sec-lbl" style="padding:14px 16px 10px">Buchungen</div>'+
-      (txHtml||'<div style="padding:0 16px 14px;color:var(--tx3);font-size:13px">Keine Buchungen.</div>')+
+      '<div class="av-cd-sec-lbl" style="padding:14px 16px 10px">Buchungen <span style="font-weight:500;text-transform:none;letter-spacing:0">· antippen zum Bearbeiten</span></div>'+
+      (txHtml||'<div style="padding:0 16px 14px;color:var(--tx3);font-size:13px">Keine Buchungen in '+avLabel()+'.</div>')+
     '</div>';
-
-  // Draw chart after DOM update
-  requestAnimationFrame(function(){ avCatTrend(id,trend,cat); });
+  return true;
 }
-
-function avCatBack(){
-  var el=document.getElementById('av-kat-list');
-  if(el){el.style.maxHeight='';el.style.overflowY='';el.style.display='';el.style.flexDirection='';el.style.gap='';}
-  var bc=avBC();avRenderKat(bc);
-}
-
-function avCatTrend(id,trend,cat){
-  var canvas=document.getElementById('av-cd-canvas');
-  if(!canvas)return;
-  var color=cat.color||'#6B7280';
-  var dpr=window.devicePixelRatio||1;
-  var W=canvas.parentNode.getBoundingClientRect().width||canvas.parentNode.offsetWidth||300;
-  var H=130;
-  canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-
-  if(!trend.length){
-    ctx.font='12px Inter,sans-serif';
-    ctx.fillStyle='#AEAEB2';ctx.textAlign='center';
-    ctx.fillText('Keine Daten',W/2,H/2);return;
-  }
-
-  var cs=getComputedStyle(document.documentElement);
-  var cTx=cs.getPropertyValue('--tx').trim()||'#1C1C1E';
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
-
-  // Build full month list (incl. zeros) from first to last data point
-  var pts=[];
-  var firstPt=trend[0],lastPt=trend[trend.length-1];
-  var trendMap={};
-  trend.forEach(function(p){trendMap[p.date]=p.total;});
-  for(var yr=firstPt.year;yr<=lastPt.year;yr++){
-    var mStart=yr===firstPt.year?firstPt.month:1;
-    var mEnd=yr===lastPt.year?lastPt.month:12;
-    for(var mo=mStart;mo<=mEnd;mo++){
-      var ds=String(mo).padStart(2,'0')+'.'+yr;
-      pts.push({month:mo,year:yr,date:ds,total:trendMap[ds]||0});
-    }
-  }
-
-  var n=pts.length;
-  var pL=6,pR=6,pT=18,pB=28;
-  var cW=W-pL-pR,cH=H-pT-pB;
-  var maxV=Math.max.apply(null,pts.map(function(p){return p.total;}).concat([1]));
-  var bW=cW/n;var gap=Math.max(1,bW*.2);
-  var curM=new Date().getMonth()+1,curY=new Date().getFullYear();
-
-  var avg=trend.reduce(function(s,p){return s+p.total;},0)/trend.length;
-  var avgY=pT+cH-(avg/maxV)*cH;
-
-  function drawTrend(hovIdx){
-    ctx.clearRect(0,0,W,H);
-    // Average line
-    ctx.beginPath();ctx.setLineDash([3,3]);
-    ctx.strokeStyle=cBrd;ctx.lineWidth=1;
-    ctx.moveTo(pL,avgY);ctx.lineTo(W-pR,avgY);ctx.stroke();
-    ctx.setLineDash([]);
-
-    pts.forEach(function(p,i){
-      var x=pL+i*bW;
-      var isCur=p.month===curM&&p.year===curY;
-      var isHov=i===hovIdx;
-      var bh=p.total>0?Math.max(2,(p.total/maxV)*cH):0;
-      var by=pT+cH-bh;
-
-      if(p.total>0){
-        ctx.fillStyle=isHov?cTx:color;
-        ctx.globalAlpha=isHov?1:(isCur?1:0.55);
-        ctx.beginPath();
-        ctx.roundRect?ctx.roundRect(x+gap/2,by,bW-gap,bh,2):ctx.rect(x+gap/2,by,bW-gap,bh);
-        ctx.fill();
-        ctx.globalAlpha=1;
-      }
-
-      // Value label: hovered bar OR current month
-      if((isHov||isCur)&&p.total>0){
-        ctx.font='bold 9px Inter,sans-serif';
-        ctx.fillStyle=cTx;ctx.textAlign='center';ctx.textBaseline='bottom';
-        ctx.fillText(eur(p.total),x+bW/2,by-2);
-      }
-
-      // Month label
-      if(p.month===1||n<=18||(n<=36&&p.month%3===1)||(n>36&&p.month===7)){
-        ctx.font=(isCur?'bold ':'')+' 8px Inter,sans-serif';
-        ctx.fillStyle=isCur?cTx:cTx3;ctx.textAlign='center';ctx.textBaseline='top';
-        var lbl=p.month===1?'Jan \''+String(p.year).slice(2):MON[p.month-1].slice(0,3);
-        ctx.fillText(lbl,x+bW/2,H-pB+4);
-      }
-    });
-
-    // Hover label at top
-    if(hovIdx>=0&&hovIdx<pts.length&&pts[hovIdx].total>0){
-      var p=pts[hovIdx];
-      var lbl=MON[p.month-1]+' '+p.year;
-      ctx.font='bold 9px Inter,sans-serif';
-      ctx.fillStyle=cTx3;ctx.textAlign='left';ctx.textBaseline='top';
-      ctx.fillText(lbl,pL,1);
-    }
-
-    // Avg label
-    ctx.font='9px Inter,sans-serif';
-    ctx.fillStyle=cTx3;ctx.textAlign='right';ctx.textBaseline='bottom';
-    ctx.fillText('Ø '+eur(avg),W-pR,avgY-2);
-  }
-
-  drawTrend(-1);
-
-  canvas.style.cursor='pointer';
-  canvas.onmousemove=function(e){
-    var r=canvas.getBoundingClientRect();
-    var x=(e.clientX-r.left)*(W/r.width);
-    var idx=Math.floor((x-pL)/bW);
-    drawTrend((idx>=0&&idx<pts.length)?idx:-1);
-  };
-  canvas.onmouseleave=function(){drawTrend(-1);};
-  canvas.onclick=function(e){
-    var r=canvas.getBoundingClientRect();
-    var x=(e.clientX-r.left)*(W/r.width);
-    var idx=Math.floor((x-pL)/bW);
-    if(idx>=0&&idx<pts.length&&pts[idx].total>0){
-      toast(MON[pts[idx].month-1]+' '+pts[idx].year+' · '+eur(pts[idx].total));
-    }
-  };
-}
-
 function avPickerChange(val){
   if(!val)return;
   var parts=val.split('-');

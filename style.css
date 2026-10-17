@@ -795,6 +795,12 @@ button { cursor: pointer; border: none; background: none; }
 .av-cd-tx-name{font-size:13px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .av-cd-tx-note{font-size:11px;color:var(--tx3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .av-cd-tx-amt{font-size:13px;font-weight:700;flex-shrink:0}
+.av-cd-wrap{display:flex;flex-direction:column;gap:12px}
+.av-cd-period{margin-left:auto;font-size:13px;font-weight:600;color:var(--tx3);white-space:nowrap}
+.av-cd-hint{padding:0 16px 12px;font-size:11px;color:var(--tx3);line-height:1.4}
+.av-cd-tx{cursor:pointer}
+.av-cd-tx:hover{background:var(--surf2)}
+.av-cd-tx-day{width:38px;flex-shrink:0;font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
 .av-viz{padding:16px;border-left:1px solid var(--brd);display:flex;align-items:center;justify-content:center;min-height:200px}
 @media(max-width:560px){.av-viz{border-left:none;border-top:1px solid var(--brd)}}
 /* ── Auswertung Segment-Control (Kategorien/Gruppen/Objekte) ── */

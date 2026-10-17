@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261017f`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261017g`
 **Letzter Stand:** 17.10.2026 (Betragssuche, Papierkorb für Buchungen, Übersicht entschlackt) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -163,7 +163,7 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert
   liefern, dann reagieren Charts nie auf iPhone-Drehung. Betrifft `ghDrawChart`, `ghDrawLineChart`,
-  `rpDrawVerlaufChart`, `rpDrawStichtagChart`, `rpDrawEntnahmeChart` (`avCatTrend` nutzt
+  `rpDrawVerlaufChart`, `rpDrawStichtagChart`, `rpDrawEntnahmeChart` (`vmDrawTrendRight` u. a. nutzen
   `canvas.parentNode` und ist nicht betroffen).
 
 ---
