@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261018d">
+<link rel="stylesheet" href="style.css?v=20261018e">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 1018d</div>
+      <div class="sb-ver">v12.0 · build 1018e</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -47,7 +47,7 @@
       <button class="sb-item" data-p="auswertung"        data-tip="Übersicht"  onclick="nav('auswertung')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="sb-txt">Übersicht</span></button>
       <button class="sb-item" data-p="cashflow"          data-tip="Cashflow"   onclick="nav('cashflow')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg></span><span class="sb-txt">Cashflow</span></button>
       <button class="sb-item" data-p="reports"           data-tip="Reports"    onclick="nav('reports')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M11 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/><path d="M13 3v5h5"/><path d="m15 18 2 2 4-4"/></svg></span><span class="sb-txt">Reports</span></button>
-      <button class="sb-item" data-p="budget"            data-tip="Budget"     onclick="nav('budget')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="sb-txt">Budget</span></button>
+      <button class="sb-item" data-p="budget"            data-tip="Budget"     onclick="nav('budget')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></span><span class="sb-txt">Budget</span></button>
       <button class="sb-item" data-p="vermoegen"         data-tip="Vermögen"   onclick="nav('vermoegen')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span class="sb-txt">Vermögen</span></button>
       <button class="sb-item" data-p="rente"             data-tip="Rente"       onclick="nav('rente')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg></span><span class="sb-txt">Rente</span></button>
       <button class="sb-item" data-p="mehr"              data-tip="Mehr"        onclick="nav('mehr')"><span class="sb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span><span class="sb-txt">Mehr</span></button>
@@ -218,6 +218,7 @@
     <div class="page" id="p-vermoegen">
       <div class="pg">
         <div class="vm-wrap">
+          <div class="vm-filter" id="vm-filter"></div>
           <div class="vm-total-card" id="vm-total"></div>
           <div class="vm-chart-card vm-hist-card" id="vm-hist"></div>
           <div class="vm-chart-card" id="vm-charts"></div>
@@ -899,7 +900,7 @@
               <div class="me-item-arr">›</div>
             </div>
             <div class="me-item" onclick="nav('budget')">
-              <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
               <div class="me-item-info">
                 <div class="me-item-name">Budget</div>
                 <div class="me-item-sub">Kategorien · Soll vs. Ist</div>
@@ -1470,8 +1471,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261018d"></script>
-<script src="app.js?v=20261018d"></script>
+<script src="store.js?v=20261018e"></script>
+<script src="app.js?v=20261018e"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

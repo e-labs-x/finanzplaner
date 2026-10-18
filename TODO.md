@@ -13,7 +13,13 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       Canvas-Regel eingehalten; matchMedia-Neuzeichnen bei Hell/Dunkel.
 - [x] **Fehler behoben:** Monatsstände wurden als Text sortiert → ab 01.2027 hätte der Dezember-Wert als „aktuell"
       gegolten (Gesamtvermögen, Rente). Jetzt `sortSnapshots` (chronologisch) beim Laden, addSnapshot, Merge.
-- [ ] **Nutzer schaut live** (Desktop + iPhone) — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
+- [x] Nutzer-Feedback 1 umgesetzt (`?v=20261018e`): Tabelle am PC kompakt (width:auto); Auswahl oben
+      „Alle · Enes · Ehli · Gemeinsam" + Name antippen = Anlage ausblenden — **Ring, Verlauf und Historie folgen**
+      (Karten/Überblick bleiben vollständig), Auswahl je Gerät in localStorage `fp_vm_sel`; Budget-Symbol € statt $.
+- [x] **Fehler behoben:** „Gewinn" unter dem Ring war Gesamt − Einstand → Konten ohne Einstand zählten voll als
+      Gewinn (+496 T€ statt +303 T€). Jetzt nur Anlagen mit Einstand (`getAssetSummary().gain`), klar beschriftet.
+      Einstand-Linie im Verlauf entfernt (gleicher Denkfehler: Einstand von 7 Anlagen gegen Wert aller).
+- [ ] **Nutzer schaut live** — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
 
 ## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026
 

@@ -6219,12 +6219,58 @@ function vmRefreshPrices(){
 function vmInit(){ vmBuildOwnerLabel(); vmRender(); }
 
 function vmRender(){
+  vmRenderFilter();
   vmRenderTotal();
   vmRenderHistory();
   vmRenderCharts();
   vmRenderAssets();
   vmRenderFsa();
   esppRender();
+}
+
+// ── Auswahl im Vermögen-Tab (Ring, Verlauf, Historie folgen; Karten bleiben vollständig) ──
+// Reine Ansichts-Einstellung dieses Geräts → localStorage (nicht im Store, nicht im Sync).
+var VM_SEL_KEY='fp_vm_sel';
+var vmSel=(function(){
+  try{ var s=JSON.parse(localStorage.getItem(VM_SEL_KEY)||'null'); if(s&&s.owners&&s.hidden) return s; }catch(e){}
+  return {owners:{person_1:true,person_2:true,joint:true},hidden:{}};
+})();
+function vmSelSave(){ try{ localStorage.setItem(VM_SEL_KEY,JSON.stringify(vmSel)); }catch(e){} }
+function vmSelActive(){
+  return !vmSel.owners.person_1||!vmSel.owners.person_2||!vmSel.owners.joint||Object.keys(vmSel.hidden).length>0;
+}
+// Für FP.Calculator.getAssetSummary / getAssetHistory: Anlage (oder ESPP {id,ownerId}) einbeziehen?
+function vmInclude(a){
+  var o=a.ownerId||'joint';
+  if(vmSel.owners[o]===false) return false;
+  return !vmSel.hidden[a.id];
+}
+function vmSelOwner(o){
+  if(o==='all'){ vmSel={owners:{person_1:true,person_2:true,joint:true},hidden:{}}; }
+  else{
+    // Erster Klick auf einen Besitzer bei „Alle": nur diesen zeigen; danach einzeln an/aus
+    var allOn=vmSel.owners.person_1&&vmSel.owners.person_2&&vmSel.owners.joint;
+    if(allOn){ vmSel.owners={person_1:false,person_2:false,joint:false}; vmSel.owners[o]=true; }
+    else vmSel.owners[o]=!vmSel.owners[o];
+    if(!vmSel.owners.person_1&&!vmSel.owners.person_2&&!vmSel.owners.joint) vmSel.owners={person_1:true,person_2:true,joint:true};
+  }
+  vmSelSave(); vmRender();
+}
+function vmToggleAsset(id){
+  if(vmSel.hidden[id]) delete vmSel.hidden[id]; else vmSel.hidden[id]=true;
+  vmSelSave(); vmRender();
+}
+function vmRenderFilter(){
+  var el=document.getElementById('vm-filter'); if(!el) return;
+  var allOn=vmSel.owners.person_1&&vmSel.owners.person_2&&vmSel.owners.joint;
+  var nHidden=Object.keys(vmSel.hidden).length;
+  function chip(key,label,on){ return '<button class="vm-chip'+(on?' on':'')+'" onclick="vmSelOwner(\''+key+'\')">'+esc(label)+'</button>'; }
+  el.innerHTML='<span class="vm-filter-lbl">Anzeigen</span>'+
+    chip('all','Alle',allOn&&!nHidden)+
+    chip('person_1',VM_OWNER_LABEL.person_1,!allOn&&vmSel.owners.person_1)+
+    chip('person_2',VM_OWNER_LABEL.person_2,!allOn&&vmSel.owners.person_2)+
+    chip('joint',VM_OWNER_LABEL.joint,!allOn&&vmSel.owners.joint)+
+    (nHidden?'<span class="vm-filter-note">'+nHidden+' Anlage'+(nHidden>1?'n':'')+' ausgeblendet</span>':'');
 }
 
 // ── Vermögens-Historie: Anlagen × Monate, wie die frühere Excel-Tabelle ──
@@ -6241,8 +6287,10 @@ function vmFmtDelta(d){
 function vmRenderHistory(){
   var el=document.getElementById('vm-hist');
   if(!el)return;
-  var h=FP.Calculator.getAssetHistory(vmHistYear);
-  if(h.years.indexOf(vmHistYear)<0){ vmHistYear=h.years[h.years.length-1]; h=FP.Calculator.getAssetHistory(vmHistYear); }
+  var h=FP.Calculator.getAssetHistory(vmHistYear,vmInclude);
+  if(h.years.indexOf(vmHistYear)<0){ vmHistYear=h.years[h.years.length-1]; h=FP.Calculator.getAssetHistory(vmHistYear,vmInclude); }
+  // Zeilen anderer Besitzer weglassen; einzeln ausgeblendete blass zeigen (antippen = wieder ein)
+  h.rows=h.rows.filter(function(r){ return vmSel.owners[r.ownerId||'joint']!==false; });
   var minY=h.years[0], maxY=h.years[h.years.length-1];
   var hdr='<div class="vm-hist-hdr"><div class="vm-chart-title">Historie · Stand je Monat</div>'+
     '<div class="vm-hist-nav"><button onclick="vmHistShift(-1)"'+(vmHistYear<=minY?' disabled':'')+' aria-label="Vorjahr">‹</button>'+
@@ -6260,13 +6308,15 @@ function vmRenderHistory(){
       if(!c) return '<td class="vm-h-empty'+(click?' vm-h-cell':'')+'"'+click+'>–</td>';
       return '<td class="vm-h-cell'+(c.own?'':' vm-h-fill')+'"'+click+(c.own?'':' title="kein Eintrag in diesem Monat – letzter Stand fortgeschrieben"')+'>'+vmFmtEur0(c.v)+'</td>';
     }).join('');
-    return '<tr><td class="vm-h-name" title="'+esc(r.name)+'"><span class="vm-h-dot" style="background:'+color+'"></span>'+esc(r.name)+'</td>'+tds+'</tr>';
+    return '<tr'+(r.included?'':' class="vm-h-off"')+'><td class="vm-h-name" onclick="vmToggleAsset(\''+r.id+'\')" title="'+esc(r.name)+(r.included?' – antippen zum Ausblenden':' – ausgeblendet, antippen zum Einblenden')+'">'+
+      '<span class="vm-h-dot" style="background:'+color+'"></span>'+esc(r.name)+'</td>'+tds+'</tr>';
   }).join('');
   var sum='<tr class="vm-h-sum"><td>Summe</td>'+idx.map(function(i){return '<td>'+(h.sums[i]==null?'—':vmFmtEur0(h.sums[i]))+'</td>';}).join('')+'</tr>';
   var dvm='<tr class="vm-h-delta"><td>Δ Vormonat</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dPrev[i])+'</td>';}).join('')+'</tr>';
   var dvj='<tr class="vm-h-delta"><td>Δ Vorjahr</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>';
   el.innerHTML=hdr+'<div class="vm-hist-scroll"><table class="vm-hist">'+head+body+sum+dvm+dvj+'</table></div>'+
     '<div class="vm-hist-note"><i>Grau</i> = kein Eintrag in dem Monat, letzter Stand fortgeschrieben. Zelle antippen = Wert für diesen Monat eintragen. '+
+    'Name antippen = Anlage aus Summe, Ring und Verlauf ausblenden. '+
     'Δ vergleicht nur Anlagen, die in beiden Monaten einen Wert haben.</div>';
   // Neuesten Monat sichtbar: an das rechte Ende scrollen
   var sc=el.querySelector('.vm-hist-scroll'); if(sc) sc.scrollLeft=sc.scrollWidth;
@@ -6393,26 +6443,27 @@ function vmRenderTotal(){
   var el=document.getElementById('vm-total');
   if(!el)return;
   var store=FP.Store.get();
-  var s=FP.Calculator.getAssetSummary();
+  var s=FP.Calculator.getAssetSummary(vmInclude);   // folgt der Auswahl oben
   var total=s.total;
+  var selOn=vmSelActive();
 
   var segs=Object.entries(s.byType).filter(function(e){return e[1]>0;}).map(function(e){
     return {type:e[0],value:e[1],pct:total>0?e[1]/total*100:0,color:VM_TYPE_COLOR[e[0]]||'#94A3B8',label:VM_TYPE_LABEL[e[0]]||e[0]};
   }).sort(function(a,b){return b.value-a.value;});
 
   if(!segs.length){
-    el.innerHTML='<div class="vm-total-lbl">Gesamtvermögen</div><div class="vm-total-val">–</div>';
+    el.innerHTML='<div class="vm-total-lbl">'+(selOn?'Auswahl':'Gesamtvermögen')+'</div><div class="vm-total-val">–</div>';
     return;
   }
 
-  // Portfolio Rendite
-  var totalCostBasis=0;
-  store.assets.filter(function(a){return a.status==='aktiv'&&a.costBasis>0;}).forEach(function(a){totalCostBasis+=a.costBasis;});
-  var portfolioGain=totalCostBasis>0?r2(total-totalCostBasis):null;
-  var portfolioGainPct=totalCostBasis>0?(total-totalCostBasis)/totalCostBasis*100:null;
+  // Einstand/Gewinn nur über Anlagen MIT Einstand (Store rechnet; vorher zählten Konten ohne
+  // Einstand komplett als Gewinn: +496 T€ statt +303 T€)
+  var totalCostBasis=s.invested||0;
+  var portfolioGain=s.gain;
+  var portfolioGainPct=s.gainPct;
 
-  // byMonth für Trendchart — Forward-Fill: letzter bekannter Wert pro Asset je Monat
-  var activeAssets=store.assets.filter(function(a){return a.status==='aktiv';});
+  // byMonth für Trendchart — Forward-Fill: letzter bekannter Wert pro Asset je Monat (nur Auswahl)
+  var activeAssets=store.assets.filter(function(a){return a.status==='aktiv'&&vmInclude(a);});
   function vmCmpDate(a,b){var pa=a.split('.'),pb=b.split('.');return(parseInt(pa[1])*100+parseInt(pa[0]))-(parseInt(pb[1])*100+parseInt(pb[0]));}
   var allDatesSet={};
   activeAssets.forEach(function(asset){(asset.snapshots||[]).forEach(function(snap){if(snap.date&&snap.value)allDatesSet[snap.date]=1;});});
@@ -6463,11 +6514,11 @@ function vmRenderTotal(){
         '<canvas id="vm-donut-canvas" style="display:block;margin:0 auto;cursor:default"></canvas>'+
         '<div id="vm-dleg-wrap" style="margin-top:10px;border-top:1px solid var(--brd);padding-top:8px;display:flex;flex-direction:column;text-align:left">'+legHtml+'</div>'+
         (totalCostBasis>0
-          ?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--brd)">'+
-              '<div style="font-size:10px;color:var(--tx3)">Einstand '+eur(totalCostBasis)+'</div>'+
-              '<div style="font-size:12px;font-weight:700;color:'+(portfolioGain>=0?'var(--green)':'var(--red)')+'">'+
-                (portfolioGain>=0?'+':'')+eur(portfolioGain)+' ('+portfolioGainPct.toFixed(1)+'%)'+
-              '</div></div>'
+          ?'<div class="vm-gain">'+
+              '<div class="vm-gain-row"><span>Eingezahlt <span class="vm-gain-n">('+s.nInvested+' Anlage'+(s.nInvested>1?'n':'')+' mit Einstand)</span></span><b>'+eur(totalCostBasis)+'</b></div>'+
+              '<div class="vm-gain-row"><span>Gewinn darauf</span><b style="color:'+(portfolioGain>=0?'var(--green)':'var(--red)')+'">'+
+                (portfolioGain>=0?'+':'')+eur(portfolioGain)+' ('+(portfolioGain>=0?'+':'')+portfolioGainPct.toFixed(1).replace('.',',')+' %)</b></div>'+
+            '</div>'
           :'')+
       '</div>'+
       '<div class="vm-tc" id="vm-trend-col">'+
@@ -6534,7 +6585,7 @@ function vmRenderTotal(){
       var fs2=Math.max(Math.round(W*0.090),14);
       var lbl,val,valColor;
       if(hi>=0&&segs[hi]){lbl=segs[hi].label;val=eur(segs[hi].value);valColor=segs[hi].color;}
-      else{lbl='Gesamtvermögen';val=eur(total);valColor=tx;}
+      else{lbl=selOn?'Auswahl':'Gesamtvermögen';val=eur(total);valColor=tx;}
       ctx.font='700 '+fs2+'px Inter,system-ui,sans-serif';
       while(ctx.measureText(val).width>ri*1.75&&fs2>10){fs2--;ctx.font='700 '+fs2+'px Inter,system-ui,sans-serif';}
       ctx.fillStyle=tx3;ctx.font='500 '+fs1+'px Inter,system-ui,sans-serif';
@@ -6568,7 +6619,9 @@ function vmRenderTotal(){
     if(hasTrend){
       var tc=document.getElementById('vm-trend-canvas-r');
       var tcol=document.getElementById('vm-trend-col');
-      if(tc&&tcol)vmDrawTrendRight(tc,trendPts,totalCostBasis);
+      // Ohne Einstand-Linie: der Einstand gilt nur für die Anlagen mit Einstand, die Linie zeigt alle —
+      // der Abstand dazwischen wäre kein Gewinn (stand korrekt beschriftet unter dem Ring)
+      if(tc&&tcol)vmDrawTrendRight(tc,trendPts,0);
     }
   });
 }
@@ -6657,8 +6710,9 @@ function vmDrawTrendRight(canvas,pts,costBasis){
     for(var xi=0;xi<pts.length;xi+=step){
       if(xi!==pts.length-1&&pts.length-1-xi<step*0.6)continue;  // nicht kurz vor dem letzten
       shown[xi]=1;
-      ctx.textAlign=xi===0?'left':'center';
-      ctx.fillText(vmShortMonth(pts[xi].label),xi===0?pL:vx(xi),pT+cH+6);
+      var isLast=xi===pts.length-1;
+      ctx.textAlign=xi===0?'left':(isLast?'right':'center');
+      ctx.fillText(vmShortMonth(pts[xi].label),xi===0?pL:(isLast?W-pR:vx(xi)),pT+cH+6);
     }
     if(!shown[pts.length-1]){ctx.textAlign='right';ctx.fillText(vmShortMonth(pts[pts.length-1].label),W-pR,pT+cH+6);}
     // Tooltip: Monat, Gesamt, Änderung zum vorigen Punkt

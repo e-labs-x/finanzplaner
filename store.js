@@ -2254,16 +2254,22 @@ const Calculator = {
   },
 
   // ── Vermögens-Übersicht ──
-  getAssetSummary() {
+  // include (optional): Auswahl im Vermögen-Tab, include({id, ownerId}) → true/false. ESPP gilt als
+  // {id:'__espp__', ownerId:'person_1'}. Ohne include: alles (Rente, Home usw. unverändert).
+  // Einstand/Gewinn nur über Anlagen MIT Einstand — sonst zählen Konten ohne Einstand komplett als Gewinn.
+  getAssetSummary(include) {
     const store  = Store.get();
+    const inc    = include || (() => true);
     let total    = 0;
     const byType = {};
     const items  = [];
+    let invested = 0, investedValue = 0, nInvested = 0;
 
-    store.assets.filter(a => a.status === 'aktiv').forEach(asset => {
+    store.assets.filter(a => a.status === 'aktiv' && inc(a)).forEach(asset => {
       const snap = asset.snapshots?.[asset.snapshots.length - 1];
       const val  = snap?.value || 0;
       total += val;
+      if (asset.costBasis > 0) { invested += asset.costBasis; investedValue += val; nInvested++; }
 
       if (!byType[asset.type]) byType[asset.type] = 0;
       byType[asset.type] += val;
@@ -2291,13 +2297,15 @@ const Calculator = {
         const bewKurs = s.aktuellerKursUsd || z.kaufkursUsd;
         esppVal += r2(anzahl * bewKurs / s.eurUsdKurs);
       });
-      if (esppVal > 0) {
+      if (esppVal > 0 && inc({ id: '__espp__', ownerId: 'person_1' })) {
         total += esppVal;
         byType['espp'] = (byType['espp'] || 0) + esppVal;
       }
     }
 
-    return { total: r2(total), byType, items };
+    const gain = nInvested ? r2(investedValue - invested) : null;
+    return { total: r2(total), byType, items,
+             invested: r2(invested), nInvested, gain, gainPct: invested > 0 ? (investedValue - invested) / invested * 100 : null };
   },
 
   // ── Vermögens-Historie: Anlagen × Monate eines Jahres (wie die frühere Excel-Tabelle) ──
@@ -2307,8 +2315,11 @@ const Calculator = {
   // ESPP hat keine Monatsstände → nur im laufenden Monat, mit demselben Wert wie getAssetSummary.
   // Δ-Zeilen vergleichen nur Anlagen, die in BEIDEN Monaten einen Wert haben (sonst würde z. B.
   // das erstmals erscheinende ESPP als Zuwachs zählen). Summe im laufenden Monat = Gesamtvermögen.
-  getAssetHistory(year) {
+  // include (optional, wie getAssetSummary): ausgeblendete Zeilen bleiben sichtbar (included:false),
+  // zählen aber nicht in Summe und Δ.
+  getAssetHistory(year, include) {
     const store  = Store.get();
+    const inc    = include || (() => true);
     const cur    = currentMonthStr();
     const curNum = recMonthNum(cur);
     const curYear = parseInt(cur.split('.')[1], 10);
@@ -2332,14 +2343,15 @@ const Calculator = {
     }
 
     function build(y) {
-      const rows = (store.assets || []).map(a => ({ id: a.id, name: a.name, type: a.type, cells: cellsFor(a, y) }))
+      const rows = (store.assets || []).map(a => ({ id: a.id, name: a.name, type: a.type, ownerId: a.ownerId || null, included: !!inc(a), cells: cellsFor(a, y) }))
         .filter(r => r.cells.some(c => c));
       if (y === curYear) {
         const espp = Calculator.getAssetSummary().byType['espp'] || 0;
         if (espp > 0) {
           const cells = Array(12).fill(null);
           cells[parseInt(cur.split('.')[0], 10) - 1] = { v: espp, own: true };
-          rows.push({ id: '__espp__', name: 'ESPP (Fidelity)', type: 'espp', cells });
+          const e = { id: '__espp__', ownerId: 'person_1' };
+          rows.push({ id: '__espp__', name: 'ESPP (Fidelity)', type: 'espp', ownerId: 'person_1', included: !!inc(e), cells });
         }
       }
       return rows;
@@ -2357,6 +2369,7 @@ const Calculator = {
     function delta(rsA, iA, rsB, iB) {   // A = aktueller Monat, B = Vergleichsmonat; nur gemeinsame Anlagen
       let a = 0, b = 0, n = 0;
       rsA.forEach(r => {
+        if (!r.included) return;
         const ca = r.cells[iA], cb = cellOf(rsB, r.id, iB);
         if (ca && cb) { a += ca.v; b += cb.v; n++; }
       });
@@ -2365,7 +2378,7 @@ const Calculator = {
     }
     for (let i = 0; i <= lastIdx; i++) {
       months.push({ key: mkey(year, i + 1), label: MON[i] });
-      const present = rows.filter(r => r.cells[i]);
+      const present = rows.filter(r => r.included && r.cells[i]);
       sums.push(present.length ? r2(present.reduce((s, r) => s + r.cells[i].v, 0)) : null);
       dPrev.push(i > 0 ? delta(rows, i, rows, i - 1) : delta(rows, 0, prevRows, 11));
       dYoY.push(delta(rows, i, prevRows, i));

@@ -46,6 +46,31 @@ check('Historie: jede Monatssumme = Summe der Zeilen', h.sums.every((s, i) => {
 check('Monatsstände chronologisch nach dem Laden', FP.Store.Assets.getAll().every(a =>
   (a.snapshots || []).every((s, i, arr) => i === 0 || FP.monthNum(arr[i - 1].date) < FP.monthNum(s.date))));
 
+// Gewinn nur über Anlagen mit Einstand (früher: Gesamt − Einstand → Konten ohne Einstand als Gewinn)
+const sum0 = FP.Calculator.getAssetSummary();
+let inv = 0, val = 0;
+FP.Store.Assets.getAll().filter(x => x.status === 'aktiv' && x.costBasis > 0).forEach(x => {
+  inv += x.costBasis; const sn = (x.snapshots || [])[x.snapshots.length - 1]; val += sn ? sn.value : 0;
+});
+check('Gewinn = Wert − Einstand nur der Anlagen mit Einstand', Math.abs(sum0.gain - (val - inv)) < 0.01, sum0.gain + ' / ' + Math.round((val - inv) * 100) / 100);
+
+// Auswahl: Ring-Summe = Tabellen-Summe im laufenden Monat, für jeden Besitzer und mit ausgeblendeter Anlage
+['person_1', 'person_2', 'joint'].forEach(o => {
+  const inc = a => (a.ownerId || 'joint') === o;
+  const t = FP.Calculator.getAssetSummary(inc).total;
+  const hh = FP.Calculator.getAssetHistory(year, inc);
+  const s = hh.sums[hh.sums.length - 1] || 0;
+  check('Auswahl ' + o + ': Tabellensumme = Ring', Math.abs(s - t) < 0.005, s + ' / ' + t);
+});
+const big = FP.Calculator.getAssetSummary().items.sort((p, q) => q.value - p.value)[0];
+if (big) {
+  const inc = a => a.id !== big.id;
+  const hh = FP.Calculator.getAssetHistory(year, inc);
+  const t = FP.Calculator.getAssetSummary(inc).total;
+  check('Ausgeblendete Anlage fehlt in Summe und Ring', Math.abs((hh.sums[hh.sums.length - 1] || 0) - t) < 0.005 &&
+    Math.abs(t - (total - big.value)) < 0.005, Math.round(t) + ' = ' + Math.round(total) + ' − ' + Math.round(big.value));
+}
+
 // Jahreswechsel: Januar nach Dezember eingetragen → Januar ist aktuell (früher Textsortierung: Dezember)
 FP = fresh();
 const a = FP.Store.Assets.getAll().find(x => x.status === 'aktiv');

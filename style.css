@@ -1182,7 +1182,23 @@ button { cursor: pointer; border: none; background: none; }
 .vm-hist-nav button{background:var(--surf2);border:1px solid var(--brd);border-radius:7px;width:28px;height:26px;color:var(--tx2);cursor:pointer;font-size:14px;line-height:1}
 .vm-hist-nav button:disabled{opacity:.35;cursor:default}
 .vm-hist-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.vm-hist{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+.vm-hist{border-collapse:separate;border-spacing:0;width:auto;font-size:12px;font-variant-numeric:tabular-nums}
+.vm-hist th:not(:first-child),.vm-hist td:not(:first-child){padding-left:14px}
+.vm-hist td.vm-h-name{cursor:pointer}
+@media(min-width:768px){.vm-hist td.vm-h-name{min-width:180px}}
+.vm-hist tr.vm-h-off td{opacity:.38}
+.vm-hist tr.vm-h-off td.vm-h-name{text-decoration:line-through}
+/* Auswahl oben im Vermögen-Tab */
+.vm-filter{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.vm-filter-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-right:4px}
+.vm-chip{background:var(--surf);border:1px solid var(--brd);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer}
+.vm-chip.on{background:var(--blue);border-color:var(--blue);color:var(--on-accent)}
+.vm-filter-note{font-size:11px;color:var(--tx3);margin-left:4px}
+/* Eingezahlt / Gewinn unter dem Ring */
+.vm-gain{margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);display:flex;flex-direction:column;gap:6px;text-align:left}
+.vm-gain-row{display:flex;flex-direction:column;gap:1px;font-size:11px;color:var(--tx2)}
+.vm-gain-row b{font-size:13px;color:var(--tx);white-space:nowrap}
+.vm-gain-n{color:var(--tx3);font-size:10px}
 .vm-hist th,.vm-hist td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--brd)}
 .vm-hist th{font-size:11px;font-weight:600;color:var(--tx3)}
 .vm-hist th:first-child,.vm-hist td:first-child{position:sticky;left:0;z-index:1;background:var(--surf);text-align:left;max-width:150px;overflow:hidden;text-overflow:ellipsis;padding-left:0}
