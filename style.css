@@ -898,6 +898,38 @@ button { cursor: pointer; border: none; background: none; }
 .st-wrap.erweitert .st-card-mehr{display:block}
 .st-mehr-btn{padding:10px 16px;border-radius:12px;border:1.5px dashed var(--brd);background:none;color:var(--tx3);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;width:100%}
 .st-mehr-btn:hover{border-color:var(--blue);color:var(--blue)}
+/* Einstellungen als Menü mit Unterseiten (18.10.2026). Karten tragen data-st, sichtbar nur .st-show.
+   Schmal: Menü ODER Bereich (mit Zurück). Breit (≥900 px): links Menü, rechts Bereich. */
+.st-wrap.st-mode [data-st]{display:none}
+.st-wrap.st-mode [data-st].st-show{display:block}
+.st-wrap.st-mode .st-mehr-btn{display:none}
+.st-menu-grp{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin:6px 4px 6px}
+.st-menu-grp:first-child{margin-top:0}
+.st-menu-card{background:var(--surf);border:1px solid var(--brd);border-radius:14px;overflow:hidden;box-shadow:var(--sh);margin-bottom:10px}
+.st-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:0;border-bottom:1px solid var(--brd);text-align:left;cursor:pointer;color:var(--tx);font:inherit}
+.st-menu-item:last-child{border-bottom:0}
+.st-menu-item:hover{background:var(--surf2)}
+.st-menu-item.on{background:var(--surf2)}
+.st-menu-item.on .st-menu-t{color:var(--blue)}
+.st-menu-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.st-menu-t{font-size:14px;font-weight:600}
+.st-menu-s{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-menu-s.warn{color:var(--amber)}
+.st-menu-chev{color:var(--tx3);font-size:18px;line-height:1}
+.st-subhdr{display:none;align-items:center;gap:10px}
+.st-back{background:none;border:0;color:var(--blue);font-size:15px;font-weight:600;cursor:pointer;padding:4px 0}
+.st-subttl{font-size:15px;font-weight:700;color:var(--tx)}
+@media(max-width:899px){
+  .st-wrap.st-mode.st-has-sec .st-menu{display:none}
+  .st-wrap.st-mode.st-has-sec .st-subhdr{display:flex}
+}
+@media(min-width:900px){
+  .st-wrap.st-mode{display:grid;grid-template-columns:300px minmax(0,1fr);align-items:start;column-gap:20px;row-gap:16px}
+  .st-wrap.st-mode .st-menu{grid-column:1;grid-row:1 / span 20;position:sticky;top:0}
+  .st-wrap.st-mode [data-st]{grid-column:2}
+  .st-wrap.st-mode .st-subhdr{display:flex;grid-column:2}
+  .st-wrap.st-mode .st-back{display:none}
+}
 .st-card{background:var(--surf);border:1px solid var(--brd);border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
 .st-card-hdr{padding:14px 16px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
 .st-card-title{font-size:14px;font-weight:700;color:var(--tx)}

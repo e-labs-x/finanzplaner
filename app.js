@@ -1506,7 +1506,7 @@ function showStoreProblem(kind){
         var raw=FP.Store.rawData()||'';
         var d=new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
         window.dispatchEvent(new CustomEvent('fp:download',{detail:{json:raw,filename:'Finanzplaner_Rohdaten_'+d+'.txt'}}));
-        setTimeout(function(){ nav('einstellungen'); },300);
+        setTimeout(function(){ stGo('autobk'); },300);
       } else {
         FP.BackupManager.download('Speicher voll');
       }
@@ -2394,7 +2394,115 @@ function stInflAdd(){
   toast(yr+': '+rate.toFixed(1)+'% hinzugefügt');
 }
 
-function stInit(){ stRender(); }
+function stInit(){ stRender(); stOpen(stSection); }
+
+// ── Einstellungen als Menü mit Unterseiten (18.10.2026) ──
+// Reine Ansicht: die Karten im HTML bleiben unverändert und tragen data-st="<bereich>"; gezeigt wird nur
+// der gewählte Bereich. iPhone: Menü ODER Bereich (mit ‹ Zurück). PC (≥900 px): links Menü, rechts Bereich.
+var stSection=null;
+var ST_MENU=[
+  {grp:'Daten & Sicherheit', items:[
+    {k:'sync',       t:'Synchronisation'},
+    {k:'backup',     t:'Backup & Import'},
+    {k:'autobk',     t:'Automatische Sicherungen'},
+    {k:'papierkorb', t:'Papierkorb'}]},
+  {grp:'Haushalt', items:[
+    {k:'personen',   t:'Personen & Steuer'},
+    {k:'budget',     t:'Budget-Aufteilung'}]},
+  {grp:'Ordnung', items:[
+    {k:'kategorien', t:'Kategorien'},
+    {k:'objekte',    t:'Objekte'},
+    {k:'waehrungen', t:'Währungen'}]},
+  {grp:'Rechengrundlagen', items:[
+    {k:'inflation',  t:'Inflationsraten'},
+    {k:'kurs',       t:'Kursabruf (Depot)'}]},
+  {grp:'Technik', items:[
+    {k:'technik',    t:'Protokoll & Zurücksetzen'}]}
+];
+function stIsWide(){ return window.innerWidth>=900; }
+function stFmtTs(iso){
+  var d=new Date(iso); if(isNaN(d.getTime())) return '';
+  var today=new Date().toDateString()===d.toDateString();
+  return today?'heute '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})
+              :d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+// Eine Zeile Zustand je Bereich — was man sonst erst nach dem Aufklappen sieht
+function stStatus(k){
+  try{
+    var set=FP.Store.Settings.get();
+    switch(k){
+      case 'sync':{
+        var c=set.azureSync||{};
+        if(!c.enabled) return {txt:'nicht verbunden',warn:true};
+        if(!localStorage.getItem('fp_azure_sas')) return {txt:'Zugang fehlt auf diesem Gerät — neu verbinden',warn:true};
+        var parts=['verbunden'];
+        if(c.lastSync) parts.push('zuletzt '+stFmtTs(c.lastSync));
+        var exp=AzureSync.sasExpiry(), left=AzureSync.sasDaysLeft();
+        if(exp) parts.push('Zugang bis '+exp.toLocaleDateString('de-DE',{month:'2-digit',year:'numeric'}));
+        return {txt:parts.join(' · '),warn:left!=null&&left<=14};
+      }
+      case 'backup': return {txt:'als Datei sichern · Datei importieren'};
+      case 'autobk':{
+        var l=FP.BackupManager.getAutoBackups();
+        return l.length?{txt:l.length+' Stück · neueste '+stFmtTs(l[0].timestamp)}:{txt:'noch keine',warn:true};
+      }
+      case 'papierkorb':{
+        var n=FP.Trash.getAll().length; return {txt:n?n+' Eintr'+(n>1?'äge':'ag')+' · 30 Tage wiederherstellbar':'leer'};
+      }
+      case 'personen':{
+        var p=FP.Store.get().persons||[];
+        var names=p.filter(function(x){return x.id==='person_1'||(x.id==='person_2'&&set.partnerEnabled);}).map(function(x){return x.name;});
+        var kids=(set.kinder&&set.kinder.anzahl)||0;
+        var ver=set.steuerlicheVeranlagung==='gemeinsam'?'Splitting':'Einzel';
+        return {txt:names.join(', ')+' · '+ver+(kids?' · '+kids+' Kind'+(kids>1?'er':''):'')};
+      }
+      case 'budget':{ var b=FP.Store.Settings.getBudget()||{}; return {txt:(b.fixPct||0)+' / '+(b.freiPct||0)+' / '+(b.sparPct||0)+' %'}; }
+      case 'kategorien':{
+        var all=FP.Store.Categories.getVisible(); var main=all.filter(function(x){return !x.parentId;}).length;
+        return {txt:main+' Hauptkategorien · '+(all.length-main)+' Unterkategorien'};
+      }
+      case 'objekte':{ var a=FP.Store.Objects.getActive().length, z=FP.Store.Objects.getArchived().length; return {txt:a+' aktiv'+(z?' · '+z+' archiviert':'')}; }
+      case 'waehrungen':{ var cs=FP.Store.Currencies.getActive().map(function(x){return x.code;}); return {txt:['EUR'].concat(cs.filter(function(x){return x!=='EUR';})).join(', ')}; }
+      case 'inflation':{
+        var ys=Object.keys(FP.Store.Settings.getInflation()||{}).map(Number).filter(function(x){return x>0;}).sort();
+        return {txt:ys.length?ys[0]+'–'+ys[ys.length-1]:'keine Werte'};
+      }
+      case 'kurs': return FP.Store.Settings.getApiKey('alphavantage')?{txt:'Schlüssel hinterlegt'}:{txt:'kein Schlüssel',warn:true};
+      case 'technik':{ var v=(document.querySelector('.sb-ver')||{}).textContent||''; return {txt:'Protokoll · '+v.replace(/^v[\d.]+ · /,'')}; }
+    }
+  }catch(e){}
+  return {txt:''};
+}
+function stRenderMenu(){
+  var el=document.getElementById('st-menu'); if(!el) return;
+  el.innerHTML=ST_MENU.map(function(g){
+    return '<div class="st-menu-grp">'+esc(g.grp)+'</div><div class="st-menu-card">'+g.items.map(function(it){
+      var s=stStatus(it.k);
+      return '<button class="st-menu-item'+(stSection===it.k?' on':'')+'" onclick="stOpen(\''+it.k+'\')">'+
+        '<span class="st-menu-txt"><span class="st-menu-t">'+esc(it.t)+'</span>'+
+        '<span class="st-menu-s'+(s.warn?' warn':'')+'">'+esc(s.txt)+'</span></span><span class="st-menu-chev">›</span></button>';
+    }).join('')+'</div>';
+  }).join('');
+}
+function stTitleOf(k){ for(var i=0;i<ST_MENU.length;i++) for(var j=0;j<ST_MENU[i].items.length;j++) if(ST_MENU[i].items[j].k===k) return ST_MENU[i].items[j].t; return ''; }
+// Von außen direkt in einen Bereich springen (Banner, Hinweise); k=null → Menü
+function stGo(k){ stSection=k; nav('einstellungen'); }
+// Drehen/Fenstergröße: am PC nie ein leerer rechter Bereich
+window.addEventListener('resize',function(){
+  var p=document.getElementById('p-einstellungen');
+  if(p&&p.classList.contains('active')&&stIsWide()&&!stSection) stOpen(null);
+});
+// k=null → Menü (iPhone) bzw. erster Bereich (PC)
+function stOpen(k){
+  var wrap=document.getElementById('st-wrap'); if(!wrap) return;
+  if(!k&&stIsWide()) k='sync';
+  stSection=k;
+  wrap.classList.toggle('st-has-sec',!!k);
+  wrap.querySelectorAll('[data-st]').forEach(function(c){ c.classList.toggle('st-show',c.getAttribute('data-st')===k); });
+  var ttl=document.getElementById('st-subttl'); if(ttl) ttl.textContent=k?stTitleOf(k):'';
+  stRenderMenu();
+  var pg=wrap.closest('.page'); if(pg&&!stIsWide()) pg.scrollTop=0;
+}
 
 function stRender(){
   stRenderStammdaten();

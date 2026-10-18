@@ -4,7 +4,14 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
 
 ---
 
-## ⏭️ Vorschlag nächste Sitzung — Einstellungen neu ordnen (18.10.2026, noch NICHT freigegeben)
+## 👀 Sichtkontrolle offen — Einstellungen Schritt 1 (18.10.2026, `?v=20261018h`)
+- [x] Menü mit Statuszeilen (5 Gruppen, 12 Bereiche) + Unterseiten; iPhone: Menü → Bereich mit „‹ Einstellungen";
+      PC (≥900 px): links Menü, rechts Bereich. Karten unverändert (data-st), `stOpen(k)`, `stGo(k)` für Sprünge
+      (SAS-Banner → Sync, Ladefehler-Dialog → Auto-Sicherungen). Erweitert-Schalter entfällt.
+- [x] Rundgang prüft jeden Bereich (genau die passende Karte sichtbar).
+- [ ] **Nutzer schaut live** — danach Schritt 2: Kategorien kompakt (+ Doppel Haftpflicht/Hausrat klären).
+
+## (Plan) Einstellungen neu ordnen (18.10.2026, freigegeben: Gliederung „passt")
 Befund: Einstellungen = eine Seite, ~5.100 px am PC, 12 Karten; Kategorien ~⅓ davon mit 3 Dauer-Knöpfen je Zeile
 (44 Zeilen); Sync/Backup/Papierkorb ganz unten. „Mehr" selbst ist ok.
 Vorschlag (Nutzer entscheidet): Menü mit Statuszeilen + Unterseiten (iPhone: Zurück-Pfeil; PC: links Menü,

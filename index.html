@@ -16,7 +16,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261018g">
+<link rel="stylesheet" href="style.css?v=20261018h">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 1018g</div>
+      <div class="sb-ver">v12.0 · build 1018h</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -64,7 +64,7 @@
 <div id="main">
 
   <!-- SAS-Ablauf-Warnbanner (nur sichtbar wenn Token bald abläuft / abgelaufen) -->
-  <div id="sas-bar" class="sas-bar" style="display:none" onclick="nav('einstellungen')"></div>
+  <div id="sas-bar" class="sas-bar" style="display:none" onclick="stGo('sync')"></div>
 
   <!-- Mobile Header (nur < 768px sichtbar per CSS) -->
   <div id="mob-hdr">
@@ -602,10 +602,12 @@
     </div>
     <div class="page" id="p-einstellungen">
       <div class="pg">
-        <div class="st-wrap">
+        <div class="st-wrap st-mode" id="st-wrap">
+          <nav class="st-menu" id="st-menu" aria-label="Einstellungen"></nav>
+          <div class="st-subhdr" id="st-subhdr"><button class="st-back" onclick="stOpen(null)">‹ Einstellungen</button><span class="st-subttl" id="st-subttl"></span></div>
 
           <!-- Stammdaten & Partner -->
-          <div class="st-card">
+          <div class="st-card" data-st="personen">
             <div class="st-card-hdr"><span class="st-card-title">👤 Stammdaten & Partner</span></div>
             <div class="st-card-body">
               <div class="rp-sub">Person 1</div>
@@ -647,7 +649,7 @@
           </div>
 
           <!-- Budget -->
-          <div class="st-card">
+          <div class="st-card" data-st="budget">
             <div class="st-card-hdr"><span class="st-card-title">Budget-Aufteilung</span></div>
             <div class="st-card-body">
               <div class="st-budget-row">
@@ -677,7 +679,7 @@
           </div>
 
           <!-- Kategorien -->
-          <div class="st-card">
+          <div class="st-card" data-st="kategorien">
             <div class="st-card-hdr">
               <span class="st-card-title">Kategorien</span>
               <button class="st-btn primary" onclick="stNewKat()">+ Neu</button>
@@ -686,7 +688,7 @@
           </div>
 
           <!-- Objekte -->
-          <div class="st-card">
+          <div class="st-card" data-st="objekte">
             <div class="st-card-hdr">
               <span class="st-card-title">Objekte</span>
               <button class="st-btn primary" onclick="stNewObj()">+ Neu</button>
@@ -695,7 +697,7 @@
           </div>
 
           <!-- Papierkorb -->
-          <div class="st-card">
+          <div class="st-card" data-st="papierkorb">
             <div class="st-card-hdr">
               <span class="st-card-title">Papierkorb</span>
               <button class="st-btn danger" onclick="stTrashClear()">Leeren</button>
@@ -708,7 +710,7 @@
           <!-- Toggle: Standard / Erweitert -->
           <button class="st-mehr-btn" id="st-mehr-btn" onclick="stToggleMehr()">＋ Erweiterte Einstellungen</button>
 
-          <div class="st-card st-card-mehr">
+          <div class="st-card st-card-mehr" data-st="waehrungen">
             <div class="st-card-hdr">
               <span class="st-card-title">Währungen</span>
               <div style="display:flex;gap:8px">
@@ -720,7 +722,7 @@
           </div>
 
           <!-- Kursabruf API -->
-          <div class="st-card st-card-mehr">
+          <div class="st-card st-card-mehr" data-st="kurs">
             <div class="st-card-hdr"><span class="st-card-title">Kursabruf (Depot-Automatik)</span></div>
             <div style="padding:0 16px 16px">
               <div style="font-size:13px;color:var(--tx2);margin-bottom:12px;line-height:1.5">
@@ -740,7 +742,7 @@
           </div>
 
           <!-- Inflation -->
-          <div class="st-card st-card-mehr">
+          <div class="st-card st-card-mehr" data-st="inflation">
             <div class="st-card-hdr">
               <span class="st-card-title">Inflationsraten (Deutschland, VPI)</span>
               <button class="st-btn primary" onclick="stInflUpdate()">↻ Aktualisieren</button>
@@ -763,7 +765,7 @@
           </div>
 
           <!-- Log -->
-          <div class="st-card st-card-mehr">
+          <div class="st-card st-card-mehr" data-st="technik">
             <div class="st-card-hdr">
               <span class="st-card-title">Log</span>
               <div style="display:flex;gap:6px">
@@ -777,7 +779,7 @@
           </div>
 
           <!-- Azure Sync -->
-          <div class="st-card" id="st-az-card">
+          <div class="st-card" data-st="sync" id="st-az-card">
             <div class="st-card-hdr">
               <span class="st-card-title">Sync</span>
               <span id="st-az-badge" style="font-size:11px;color:var(--tx3)">Nicht verbunden</span>
@@ -819,7 +821,7 @@
           </div>
 
           <!-- Backup -->
-          <div class="st-card">
+          <div class="st-card" data-st="backup">
             <div class="st-card-hdr"><span class="st-card-title">Backup</span></div>
             <div style="padding:0 16px" id="st-backups">
               <div class="st-backup-row">
@@ -842,13 +844,13 @@
           </div>
 
           <!-- Automatische Sicherungen (Wiederherstellung) -->
-          <div class="st-card">
+          <div class="st-card" data-st="autobk">
             <div class="st-card-hdr"><span class="st-card-title">Automatische Sicherungen</span></div>
             <div style="padding:0 16px 6px" id="st-autobackups"></div>
           </div>
 
           <!-- Danger Zone -->
-          <div class="st-danger-zone">
+          <div class="st-danger-zone" data-st="technik">
             <div class="st-danger-title">Danger Zone</div>
             <div class="st-danger-sub">Alle Daten unwiderruflich löschen. Ein Backup wird vorher automatisch erstellt.</div>
             <button class="st-btn danger" onclick="stReset()">🗑 Alle Daten zurücksetzen</button>
@@ -918,11 +920,11 @@
           </div>
           <div class="me-section-lbl">App</div>
           <div class="me-card">
-            <div class="me-item" onclick="nav('einstellungen')">
+            <div class="me-item" onclick="stGo(null)">
               <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></div>
               <div class="me-item-info">
                 <div class="me-item-name">Einstellungen</div>
-                <div class="me-item-sub">Stammdaten · Backup · Design</div>
+                <div class="me-item-sub">Sync · Backup · Kategorien · Personen</div>
               </div>
               <div class="me-item-arr">›</div>
             </div>
@@ -1471,8 +1473,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261018g"></script>
-<script src="app.js?v=20261018g"></script>
+<script src="store.js?v=20261018h"></script>
+<script src="app.js?v=20261018h"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
