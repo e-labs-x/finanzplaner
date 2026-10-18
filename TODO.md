@@ -4,7 +4,24 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
 
 ---
 
-## ⏭️ Nächste Sitzung — App-Check (Entscheidung offen)
+## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026
+
+Ergebnis: `Finanzen App/audit_ergebnis_2026-10-18.md` (OneDrive) — 32 Punkte in 5 Paketen, Summen-Abgleich
+aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nötig):
+1. ~~**Paket 1 — ein Schreibweg für den Store**~~ ✅ 18.10.2026 `?v=20261018a`: `replaceState` + Siegel, Nur-Lesen
+   bei Ladefehler, Hauptstand verdrängt Auto-Sicherungen bei vollem Speicher, keine Verschachtelung, 1e (Import behält
+   ETag + markDirty). tests.html 24/24 (7 neu, scheitern alle am alten Code); E2E mit echten Daten + Sync-Attrappe:
+   Import überlebt Neustart und wird mit If-Match hochgeladen bzw. Konfliktdialog. Offen daraus: Punkt 5 (Pull belegt
+   Backup-Plätze), Punkt 6 (16 direkte Store-Zugriffe aus app.js). **iPhone hatte < 5 Auto-Sicherungen = Speicher am Limit.**
+2. **Paket 3 — Vorlagen-Regel** (KRITISCH): ↕ Betrag ändern + ✏️-Betrag zerstören Buchungen; 4 Doppelbuchungen
+   in echten Daten (01.2022/01.2023), BU-Versicherung-Typ verloren → **Datenreparatur, Nutzer wählt Fassung**.
+3. **Paket 2 — Sync-Garantie** (KRITISCH): „Zusammenführen" übernimmt lokal nichts, connect/Import/Pull-Race,
+   `esppRender` speichert beim Anzeigen.
+4. **Paket 4 — Sicherheitshärtung** (HOCH): Details nur in der Audit-Datei auf OneDrive (Repo ist öffentlich).
+5. Paket 5 — Einzelfehler (MITTEL).
+**Bis dahin:** im Konflikt nicht „Zusammenführen", Fixkosten-Beträge nicht über ↕/✏️ ändern. (Backup-Import geht seit 1018a wieder.)
+
+## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 
 Anlass: am 17.10.2026 mehrere Fehler gefunden, fast alle **Widersprüche zwischen Ansichten**
 (Übersicht rechnete Einkommen mit, Gruppen ergaben aufgeklappt nicht ihre Summe, Detail ignorierte
@@ -25,11 +42,11 @@ Ergebnis jeweils als Befundliste; nichts ändern ohne OK.
 - [x] Übersicht: Gruppen als Start + erster Reiter, jede Gruppe klappt auf (inkl. „· direkt"), Liste ohne eigenen Scrollbereich
 - [x] Kategorie-Detail: folgt dem Zeitraum, eigener Container, Buchung antippen = bearbeiten, Tag sichtbar, Verlauf entfernt, Vorjahresvergleich
 - [x] Sichtkontrolle Übersicht + Detail durch Nutzer — „sieht gut aus" (17.10.); Rückweg: Tags `vor-uebersicht-umbau`, `vor-detail-umbau`
-- [ ] iOS-Rotationsfix: Rückmeldung vom Nutzer steht weiter aus (siehe unten)
+- [x] iOS-Rotationsfix: Nutzer bestätigt am 18.10.2026 „alles gut" (Drehen ok, kein Pull-to-Refresh auf iPhone + iPad) → abgeschlossen
 
 ---
 
-## 🔍 Unter Beobachtung — iOS-Rotationsfix (seit 16.08.2026, `?v=20260816d`, Commit `a0db27d`)
+## ✅ Abgeschlossen 18.10.2026 — iOS-Rotationsfix (seit 16.08.2026, `?v=20260816d`, Commit `a0db27d`)
 
 _Läuft ab `?v=20260816e` unter dieser Nummer weiter (0816e = nur Objekt-Sortierung, am Fix nichts geändert)._
 

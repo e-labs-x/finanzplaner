@@ -70,9 +70,14 @@ async function test(name, category, fn) {
 
 // ── Store-Setup ──────────────────────────────────────────────────────────────
 
+var _savedBK = null;
+var BK_KEY = 'finanzplaner_v3_backups';
+
 function setupTestStore() {
   _savedLS = localStorage.getItem('finanzplaner_v3');
+  _savedBK = localStorage.getItem(BK_KEY);
   localStorage.removeItem('finanzplaner_v3');
+  localStorage.removeItem(BK_KEY);
   FP.Store.load(); // lädt Default-Store (person_1 = Person 1, person_2 = Partner)
 
   // Default-Store hat kein Geburtsdatum mehr → festes Testdatum (gleicher Weg wie stSaveStammdaten)
@@ -87,6 +92,16 @@ function setupTestStore() {
 function restoreRealStore() {
   if (_savedLS !== null) localStorage.setItem('finanzplaner_v3', _savedLS);
   else localStorage.removeItem('finanzplaner_v3');
+  if (_savedBK !== null) localStorage.setItem(BK_KEY, _savedBK);
+  else localStorage.removeItem(BK_KEY);
+}
+
+function lsStore() { return JSON.parse(localStorage.getItem('finanzplaner_v3') || 'null'); }
+function backupFile(obj) {
+  return new File([new Blob([JSON.stringify(obj)], { type: 'application/json' })], 'test.fpbackup');
+}
+function hasNote(store, note) {
+  return !!store && store.transactions.some(function(tx) { return tx.note === note; });
 }
 
 // ── Test-Runner ──────────────────────────────────────────────────────────────
@@ -216,6 +231,132 @@ async function runTests() {
         }),
         'Roundtrip-Transaktion nicht wiedergefunden'
       );
+    });
+
+    // ── 3b. Ein Schreibweg (Paket 1, 18.10.2026) ──────────────────────────────
+
+    await test('Import wird nicht von späterem Speichern zurückgeschrieben', 'Speichern', async function() {
+      FP.Store.load();
+      FP.Store.Transactions.add({ amount: 1.11, date: '04.2026', categoryId: 'cat_sonstiges', note: 'IMPORTIERT' });
+      var json = JSON.stringify(FP.BackupManager.create('T'));
+      FP.Store.Transactions.add({ amount: 2.22, date: '04.2026', categoryId: 'cat_sonstiges', note: 'ALT' });
+      await FP.BackupManager.import(new File([json], 't.fpbackup'), { log: ['BACKUP', 'Test-Import'] });
+      // genau das, was die UI früher nach dem Import tat — und was den alten Stand zurückschrieb
+      FP.Store.appLog('BACKUP', 'danach');
+      FP.Store.Transactions.add({ amount: 3.33, date: '04.2026', categoryId: 'cat_sonstiges', note: 'NACH-IMPORT' });
+      var s = lsStore();
+      assert(hasNote(s, 'IMPORTIERT'), 'importierte Buchung fehlt im Speicher');
+      assert(!hasNote(s, 'ALT'), 'alter Stand wurde zurückgeschrieben');
+      assert(!hasNote(s, 'NACH-IMPORT'), 'Speichern nach dem Import war nicht gesperrt');
+      assert(s.log[0].msg === 'Test-Import', 'Log-Eintrag nicht mit dem neuen Stand gespeichert');
+      FP.Store.load();
+      assert(FP.Store.writeLock() === null, 'Sperre nach load() nicht aufgehoben');
+    });
+
+    await test('Auto-Sicherung wiederherstellen bleibt bestehen', 'Speichern', function() {
+      FP.Store.load();
+      FP.Store.Transactions.add({ amount: 4.44, date: '04.2026', categoryId: 'cat_sonstiges', note: 'GESICHERT' });
+      FP.BackupManager._saveAutoBackup(FP.BackupManager.create('T'));
+      FP.Store.Transactions.add({ amount: 5.55, date: '04.2026', categoryId: 'cat_sonstiges', note: 'SPAETER' });
+      FP.BackupManager.restoreAutoBackup(0);
+      FP.Store.appLog('BACKUP', 'danach');
+      var s = lsStore();
+      assert(hasNote(s, 'GESICHERT') && !hasNote(s, 'SPAETER'), 'Wiederherstellung wurde überschrieben');
+      FP.Store.load();
+    });
+
+    await test('Import behält Sync-Stempel des Geräts (lastETag)', 'Speichern', async function() {
+      FP.Store.load();
+      FP.Store.Settings.setAzureSync({ lastETag: '"GERAET"' });
+      var b = JSON.parse(JSON.stringify(FP.BackupManager.create('T')));
+      b.store.settings.azureSync.lastETag = '"AUS-DATEI"';
+      await FP.BackupManager.import(backupFile(b));
+      assert(lsStore().settings.azureSync.lastETag === '"GERAET"', 'lastETag: ' + lsStore().settings.azureSync.lastETag);
+      FP.Store.load();
+      await FP.BackupManager.import(backupFile(b), { azureSync: { lastETag: '"PULL"' } });
+      assert(lsStore().settings.azureSync.lastETag === '"PULL"', 'Pull-ETag nicht übernommen');
+      FP.Store.load();
+      FP.Store.Settings.setAzureSync({ lastETag: null });
+    });
+
+    await test('Unlesbare Daten werden nicht überschrieben', 'Speichern', function() {
+      var good = localStorage.getItem('finanzplaner_v3');
+      FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Gut'));
+      var bk = localStorage.getItem(BK_KEY);
+      localStorage.setItem('finanzplaner_v3', '{"kaputt":');
+      var res = FP.Store.load();
+      assert(!res.ok && FP.Store.writeLock() === 'load-failed', 'Ladefehler nicht erkannt');
+      FP.Store.Transactions.add({ amount: 6.66, date: '04.2026', categoryId: 'cat_sonstiges', note: 'X' });
+      FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Leer'));
+      assert(localStorage.getItem('finanzplaner_v3') === '{"kaputt":', 'Rohdaten wurden überschrieben');
+      assert(localStorage.getItem(BK_KEY) === bk, 'leerer Stand hat Auto-Sicherungen verändert');
+      // Wiederherstellen ist der eine erlaubte Weg aus der Sperre
+      FP.BackupManager.restoreAutoBackup(0);
+      assert(lsStore() && Array.isArray(lsStore().transactions), 'Wiederherstellung trotz Sperre nicht möglich');
+      localStorage.setItem('finanzplaner_v3', good);
+      FP.Store.load();
+    });
+
+    await test('Speicher voll: Hauptdaten verdrängen Auto-Sicherungen', 'Speichern', function() {
+      FP.Store.load();
+      var orig = Storage.prototype.setItem;
+      var limit;
+      Storage.prototype.setItem = function(k, v) {
+        var other = k === 'finanzplaner_v3' ? (this.getItem(BK_KEY) || '') : (this.getItem('finanzplaner_v3') || '');
+        if (limit && other.length + String(v).length > limit) {
+          var e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e;
+        }
+        return orig.call(this, k, v);
+      };
+      var events = [];
+      function onEv(e) { events.push(e.detail.type); }
+      window.addEventListener('fp:store', onEv);
+      try {
+        var pad = new Array(3000).join('x');
+        orig.call(localStorage, BK_KEY, JSON.stringify([1,2,3].map(function(i) { return { timestamp: 't' + i, label: pad, data: {} }; })));
+        limit = localStorage.getItem('finanzplaner_v3').length + localStorage.getItem(BK_KEY).length + 500;
+        FP.Store.Transactions.add({ amount: 7.77, date: '04.2026', categoryId: 'cat_sonstiges', note: 'GROSS' + new Array(1500).join('y') });
+        var n = JSON.parse(localStorage.getItem(BK_KEY) || '[]').length;
+        assert(hasNote({ transactions: lsStore().transactions.map(function(t) { return { note: (t.note || '').slice(0, 5) }; }) }, 'GROSS'), 'Hauptdaten nicht gespeichert');
+        assert(n >= 1 && n < 3, 'erwartet 1–2 verbleibende Sicherungen, sind ' + n);
+        assert(events.indexOf('save-failed') < 0, 'fälschlich als fehlgeschlagen gemeldet');
+        limit = 100; // passt gar nicht mehr
+        var ok = FP.Store.save();
+        assert(ok === false && events.indexOf('save-failed') >= 0, 'Fehlschlag nicht gemeldet');
+      } finally {
+        Storage.prototype.setItem = orig;
+        window.removeEventListener('fp:store', onEv);
+        FP.Store.load();
+      }
+    });
+
+    await test('Auto-Sicherungen werden nicht verschachtelt', 'Speichern', function() {
+      FP.Store.load();
+      localStorage.removeItem(BK_KEY);
+      var b = FP.BackupManager.create('Manuell');
+      b.autoBackups = [{ timestamp: 'x', data: { store: {} } }];
+      FP.BackupManager._saveAutoBackup(b);
+      // Alt-Eintrag mit Verschachtelung wird beim nächsten Schreiben verschlankt
+      var list = JSON.parse(localStorage.getItem(BK_KEY));
+      list[0].data.autoBackups = [{ timestamp: 'y' }];
+      localStorage.setItem(BK_KEY, JSON.stringify(list));
+      FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Täglich'));
+      var all = JSON.parse(localStorage.getItem(BK_KEY));
+      assert(all.length === 2, 'Anzahl ' + all.length);
+      assert(all.every(function(e) { return !('autoBackups' in e.data); }), 'Verschachtelung gespeichert');
+      assert(b.autoBackups, 'Download-Objekt selbst darf nicht verändert werden');
+      localStorage.removeItem(BK_KEY);
+    });
+
+    await test('Zurücksetzen bleibt gelöscht', 'Speichern', function() {
+      var good = localStorage.getItem('finanzplaner_v3');
+      FP.Store.load();
+      FP.Store.wipe();
+      FP.Store.appLog('RESET', 'danach');
+      FP.Store.Transactions.add({ amount: 8.88, date: '04.2026', categoryId: 'cat_sonstiges', note: 'Z' });
+      assert(localStorage.getItem('finanzplaner_v3') === null, 'Daten nach wipe() wieder geschrieben');
+      localStorage.setItem('finanzplaner_v3', good);
+      FP.Store.load();
     });
 
     // ── 4. Rentenberechnung ───────────────────────────────────────────────────

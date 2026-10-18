@@ -602,6 +602,9 @@ function validateStore(data) {
   if (!Array.isArray(data.assets))          errors.push('assets ist kein Array');
   if (!Array.isArray(data.objects))         errors.push('objects ist kein Array');
   if (typeof data.salary !== 'object')      errors.push('salary ist kein Objekt');
+  // load() setzt beides voraus — ohne sie bricht der nächste Start ab
+  if (!data.settings || typeof data.settings !== 'object') errors.push('settings fehlt');
+  if (!Array.isArray(data.persons))         errors.push('persons ist kein Array');
 
   // Transaktionen validieren
   (data.transactions || []).forEach((tx, i) => {
@@ -621,27 +624,97 @@ function validateStore(data) {
 const Store = (() => {
   let _state = null;
   let _suppressTouch = false;
+  // Schreibsperre (Paket 1, 18.10.2026). _state ist die einzige Wahrheit, _save() der einzige
+  // Schreiber auf LS_KEY. Wer den Stand ersetzt (Import, Wiederherstellen, Pull), geht über
+  // replaceState() — danach ist der Store bis zum nächsten load() versiegelt, damit kein
+  // späterer _save() (appLog, Eingabe, Render) den alten Stand zurückschreiben kann.
+  //   null          → normal
+  //   'replaced'    → Stand ersetzt bzw. gelöscht, Neuladen steht bevor: nichts mehr schreiben
+  //   'load-failed' → gespeicherte Daten unlesbar: Rohdaten unangetastet lassen, nur
+  //                   replaceState() (Wiederherstellung) darf schreiben
+  let _writeLock = null;
+  let _loadError = null;
 
   function _touch() {
     if (_state?.meta) _state.meta.lastModified = new Date().toISOString();
   }
 
-  function _save() {
-    if (!_suppressTouch) _touch();
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(_state));
-    } catch(e) {
-      console.error('[Store] Fehler beim Speichern:', e);
-      // iOS Private Mode: localStorage.setItem() wirft SecurityError / QuotaExceededError
-      if (e.name === 'SecurityError' || e.name === 'QuotaExceededError' || String(e).includes('QuotaExceeded')) {
-        if (window.toast) toast('⚠ Daten konnten nicht gespeichert werden. Privater Modus oder Speicher voll.');
-        return;
+  // DOM-freie Meldung an die UI (app.js hört auf 'fp:store')
+  function _notify(type, detail) {
+    if (typeof window === 'undefined' || !window.dispatchEvent) return;
+    try { window.dispatchEvent(new CustomEvent('fp:store', { detail: Object.assign({ type }, detail || {}) })); } catch(e) {}
+  }
+
+  function _isQuota(e) {
+    return !!e && (e.name === 'QuotaExceededError' || e.code === 22 || String(e).includes('QuotaExceeded'));
+  }
+
+  // Hauptdaten schreiben. Bei vollem Speicher haben sie Vorrang vor den Auto-Sicherungen:
+  // älteste Sicherung verwerfen, erneut versuchen — bis es passt oder keine mehr übrig ist.
+  function _writeMain(json) {
+    for (;;) {
+      try { localStorage.setItem(LS_KEY, json); return true; }
+      catch(e) {
+        if (!_isQuota(e)) { console.error('[Store] Fehler beim Speichern:', e); return false; }
+        let backups = [];
+        try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch(e2) {}
+        if (!Array.isArray(backups) || backups.length === 0) {
+          try { localStorage.removeItem(BACKUP_KEY); } catch(e2) {}
+          console.error('[Store] Speicher voll, keine Auto-Sicherung mehr zum Verwerfen');
+          return false;
+        }
+        backups.pop();
+        // erst entfernen, dann kleiner schreiben — passt immer, weil es vorher größer passte
+        try { localStorage.removeItem(BACKUP_KEY); } catch(e2) {}
+        if (backups.length) try { localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); } catch(e2) {}
+        console.warn('[Store] Speicher voll — älteste Auto-Sicherung verworfen, noch ' + backups.length);
       }
-      throw new Error('LocalStorage voll oder gesperrt.');
+    }
+  }
+
+  function _save() {
+    if (_writeLock) {
+      if (_writeLock === 'load-failed') _notify('save-blocked');
+      return false;
+    }
+    if (!_suppressTouch) _touch();
+    if (!_writeMain(JSON.stringify(_state))) {
+      _notify('save-failed');
+      return false;
     }
     // Nur bei echten User-Änderungen pushen — System-Saves (suppressTouch) nicht markieren
     if (!_suppressTouch && window.AzureSync) try { AzureSync.schedulePush(); } catch(e) {}
+    return true;
   }
+
+  // Ganzen Stand ersetzen (Import, Auto-Sicherung, Pull). Einziger Weg neben _save() auf LS_KEY.
+  // Schlägt das Schreiben fehl, bleibt alles beim Alten (Speicher und Arbeitsstand).
+  function replaceState(next, logMsg) {
+    if (_writeLock === 'replaced') throw new Error('Daten wurden bereits ersetzt — bitte App neu laden.');
+    if (logMsg) {
+      if (!Array.isArray(next.log)) next.log = [];
+      next.log.unshift(_logEntry(logMsg[0], logMsg[1]));
+      if (next.log.length > 500) next.log.length = 500;
+    }
+    if (!_writeMain(JSON.stringify(next))) {
+      throw new Error('Speicher voll — Daten konnten nicht übernommen werden. Bitte Browserdaten aufräumen und erneut versuchen.');
+    }
+    _state = next;
+    _writeLock = 'replaced';
+    _loadError = null;
+    return true;
+  }
+
+  // Alles löschen (Zurücksetzen). Versiegelt, damit kein späterer _save() die Daten zurückholt.
+  function wipe() {
+    _writeLock = 'replaced';
+    try { localStorage.removeItem(LS_KEY); } catch(e) {}
+  }
+
+  function writeLock() { return _writeLock; }
+  function loadError() { return _loadError; }
+  // Unveränderte Rohdaten zum Herunterladen, wenn das Laden gescheitert ist
+  function rawData() { try { return localStorage.getItem(LS_KEY); } catch(e) { return null; } }
 
   function _patchSystemCategories() {
     const defaults = createDefaultStore().categories;
@@ -663,6 +736,8 @@ const Store = (() => {
   }
 
   function load() {
+    _writeLock = null;
+    _loadError = null;
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) {
@@ -700,7 +775,11 @@ const Store = (() => {
       return { ok: true, fresh: false, warnings: errors };
     } catch(e) {
       console.error('[Store] Ladefehler:', e);
+      // Nicht mit einem leeren Store weiterschreiben: die Rohdaten bleiben unangetastet,
+      // bis der Nutzer sie sichert oder eine Auto-Sicherung wiederherstellt.
       _state = createDefaultStore();
+      _writeLock = 'load-failed';
+      _loadError = e.message;
       return { ok: false, error: e.message };
     }
   }
@@ -722,11 +801,15 @@ const Store = (() => {
   }
 
   // ── App-Log (max 200 Einträge) ──
+  function _logEntry(level, msg) {
+    var _n=new Date(); var ts=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0')+' '+String(_n.getHours()).padStart(2,'0')+':'+String(_n.getMinutes()).padStart(2,'0')+':'+String(_n.getSeconds()).padStart(2,'0');
+    return { ts, level, msg: msg || '' };
+  }
+
   function appLog(level, msg) {
     if (!_state) return;
     if (!Array.isArray(_state.log)) _state.log = [];
-    var _n=new Date(); var ts=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0')+'-'+String(_n.getDate()).padStart(2,'0')+' '+String(_n.getHours()).padStart(2,'0')+':'+String(_n.getMinutes()).padStart(2,'0')+':'+String(_n.getSeconds()).padStart(2,'0');
-    _state.log.unshift({ ts, level, msg: msg || '' });
+    _state.log.unshift(_logEntry(level, msg));
     if (_state.log.length > 500) _state.log.length = 500;
     var _prev = _suppressTouch;
     _suppressTouch = true;
@@ -1455,6 +1538,7 @@ const Store = (() => {
 
   return {
     load, get, reset, save: _save,
+    replaceState, wipe, writeLock, loadError, rawData,
     appLog,
     Transactions,
     Categories,
@@ -1513,8 +1597,33 @@ const BackupManager = {
     }
   },
 
-  /** Import aus .fpbackup Datei */
-  import(file) {
+  /** Azure-Sync-Einstellungen dieses Geräts — gehören nie zum importierten Inhalt */
+  _deviceAzureSync() {
+    try {
+      if (Store.writeLock() === 'load-failed') {
+        return JSON.parse(Store.rawData() || '{}')?.settings?.azureSync || null;
+      }
+      return Store.get().settings?.azureSync || null;
+    } catch(e) { return null; }
+  },
+
+  /** Übernimmt einen geprüften Stand: Gerätesync behalten (bzw. opts.azureSync), dann ersetzen.
+   *  1e: lastETag bleibt erhalten — die UI markiert danach „lokal geändert", damit der Sync den
+   *  übernommenen Stand hochlädt bzw. bei fremden Änderungen fragt, statt ihn still zu überschreiben. */
+  _apply(migrated, opts) {
+    const cur = BackupManager._deviceAzureSync();
+    if (migrated.settings) {
+      if (cur) migrated.settings.azureSync = Object.assign({}, cur);
+      if (opts.azureSync) migrated.settings.azureSync = Object.assign({}, migrated.settings.azureSync || {}, opts.azureSync);
+    }
+    Store.replaceState(migrated, opts.log || null);
+  },
+
+  /** Import aus .fpbackup Datei.
+   *  opts.azureSync — Sync-Felder, die nach dem Import gelten (Pull: neuer ETag usw.)
+   *  opts.log       — [level, msg] Log-Eintrag, der mit dem neuen Stand gespeichert wird */
+  import(file, opts) {
+    opts = opts || {};
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1541,29 +1650,12 @@ const BackupManager = {
           if (errors.length > 0) {
             return reject(new Error('Validierungsfehler: ' + errors.join(', ')));
           }
-          // Azure-Sync-Einstellungen vom aktuellen Gerät beibehalten (nicht aus Backup überschreiben)
-          // lastETag auf null setzen → erzwingt ETag-Prüfung beim nächsten Start
-          try {
-            const currentRaw = localStorage.getItem(LS_KEY);
-            if (currentRaw) {
-              const currentAzureSync = JSON.parse(currentRaw)?.settings?.azureSync;
-              if (currentAzureSync && migrated.settings) {
-                migrated.settings.azureSync = Object.assign({}, currentAzureSync, { lastETag: null });
-              }
-            }
-          } catch(e) {}
-          // Backup vor dem Import
-          BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
+          // Backup vor dem Import (bei unlesbaren Daten gibt es keinen sinnvollen „Vorher"-Stand)
+          if (!Store.writeLock()) BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
           // H7: Speichern separat absichern — bei vollem localStorage (iOS) klare Meldung
           // statt irreführendem "Datei konnte nicht gelesen werden".
-          try {
-            localStorage.setItem(LS_KEY, JSON.stringify(migrated));
-          } catch(setErr) {
-            const quota = setErr && (setErr.name === 'QuotaExceededError' || String(setErr).includes('QuotaExceeded'));
-            return reject(new Error(quota
-              ? 'Speicher voll — Import abgebrochen. Bitte alte Auto-Backups oder Browserdaten löschen und erneut versuchen.'
-              : 'Import konnte nicht gespeichert werden: ' + setErr.message));
-          }
+          try { BackupManager._apply(migrated, opts); }
+          catch(setErr) { return reject(setErr); }
           // Auto-Sicherungs-Historie aus dem Backup wiederherstellen/mergen (Datensicherheit):
           // nach Geräteverlust/„Website-Daten löschen" ist die Historie sonst weg. Best-effort —
           // ein Fehler hier darf den erfolgreichen Daten-Import nicht scheitern lassen.
@@ -1584,15 +1676,28 @@ const BackupManager = {
     });
   },
 
+  /** Eine Auto-Sicherung enthält nur {_backup, store} — nie die Liste anderer Sicherungen
+   *  (download() hängt autoBackups an; früher landete das verschachtelt in der Historie). */
+  _slim(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+    const d = entry.data;
+    if (!d || typeof d !== 'object' || !d.store) return entry; // Altformat: data = Store selbst
+    return { timestamp: entry.timestamp, label: entry.label, data: { _backup: d._backup, store: d.store } };
+  },
+
   /** Auto-Backup in LocalStorage (max 5) */
   _saveAutoBackup(backup) {
+    // Bei Ladefehler/ersetztem Stand nichts sichern — sonst verdrängt ein leerer Stand gute Sicherungen
+    if (Store.writeLock()) return;
     let backups = [];
     try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch(e) {}
-    backups.unshift({
+    if (!Array.isArray(backups)) backups = [];
+    backups = backups.map(BackupManager._slim);
+    backups.unshift(BackupManager._slim({
       timestamp: new Date().toISOString(),
       label:     backup._backup?.label || 'Auto',
       data:      backup,
-    });
+    }));
     // M13: bei vollem Speicher schrittweise ältere Auto-Backups verwerfen, statt still
     // zu scheitern (sonst denkt der Nutzer, er sei gesichert).
     for (let keep = MAX_AUTO_BACKUPS; keep >= 1; keep--) {
@@ -1616,10 +1721,10 @@ const BackupManager = {
    *  (gleiche schrittweise Schreiblogik wie _saveAutoBackup). */
   mergeAutoBackups(incoming) {
     if (!Array.isArray(incoming) || incoming.length === 0) return;
-    let merged = BackupManager.getAutoBackups();
+    let merged = BackupManager.getAutoBackups().map(BackupManager._slim);
     const seen = new Set(merged.map(b => b && b.timestamp));
     incoming.forEach(b => {
-      if (b && b.timestamp && !seen.has(b.timestamp)) { merged.push(b); seen.add(b.timestamp); }
+      if (b && b.timestamp && !seen.has(b.timestamp)) { merged.push(BackupManager._slim(b)); seen.add(b.timestamp); }
     });
     merged.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
     for (let keep = MAX_AUTO_BACKUPS; keep >= 1; keep--) {
@@ -1627,27 +1732,16 @@ const BackupManager = {
     }
   },
 
-  restoreAutoBackup(index) {
+  restoreAutoBackup(index, opts) {
     const backups = BackupManager.getAutoBackups();
     if (!backups[index]) throw new Error('Backup nicht gefunden');
-    const data = backups[index].data?.store || backups[index].data;
+    // Kopie: der Eintrag bleibt unverändert in der Historie, auch wenn migrateStore patcht
+    const data = JSON.parse(JSON.stringify(backups[index].data?.store || backups[index].data));
     // H8: vor dem Schreiben validieren — sonst wird ein korruptes Backup zum Hauptstore
     const migrated = migrateStore(data);
     const errors = validateStore(migrated);
     if (errors.length > 0) throw new Error('Backup beschädigt: ' + errors.join(', '));
-    // Azure-Sync vom aktuellen Gerät beibehalten, lastETag null (wie import)
-    try {
-      const currentRaw = localStorage.getItem(LS_KEY);
-      if (currentRaw) {
-        const cur = JSON.parse(currentRaw)?.settings?.azureSync;
-        if (cur && migrated.settings) migrated.settings.azureSync = Object.assign({}, cur, { lastETag: null });
-      }
-    } catch(e) {}
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(migrated));
-    } catch(setErr) {
-      throw new Error('Speicher voll — Wiederherstellung abgebrochen.');
-    }
+    BackupManager._apply(migrated, opts || {});
     return { ok: true };
   },
 };

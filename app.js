@@ -50,10 +50,8 @@ var AzureSync = (function() {
   var TOKEN_KEY    = 'fp_azure_sas';
   var DIRTY_KEY    = 'fp_dirty';       // localStorage: ungesicherte lokale Änderung über App-Neustart hinweg merken (schützt offline-Änderungen vor Auto-Pull)
   var BACKUP_DATE_KEY = 'fp_backup_dt'; // localStorage: tägliches Backup-Datum (pro Kalendertag)
-  var LS_KEY_STORE = 'finanzplaner_v3';
   var _pushTimer    = null;
   var _busy         = false;
-  var _origSetItem  = null;
   var _startupLock  = true;
   var _pendingPush  = false;
   var _justPushed   = false;
@@ -81,6 +79,7 @@ var AzureSync = (function() {
   // M8: localStorage statt sessionStorage → wirklich ein Backup pro Kalendertag (nicht pro Session).
   function _maybeDailyBackup(backup) {
     var today = new Date().toISOString().slice(0, 10);
+    if (FP.Store.writeLock()) return;  // Ladefehler/ersetzt: nicht sichern und den Tag nicht verbrauchen
     try {
       if (localStorage.getItem(BACKUP_DATE_KEY) === today) return;
       localStorage.setItem(BACKUP_DATE_KEY, today);
@@ -189,7 +188,8 @@ var AzureSync = (function() {
 
   // Push: lokale Daten hochladen (mit If-Match für atomare Schreibsicherheit)
   function push(silent) {
-    if (!_active() || _busy) return Promise.resolve();
+    // Bei unlesbaren lokalen Daten ist _state nur ein leerer Ersatz — der darf nie hochgeladen werden
+    if (!_active() || _busy || FP.Store.writeLock() === 'load-failed') return Promise.resolve();
     _busy = true;
     _setBusy(true);
     var backup  = FP.BackupManager.create('Auto-Sync');
@@ -339,25 +339,25 @@ var AzureSync = (function() {
     } else if (choice === 'remote') {
       var blob = new Blob([JSON.stringify(rBackup)], { type: 'application/json' });
       var f = new File([blob], 'conflict.fpbackup');
-      FP.BackupManager.import(f).then(function() {
+      FP.BackupManager.import(f, { azureSync: _pulledSync(remoteETag) }).then(function() {
         clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
         _clearDirty();
-        try {
-          var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
-          if (!s.settings) s.settings = {};
-          if (!s.settings.azureSync) s.settings.azureSync = {};
-          s.settings.azureSync.lastSync  = new Date().toISOString();
-          s.settings.azureSync.lastETag  = remoteETag;
-          s.settings.azureSync.enabled   = true;
-          s.settings.azureSync.blobUrl   = _blobUrl();
-          s.settings.azureSync.autoSync  = _cfg().autoSync !== false;
-          _origSetItem(LS_KEY_STORE, JSON.stringify(s));
-        } catch(e) {}
         toast('↓ Azure-Daten geladen — App wird neu gestartet');
         window.__fpReloading = true;  // M12: beforeunload-Warnung beim Sync-Reload unterdrücken
         setTimeout(function() { location.reload(); }, 1200);
       }).catch(function(err) { toast('Fehler beim Laden: ' + err.message); });
     }
+  }
+
+  // Sync-Felder, die nach einem Pull gelten — gehen mit dem geladenen Stand in EINEM Schreibvorgang
+  function _pulledSync(eTag) {
+    return {
+      lastSync: new Date().toISOString(),
+      lastETag: eTag,
+      enabled:  true,
+      blobUrl:  _blobUrl(),
+      autoSync: _cfg().autoSync !== false,
+    };
   }
 
   // Pull: Remote-Daten laden und anwenden
@@ -371,21 +371,11 @@ var AzureSync = (function() {
       return r.json().then(function(backup) {
         var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
         var f = new File([blob], 'sync.fpbackup');
-        return FP.BackupManager.import(f).then(function() {
-          // _busy bleibt true bis Reload — verhindert Push der alten Daten im 1,2s-Fenster
+        return FP.BackupManager.import(f, { azureSync: _pulledSync(newETag) }).then(function() {
+          // _busy bleibt true bis Reload; der Store ist ab hier versiegelt (replaceState),
+          // ein Speichern im 1,2s-Fenster kann den geladenen Stand nicht mehr überschreiben
           clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
           _clearDirty();
-          try {
-            var s = JSON.parse(localStorage.getItem(LS_KEY_STORE) || '{}');
-            if (!s.settings) s.settings = {};
-            if (!s.settings.azureSync) s.settings.azureSync = {};
-            s.settings.azureSync.lastSync  = new Date().toISOString();
-            s.settings.azureSync.lastETag  = newETag;
-            s.settings.azureSync.enabled   = true;
-            s.settings.azureSync.blobUrl   = _blobUrl();
-            s.settings.azureSync.autoSync  = _cfg().autoSync !== false;
-            _origSetItem(LS_KEY_STORE, JSON.stringify(s));
-          } catch(e) {}
           if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); window.__fpReloading = true; setTimeout(function(){ location.reload(); }, 1200); }
         });
       });
@@ -464,10 +454,6 @@ var AzureSync = (function() {
     }, 1000);
   }
 
-  function installStorageHook() {
-    _origSetItem = localStorage.setItem.bind(localStorage);
-    // schedulePush wird direkt aus FP.Store._save aufgerufen (iOS-sicher)
-  }
 
   function _setBusy(on) {
     var pushBtn = document.getElementById('st-az-push-btn');
@@ -530,7 +516,7 @@ var AzureSync = (function() {
     _clearDirty();
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, installStorageHook: installStorageHook, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, maybeDailyBackup: maybeDailyBackup, sasExpiry: _sasExpiry, sasDaysLeft: _sasDaysLeft };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, markDirty: _setDirty, maybeDailyBackup: maybeDailyBackup, sasExpiry: _sasExpiry, sasDaysLeft: _sasDaysLeft };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -640,8 +626,8 @@ function azsToggleAuto(val) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  AzureSync.installStorageHook();
-  FP.Store.load();
+  var _loadRes = FP.Store.load();
+  if (!_loadRes.ok) setTimeout(function(){ showStoreProblem('load-failed'); }, 300);
   // silent: beim Start dürfen Bereinigung/Generierung lastModified nicht verändern und
   // keinen Push triggern (K2) — sonst gilt das Gerät fälschlich als "neuer".
   FP.Store.cleanupRecurringDuplicates({ silent: true });
@@ -687,6 +673,10 @@ document.addEventListener('DOMContentLoaded', function() {
   AzureSync.init();
   AzureSync.startPolling();
   // Backup-Download-Trigger (store.js ist DOM-frei, daher Custom-Event)
+  window.addEventListener('fp:store', function(e) {
+    var t = e.detail && e.detail.type;
+    if (t === 'save-failed' || t === 'save-blocked') showStoreProblem(t === 'save-failed' ? 'save-failed' : 'load-failed');
+  });
   window.addEventListener('fp:download', function(e) {
     var blob = new Blob([e.detail.json], { type: 'application/json' });
     var url  = URL.createObjectURL(blob);
@@ -1397,8 +1387,35 @@ function saveKat() {
 function openM(id)  { document.getElementById(id).classList.add('open'); }
 function closeM(id) { document.getElementById(id).classList.remove('open'); }
 
+// Speicherproblem melden — stehender Dialog statt Toast, weil Daten auf dem Spiel stehen.
+// 'save-failed': Speicher voll, letzte Änderung nur im Arbeitsspeicher → Backup herunterladen
+// 'load-failed': gespeicherte Daten unlesbar, Store schreibgesperrt → Rohdaten sichern, dann wiederherstellen
+function showStoreProblem(kind){
+  var m=document.getElementById('m-confirm');
+  if(!m||m.classList.contains('open')) return;
+  var failed=kind==='load-failed';
+  confirmDialog(failed
+    ? 'Deine gespeicherten Daten konnten nicht gelesen werden. Damit nichts verloren geht, speichert die App ab jetzt NICHTS — Eingaben werden nicht übernommen. Bitte zuerst die Rohdaten sichern, dann unter Einstellungen → Automatische Sicherungen eine Sicherung wiederherstellen.'
+    : 'Der Speicher auf diesem Gerät ist voll. Deine letzte Änderung ist NICHT gespeichert und wird auch nicht synchronisiert. Bitte jetzt ein Backup herunterladen — es enthält auch die letzte Änderung.',
+    failed ? 'Rohdaten sichern' : 'Backup herunterladen',
+    function(){
+      if(failed){
+        var raw=FP.Store.rawData()||'';
+        var d=new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
+        window.dispatchEvent(new CustomEvent('fp:download',{detail:{json:raw,filename:'Finanzplaner_Rohdaten_'+d+'.txt'}}));
+        setTimeout(function(){ nav('einstellungen'); },300);
+      } else {
+        FP.BackupManager.download('Speicher voll');
+      }
+    });
+  document.getElementById('mconf-ttl').textContent=failed?'Daten nicht lesbar':'Speicher voll';
+  document.getElementById('mconf-cancel').textContent='Später';
+}
+
 function confirmDialog(msg, label, onOk){
   // Sicherstellen dass Modal im Standard-Zustand ist
+  var ttl=document.getElementById('mconf-ttl');
+  if(ttl) ttl.textContent='Bestätigen';
   var extra=document.getElementById('mconf-extra');
   if(extra){extra.style.display='none';extra.innerHTML='';}
   var cancel=document.getElementById('mconf-cancel');
@@ -2314,8 +2331,10 @@ function stRestoreAutoBackup(i){
   if(!list[i]){toast('Sicherung nicht gefunden');return;}
   confirmDialog('Diese Sicherung wiederherstellen? Der aktuelle Stand wird ersetzt.','Wiederherstellen',function(){
     try{
-      FP.BackupManager.restoreAutoBackup(i);
-      appLog('BACKUP','Auto-Sicherung wiederhergestellt ('+(list[i].label||'Auto')+')');
+      FP.BackupManager.restoreAutoBackup(i,{log:['BACKUP','Auto-Sicherung wiederhergestellt ('+(list[i].label||'Auto')+')']});
+      // 1e: als lokale Änderung markieren → Sync lädt sie hoch bzw. fragt bei fremden Änderungen,
+      // statt sie beim Neustart still mit dem Server-Stand zu überschreiben
+      AzureSync.markDirty();
       toast('↩ Wiederhergestellt — App wird neu gestartet');
       window.__fpReloading=true;
       setTimeout(function(){location.reload();},1200);
@@ -3114,9 +3133,10 @@ function stImport(input){
       var currentTx=FP.Store.Transactions.getAll().length;
       var msg='Backup enthält '+incomingTx+' Transaktionen.\nAktuell vorhanden: '+currentTx+' — diese werden ersetzt.';
       confirmDialog(msg,'Importieren',function(){
-        FP.BackupManager.import(file).then(function(res){
+        FP.BackupManager.import(file,{log:['BACKUP','Import · '+incomingTx+' Transaktionen · Datei: '+file.name]}).then(function(res){
           input.value='';
-          appLog('BACKUP','Import erfolgreich · '+res.transactions+' Transaktionen · Datei: '+file.name);
+          // 1e: als lokale Änderung markieren (siehe stRestoreAutoBackup)
+          AzureSync.markDirty();
           toast('Import erfolgreich · '+res.transactions+' Transaktionen');
           setTimeout(function(){location.reload();},1200);
         }).catch(function(err){
@@ -3307,8 +3327,9 @@ function stReset(){
     // 3s warten damit Browser-Download starten kann, dann zweite Bestätigung
     setTimeout(function(){
       confirmDialog('Download läuft. Jetzt wirklich alle Daten löschen?','Endgültig löschen',function(){
-        appLog('RESET', 'Alle Daten gelöscht — Backup wurde erstellt');
-        localStorage.removeItem('finanzplaner_v3');
+        // wipe() versiegelt den Store — kein späteres Speichern holt die Daten vor dem Neuladen zurück
+        FP.Store.wipe();
+        window.__fpReloading=true;
         location.reload();
       });
     }, 3000);

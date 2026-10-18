@@ -1,7 +1,7 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261017h`
-**Letzter Stand:** 17.10.2026 (Betragssuche, Papierkorb für Buchungen, Übersicht entschlackt) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261018a`
+**Letzter Stand:** 18.10.2026 (Audit-Paket 1: ein Schreibweg für den Store) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
 
@@ -178,7 +178,17 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 - **SAS-Token:** in `localStorage('fp_azure_sas')` — NICHT im Store-JSON / Backup. Eingabefeld `type=password`.
 - **Settings:** `settings.azureSync = { enabled, blobUrl, lastETag, lastSync, autoSync }`
 - **Atomare Writes:** PUT mit `If-Match: <lastETag>` → `412` bei Konflikt → Konflikt-Dialog (`AzureSync.conflictChoose`), kein stilles Überschreiben.
-- **Nach Pull:** NICHT über den normalen `setAzureSync()`-Pfad zurückschreiben → `_origSetItem` direkt nutzen (sonst alte Daten zurück).
+- **Ein Schreibweg (seit 18.10.2026):** Nur `Store._save()` und `Store.replaceState()` schreiben `finanzplaner_v3`.
+  Import, Auto-Sicherung, Pull und „Server-Daten laden" gehen über `BackupManager.import(file, {azureSync, log})` /
+  `restoreAutoBackup(i, {log})` → `replaceState()`; danach ist der Store bis zum Neuladen **versiegelt**
+  (`writeLock()==='replaced'`, jedes `_save()` ist wirkungslos). Nie wieder `localStorage.setItem` auf den Store-Schlüssel
+  am Store vorbei — genau das ließ Import/Wiederherstellen wirkungslos werden (Audit 18.10.).
+- **Ladefehler:** `writeLock()==='load-failed'` → nichts wird geschrieben, kein Push, kein Tagesbackup; Dialog
+  `showStoreProblem`. Nur `replaceState` (Wiederherstellen/Import/Pull) hebt die Sperre auf.
+- **Speicher voll:** `_writeMain` verwirft älteste Auto-Sicherungen, bis der Hauptstand passt; sonst Event
+  `fp:store` `save-failed` → stehender Dialog.
+- **Nach Import/Wiederherstellen:** `lastETag` bleibt, UI ruft `AzureSync.markDirty()` → Neustart lädt hoch
+  (Server unverändert) oder zeigt den Konfliktdialog (Server geändert). Pull setzt die Sync-Felder über `opts.azureSync`.
 - **Push-Loop:** `_justPushed=true` für 12s nach Push blockiert `schedulePush()`
 - **Startup-Lock:** 15s nach App-Start kein Auto-Push (`_pendingPush=true` wird danach nachgeholt)
 - **Polling:** HEAD alle 3 Min (ETag-Vergleich)
@@ -200,7 +210,8 @@ Vollständige Chronik steht in `TODO.md` — hier nur die Meilensteine:
 - ~~Azure-Blob-Sync statt GitHub-API~~ (05.06.2026)
 - ~~SAS-Härtung komplett~~ (16.06.2026: Konto-SAS `racwl`, Ablauf-Erinnerung, Dirty-Flag)
 - ~~Renten-Audit R1–R15~~ (Stammwerte 2026, GFB, Migration v1→v2, Fünftelregelung u. a.)
-- ~~iOS-Rotationsfix~~ (16.08.2026, `?v=20260816d`) — **unter Beobachtung**, Befund in `TODO.md`
+- ~~iOS-Rotationsfix~~ (16.08.2026, `?v=20260816d`) — vom Nutzer am 18.10.2026 bestätigt, Befund in `TODO.md`
+- ~~Audit-Paket 1 „ein Schreibweg"~~ (18.10.2026, `?v=20261018a`) — weitere Pakete in `TODO.md`
 
 ### Offen (Reihenfolge)
 
