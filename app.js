@@ -2684,7 +2684,7 @@ function stRenderCats(){
     var subTx=subs.reduce(function(a,s){return a+(cnt[s.id]||0);},0);
     var click=subs.length?'stCatToggleOpen(\''+c.id+'\')':'stCatActions(\''+c.id+'\')';
     html+='<div class="st-cat'+(c.hidden?' off':'')+'" onclick="'+click+'">'+
-      '<span class="st-cat-chev">'+(subs.length?(open?'▾':'▸'):'')+'</span>'+
+      '<span class="st-cat-chev'+(open?' open':'')+'">'+(subs.length?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>':'')+'</span>'+
       '<span class="st-cat-dot" style="background:'+(c.color||'#6B7280')+'"></span>'+
       '<span class="st-cat-txt"><span class="st-cat-name">'+icon+'<span>'+esc(c.name)+'</span>'+
         (c.showInInput===false?'<span class="fk-only-badge">Nur Fixkosten</span>':'')+'</span>'+
