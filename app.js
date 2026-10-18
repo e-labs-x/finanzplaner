@@ -6278,12 +6278,14 @@ function vmRenderFilter(){
 var vmHistYear=new Date().getFullYear();
 function vmHistShift(d){ vmHistYear+=d; vmRenderHistory(); }
 function vmFmtEur0(v){ return Math.round(v).toLocaleString('de-DE')+' €'; }
+// Zwei Zeilen je Zelle: oben Änderung in €, unten in % — passend zur zweizeiligen Beschriftung links
 function vmFmtDelta(d){
-  if(!d) return '—';
+  if(!d) return '<span class="vm-h-two"><span>—</span><span>—</span></span>';
   var cls=d.abs>0?'vm-h-pos':(d.abs<0?'vm-h-neg':'');
   var sign=d.abs>0?'+':'';
-  return '<span class="'+cls+'">'+sign+vmFmtEur0(d.abs)+'<br>'+sign+d.pct.toFixed(1).replace('.',',')+' %</span>';
+  return '<span class="vm-h-two '+cls+'"><span>'+sign+vmFmtEur0(d.abs)+'</span><span>'+sign+d.pct.toFixed(1).replace('.',',')+' %</span></span>';
 }
+function vmDeltaLbl(what){ return '<span class="vm-h-two"><span>Änderung '+what+' €</span><span>Änderung '+what+' %</span></span>'; }
 function vmRenderHistory(){
   var el=document.getElementById('vm-hist');
   if(!el)return;
@@ -6309,15 +6311,15 @@ function vmRenderHistory(){
       return '<td class="vm-h-cell'+(c.own?'':' vm-h-fill')+'"'+click+(c.own?'':' title="kein Eintrag in diesem Monat – letzter Stand fortgeschrieben"')+'>'+vmFmtEur0(c.v)+'</td>';
     }).join('');
     return '<tr'+(r.included?'':' class="vm-h-off"')+'><td class="vm-h-name" onclick="vmToggleAsset(\''+r.id+'\')" title="'+esc(r.name)+(r.included?' – antippen zum Ausblenden':' – ausgeblendet, antippen zum Einblenden')+'">'+
-      '<span class="vm-h-dot" style="background:'+color+'"></span>'+esc(r.name)+'</td>'+tds+'</tr>';
+      '<span class="vm-h-nm"><span class="vm-h-dot" style="background:'+color+'"></span><span>'+esc(r.name)+'</span></span></td>'+tds+'</tr>';
   }).join('');
   var sum='<tr class="vm-h-sum"><td>Summe</td>'+idx.map(function(i){return '<td>'+(h.sums[i]==null?'—':vmFmtEur0(h.sums[i]))+'</td>';}).join('')+'</tr>';
-  var dvm='<tr class="vm-h-delta"><td>Δ Vormonat</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dPrev[i])+'</td>';}).join('')+'</tr>';
-  var dvj='<tr class="vm-h-delta"><td>Δ Vorjahr</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>';
+  var dvm='<tr class="vm-h-delta"><td>'+vmDeltaLbl('Vormonat')+'</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dPrev[i])+'</td>';}).join('')+'</tr>';
+  var dvj='<tr class="vm-h-delta"><td>'+vmDeltaLbl('Vorjahr')+'</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>';
   el.innerHTML=hdr+'<div class="vm-hist-scroll"><table class="vm-hist">'+head+body+sum+dvm+dvj+'</table></div>'+
     '<div class="vm-hist-note"><i>Grau</i> = kein Eintrag in dem Monat, letzter Stand fortgeschrieben. Zelle antippen = Wert für diesen Monat eintragen. '+
     'Name antippen = Anlage aus Summe, Ring und Verlauf ausblenden. '+
-    'Δ vergleicht nur Anlagen, die in beiden Monaten einen Wert haben.</div>';
+    'Änderung = nur Anlagen, die in beiden Monaten einen Wert haben.</div>';
   // Neuesten Monat sichtbar: an das rechte Ende scrollen
   var sc=el.querySelector('.vm-hist-scroll'); if(sc) sc.scrollLeft=sc.scrollWidth;
 }

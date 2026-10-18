@@ -19,6 +19,8 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
 - [x] **Fehler behoben:** „Gewinn" unter dem Ring war Gesamt − Einstand → Konten ohne Einstand zählten voll als
       Gewinn (+496 T€ statt +303 T€). Jetzt nur Anlagen mit Einstand (`getAssetSummary().gain`), klar beschriftet.
       Einstand-Linie im Verlauf entfernt (gleicher Denkfehler: Einstand von 7 Anlagen gegen Wert aller).
+- [x] Feedback 2 (`?v=20261018f`): Anlagennamen nie abgeschnitten (PC volle Länge, iPhone Umbruch), Änderungszeilen
+      links je Zeile beschriftet („Änderung Vormonat €/%"), Trennlinie an der festen Spalte.
 - [ ] **Nutzer schaut live** — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
 
 ## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026

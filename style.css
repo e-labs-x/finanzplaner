@@ -1201,7 +1201,13 @@ button { cursor: pointer; border: none; background: none; }
 .vm-gain-n{color:var(--tx3);font-size:10px}
 .vm-hist th,.vm-hist td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--brd)}
 .vm-hist th{font-size:11px;font-weight:600;color:var(--tx3)}
-.vm-hist th:first-child,.vm-hist td:first-child{position:sticky;left:0;z-index:1;background:var(--surf);text-align:left;max-width:150px;overflow:hidden;text-overflow:ellipsis;padding-left:0}
+/* Namen nie abschneiden: am PC volle Länge, schmal (iPhone) Umbruch in eine zweite Zeile */
+.vm-hist th:first-child,.vm-hist td:first-child{position:sticky;left:0;z-index:1;background:var(--surf);text-align:left;white-space:normal;padding-left:0}
+@media(max-width:767px){.vm-hist td.vm-h-name{min-width:120px;max-width:140px;line-height:1.3}}
+.vm-hist th:first-child,.vm-hist td:first-child{box-shadow:1px 0 0 var(--brd)}
+.vm-hist .vm-h-nm{display:flex;align-items:flex-start;gap:6px}
+.vm-hist .vm-h-nm .vm-h-dot{flex-shrink:0;margin:4px 0 0 0}
+.vm-hist .vm-h-two{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
 .vm-hist td.vm-h-name{color:var(--tx2)}
 .vm-hist .vm-h-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
 .vm-hist td.vm-h-cell{color:var(--tx);cursor:pointer}
