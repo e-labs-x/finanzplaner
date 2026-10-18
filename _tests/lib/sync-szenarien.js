@@ -72,10 +72,11 @@
     },
     // Buchung während eines Downloads: Konflikt statt Überschreiben
     pullrace: {
-      setup: function (st, remote) { remoteWith(remote, 'R1', '"E2"'); localStorage.setItem('__ctl', JSON.stringify({ getDelay: 4000 })); },
+      // Download dauert 10 s, Buchung nach 3,5 s — liegt sicher mitten im Download, auch bei Last
+      setup: function (st, remote) { remoteWith(remote, 'R1', '"E2"'); localStorage.setItem('__ctl', JSON.stringify({ getDelay: 10000 })); },
       run: function () {
         after(3500, function () { add('L-RACE'); });
-        after(12000, function () {
+        after(18000, function () {
           __done({ pass: conflictOpen() && __hasNote(local(), 'L-RACE') && sessionStorage.getItem('loads') === '1',
                    info: 'Konfliktdialog, Buchung erhalten, kein Neuladen' });
         });
@@ -107,7 +108,11 @@
     },
     // Ohne bekannten Server-Stand nie blind überschreiben
     nonematch: {
-      setup: function (st, remote) { st.transactions.push(__mkTx('L1')); st.settings.azureSync.lastETag = null; remoteWith(remote, 'R1', '"E2"'); },
+      // Startprüfung verzögert: sonst kann sie je nach Rechnerlast vor dem Test-Upload laufen
+      setup: function (st, remote) {
+        st.transactions.push(__mkTx('L1')); st.settings.azureSync.lastETag = null; localStorage.setItem('fp_dirty', '1');
+        localStorage.setItem('__ctl', JSON.stringify({ headDelay: 10000 })); remoteWith(remote, 'R1', '"E2"');
+      },
       run: function () {
         after(500, function () { AzureSync.push(false); });
         after(4000, function () {
@@ -131,9 +136,10 @@
         });
       }
     },
-    // Auto-Sync aus löscht offene Änderungen nicht
+    // Auto-Sync aus löscht offene Änderungen nicht. Startprüfung (HEAD) verzögert, damit kein regulärer
+    // Upload vor dem Ausschalten den Zähler leert — sonst hinge das Ergebnis von der Rechnerlast ab.
     autosync: {
-      setup: function (st) { st.transactions.push(__mkTx('L1')); localStorage.setItem('fp_dirty', '2'); },
+      setup: function (st) { st.transactions.push(__mkTx('L1')); localStorage.setItem('fp_dirty', '2'); localStorage.setItem('__ctl', JSON.stringify({ headDelay: 10000 })); },
       run: function () {
         after(1000, function () {
           azsToggleAuto(false);

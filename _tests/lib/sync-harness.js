@@ -41,7 +41,7 @@
       var hd = new Headers(); if (etag) hd.set('ETag', etag);
       return new Response(body == null ? null : body, { status: status, headers: hd });
     }
-    var delay = (m === 'GET' && ctl.getDelay) || (m === 'PUT' && ctl.putDelay) || 0;
+    var delay = (m === 'GET' && ctl.getDelay) || (m === 'PUT' && ctl.putDelay) || (m === 'HEAD' && ctl.headDelay) || 0;
     return new Promise(function (res) {
       setTimeout(function () {
         var s = srv(); ctl = JSON.parse(localStorage.getItem('__ctl') || '{}');
