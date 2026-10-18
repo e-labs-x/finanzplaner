@@ -76,7 +76,8 @@ Niemals klein anfangen und hoffen dass es reicht.
 | `store.js` | FP.Store + FP.Calculator — **kein UI-Code** |
 | `app.js` | Gesamte UI-Logik (Tab-Renderer, Event-Handler) + `AzureSync` (Cloud-Sync) |
 | `sw.js` | Service Worker — `CACHE_NAME` muss bei **jedem** Deploy mit `?v=` übereinstimmen |
-| `tests.html` | Selbsttests — **vor jedem Deploy im Browser öffnen und laufen lassen** |
+| `tests.html` | Selbsttests (laufen in `_tests\pruefen.ps1` mit) |
+| `_tests/` | Prüfungen mit echten Daten + Git-Hook — **vor jedem Deploy**, siehe `_tests/README.md` |
 | `TODO.md` | Gepflegte Aufgabenliste + Befund-Dokumentation (z. B. iOS-Rotationsfix) |
 
 **Repo:** `C:\Users\enesc\finanzplaner-repo\`
@@ -98,6 +99,16 @@ Alle 5 Deploy-Dateien (index.html, style.css, store.js, app.js, sw.js) mit Datum
 in den files-Ordner kopieren:
 C:\Users\enesc\OneDrive\Dokumente\07 Projekte\Claude\Finanzen\Finanzen App\files\
 ```
+
+**Prüfen vor jedem Deploy (Pflicht, seit 18.10.2026):**
+```
+pwsh -File _tests\pruefen.ps1
+```
+Prüft mit **echten Daten** (frisch aus Azure, nur in `%TEMP%`, danach gelöscht): tests.html, Vorlagen-Regel (Node),
+Rundgang durch alle Tabs, 9 Sync-Szenarien gegen eine Azure-Attrappe. ~30 s. Der `pre-push`-Hook führt es automatisch aus
+und bricht den Push bei ROT ab (einrichten: `pwsh -File _tests\hook-installieren.ps1`). Nie mit `--no-verify` umgehen,
+außer der Nutzer sagt es ausdrücklich. **Jede Korrektur bekommt eine Prüfung, die am alten Code scheitert**
+(Gegenprobe per `git worktree`, siehe `_tests/README.md`). Repo ist öffentlich → in `_tests/` nie Daten oder Tokens.
 
 **Nach Änderungen deployen:**
 ```

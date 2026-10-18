@@ -31,7 +31,9 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    tests.html 30/30; alle Tabs fehlerfrei. Hinweis: „↓ Laden" fragt jetzt bei offenen lokalen Änderungen nach.
 4. **Paket 4 — Sicherheitshärtung** (HOCH): Details nur in der Audit-Datei auf OneDrive (Repo ist öffentlich).
 5. Paket 5 — Einzelfehler (MITTEL).
-Alle KRITISCH-Pakete erledigt (1018a–c). Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).
+Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
+echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
+Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).
 
 ## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 
