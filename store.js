@@ -371,6 +371,14 @@ function recMonthNum(mmyyyy) {
   if (!m || +m[1] < 1 || +m[1] > 12) return 0;   // 0 = ungültig (z. B. Monat 13)
   return parseInt(m[2]) * 12 + parseInt(m[1]);
 }
+// Monatsstände einer Anlage chronologisch (nicht als Text: "01.2027" < "12.2026" wäre falsch).
+// Überall gilt „letzter Eintrag = aktueller Stand" — das hält nur, wenn diese Sortierung immer gilt:
+// beim Laden, bei addSnapshot und beim Sync-Merge.
+function sortSnapshots(snaps) {
+  if (Array.isArray(snaps)) snaps.sort((a, b) => recMonthNum(a && a.date) - recMonthNum(b && b.date));
+  return snaps;
+}
+
 function recurringSeriesKey(r) { return (r.name || '') + '\u0001' + (r.objectId || ''); }
 function recurringCovers(r, n) {
   const from = recMonthNum(r.validFrom);
@@ -826,6 +834,7 @@ const Store = (() => {
       _suppressTouch = true;
       try {
         _patchSystemCategories(); // fehlende/geänderte System-Kategorien ergänzen
+        (_state.assets || []).forEach(a => sortSnapshots(a.snapshots)); // chronologisch (idempotent)
         Trash.purgeOld();         // Papierkorb-Einträge älter als 30 Tage entfernen
         // Migration githubSync → azureSync
         if (!_state.settings.azureSync) {
@@ -1266,7 +1275,7 @@ const Store = (() => {
       const snap = { date, value: r2(value), shares: shares || null };
       if (idx >= 0) asset.snapshots[idx] = snap;
       else          asset.snapshots.push(snap);
-      asset.snapshots.sort((a, b) => a.date.localeCompare(b.date));
+      sortSnapshots(asset.snapshots);
       _save();
       return snap;
     },
@@ -2291,6 +2300,87 @@ const Calculator = {
     return { total: r2(total), byType, items };
   },
 
+  // ── Vermögens-Historie: Anlagen × Monate eines Jahres (wie die frühere Excel-Tabelle) ──
+  // Zelle = Monatsstand der Anlage { v, own:true } oder — wenn in dem Monat nichts eingetragen
+  // wurde — der letzte frühere Stand { v, own:false } (fortgeschrieben, in der UI grau).
+  // Verkaufte/archivierte Anlagen werden nicht über ihren letzten Stand hinaus fortgeschrieben.
+  // ESPP hat keine Monatsstände → nur im laufenden Monat, mit demselben Wert wie getAssetSummary.
+  // Δ-Zeilen vergleichen nur Anlagen, die in BEIDEN Monaten einen Wert haben (sonst würde z. B.
+  // das erstmals erscheinende ESPP als Zuwachs zählen). Summe im laufenden Monat = Gesamtvermögen.
+  getAssetHistory(year) {
+    const store  = Store.get();
+    const cur    = currentMonthStr();
+    const curNum = recMonthNum(cur);
+    const curYear = parseInt(cur.split('.')[1], 10);
+    const mkey = (y, m) => String(m).padStart(2, '0') + '.' + y;
+
+    function cellsFor(asset, y) {
+      const snaps = (asset.snapshots || []).filter(s => s && recMonthNum(s.date) && typeof s.value === 'number');
+      const lastNum = snaps.length ? recMonthNum(snaps[snaps.length - 1].date) : 0;
+      const out = [];
+      for (let m = 1; m <= 12; m++) {
+        const n = y * 12 + m;
+        if (n > curNum) { out.push(null); continue; }
+        let hit = null;
+        for (const s of snaps) { const sn = recMonthNum(s.date); if (sn <= n) hit = s; else break; }
+        if (!hit) { out.push(null); continue; }
+        const own = recMonthNum(hit.date) === n;
+        if (!own && asset.status !== 'aktiv' && n > lastNum) { out.push(null); continue; }
+        out.push({ v: hit.value, own });
+      }
+      return out;
+    }
+
+    function build(y) {
+      const rows = (store.assets || []).map(a => ({ id: a.id, name: a.name, type: a.type, cells: cellsFor(a, y) }))
+        .filter(r => r.cells.some(c => c));
+      if (y === curYear) {
+        const espp = Calculator.getAssetSummary().byType['espp'] || 0;
+        if (espp > 0) {
+          const cells = Array(12).fill(null);
+          cells[parseInt(cur.split('.')[0], 10) - 1] = { v: espp, own: true };
+          rows.push({ id: '__espp__', name: 'ESPP (Fidelity)', type: 'espp', cells });
+        }
+      }
+      return rows;
+    }
+
+    const rows = build(year);
+    const prevRows = build(year - 1);
+    const lastIdx = year < curYear ? 11 : (year === curYear ? parseInt(cur.split('.')[0], 10) - 1 : -1);
+    const sortIdx = Math.max(lastIdx, 0);
+    rows.sort((a, b) => ((b.cells[sortIdx] || {}).v || 0) - ((a.cells[sortIdx] || {}).v || 0));
+
+    const months = [], sums = [], dPrev = [], dYoY = [];
+    const MON = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    const cellOf = (rs, id, i) => { const r = rs.find(x => x.id === id); return r ? r.cells[i] : null; };
+    function delta(rsA, iA, rsB, iB) {   // A = aktueller Monat, B = Vergleichsmonat; nur gemeinsame Anlagen
+      let a = 0, b = 0, n = 0;
+      rsA.forEach(r => {
+        const ca = r.cells[iA], cb = cellOf(rsB, r.id, iB);
+        if (ca && cb) { a += ca.v; b += cb.v; n++; }
+      });
+      if (!n || !b) return null;
+      return { abs: r2(a - b), pct: (a - b) / b * 100 };
+    }
+    for (let i = 0; i <= lastIdx; i++) {
+      months.push({ key: mkey(year, i + 1), label: MON[i] });
+      const present = rows.filter(r => r.cells[i]);
+      sums.push(present.length ? r2(present.reduce((s, r) => s + r.cells[i].v, 0)) : null);
+      dPrev.push(i > 0 ? delta(rows, i, rows, i - 1) : delta(rows, 0, prevRows, 11));
+      dYoY.push(delta(rows, i, prevRows, i));
+    }
+    rows.forEach(r => { r.cells = r.cells.slice(0, lastIdx + 1); });
+
+    let firstYear = curYear;
+    (store.assets || []).forEach(a => (a.snapshots || []).forEach(s => {
+      const n = recMonthNum(s && s.date); if (n) firstYear = Math.min(firstYear, Math.floor((n - 1) / 12));
+    }));
+    const years = [];
+    for (let y = firstYear; y <= curYear; y++) years.push(y);
+    return { year, months, rows, sums, dPrev, dYoY, years };
+  },
+
   // ── Freistellungsauftrag-Übersicht ──
   getFreistellungSummary() {
     const store = Store.get();
@@ -2959,6 +3049,8 @@ if (typeof window !== 'undefined') {
     generateId,
     currentMonthStr,
     r2,
+    monthNum: recMonthNum,
+    sortSnapshots,
   };
 }
 

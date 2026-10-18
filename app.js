@@ -343,7 +343,7 @@ var AzureSync = (function() {
       if (!Array.isArray(a.snapshots)) a.snapshots = [];
       var dates = new Set(a.snapshots.map(function(s) { return s.date; }));
       l.snapshots.forEach(function(s) { if (!dates.has(s.date)) a.snapshots.push(s); });
-      a.snapshots.sort(function(x, y) { return String(x.date).localeCompare(String(y.date)); });
+      FP.sortSnapshots(a.snapshots);   // chronologisch, nicht als Text ("01.2027" < "12.2026")
     });
     mergeById('freistellungsauftraege');
     mergeById('savingsPlans');
@@ -6220,10 +6220,61 @@ function vmInit(){ vmBuildOwnerLabel(); vmRender(); }
 
 function vmRender(){
   vmRenderTotal();
+  vmRenderHistory();
   vmRenderCharts();
   vmRenderAssets();
   vmRenderFsa();
   esppRender();
+}
+
+// ── Vermögens-Historie: Anlagen × Monate, wie die frühere Excel-Tabelle ──
+// Daten aus FP.Calculator.getAssetHistory (gleiche Summe wie oben); hier nur Darstellung.
+var vmHistYear=new Date().getFullYear();
+function vmHistShift(d){ vmHistYear+=d; vmRenderHistory(); }
+function vmFmtEur0(v){ return Math.round(v).toLocaleString('de-DE')+' €'; }
+function vmFmtDelta(d){
+  if(!d) return '—';
+  var cls=d.abs>0?'vm-h-pos':(d.abs<0?'vm-h-neg':'');
+  var sign=d.abs>0?'+':'';
+  return '<span class="'+cls+'">'+sign+vmFmtEur0(d.abs)+'<br>'+sign+d.pct.toFixed(1).replace('.',',')+' %</span>';
+}
+function vmRenderHistory(){
+  var el=document.getElementById('vm-hist');
+  if(!el)return;
+  var h=FP.Calculator.getAssetHistory(vmHistYear);
+  if(h.years.indexOf(vmHistYear)<0){ vmHistYear=h.years[h.years.length-1]; h=FP.Calculator.getAssetHistory(vmHistYear); }
+  var minY=h.years[0], maxY=h.years[h.years.length-1];
+  var hdr='<div class="vm-hist-hdr"><div class="vm-chart-title">Historie · Stand je Monat</div>'+
+    '<div class="vm-hist-nav"><button onclick="vmHistShift(-1)"'+(vmHistYear<=minY?' disabled':'')+' aria-label="Vorjahr">‹</button>'+
+    '<span>'+vmHistYear+'</span><button onclick="vmHistShift(1)"'+(vmHistYear>=maxY?' disabled':'')+' aria-label="Folgejahr">›</button></div></div>';
+  // Monate vor dem ersten Eintrag ausblenden (z. B. Jan–Apr 2026: App erst ab Mai)
+  var start=0; while(start<h.sums.length&&h.sums[start]==null) start++;
+  if(start>=h.months.length){ el.innerHTML=hdr+'<div class="vm-hist-note">Für '+vmHistYear+' sind keine Werte eingetragen.</div>'; return; }
+  var idx=[]; for(var i=start;i<h.months.length;i++) idx.push(i);
+  var head='<tr><th>Anlage</th>'+idx.map(function(i){return '<th>'+h.months[i].label+'</th>';}).join('')+'</tr>';
+  var body=h.rows.map(function(r){
+    var color=VM_TYPE_COLOR[r.type]||'#94A3B8';
+    var tds=idx.map(function(i){
+      var c=r.cells[i], key=h.months[i].key;
+      var click=r.id==='__espp__'?'':' onclick="vmHistCell(\''+r.id+'\',\''+key+'\')"';
+      if(!c) return '<td class="vm-h-empty'+(click?' vm-h-cell':'')+'"'+click+'>–</td>';
+      return '<td class="vm-h-cell'+(c.own?'':' vm-h-fill')+'"'+click+(c.own?'':' title="kein Eintrag in diesem Monat – letzter Stand fortgeschrieben"')+'>'+vmFmtEur0(c.v)+'</td>';
+    }).join('');
+    return '<tr><td class="vm-h-name" title="'+esc(r.name)+'"><span class="vm-h-dot" style="background:'+color+'"></span>'+esc(r.name)+'</td>'+tds+'</tr>';
+  }).join('');
+  var sum='<tr class="vm-h-sum"><td>Summe</td>'+idx.map(function(i){return '<td>'+(h.sums[i]==null?'—':vmFmtEur0(h.sums[i]))+'</td>';}).join('')+'</tr>';
+  var dvm='<tr class="vm-h-delta"><td>Δ Vormonat</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dPrev[i])+'</td>';}).join('')+'</tr>';
+  var dvj='<tr class="vm-h-delta"><td>Δ Vorjahr</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>';
+  el.innerHTML=hdr+'<div class="vm-hist-scroll"><table class="vm-hist">'+head+body+sum+dvm+dvj+'</table></div>'+
+    '<div class="vm-hist-note"><i>Grau</i> = kein Eintrag in dem Monat, letzter Stand fortgeschrieben. Zelle antippen = Wert für diesen Monat eintragen. '+
+    'Δ vergleicht nur Anlagen, die in beiden Monaten einen Wert haben.</div>';
+  // Neuesten Monat sichtbar: an das rechte Ende scrollen
+  var sc=el.querySelector('.vm-hist-scroll'); if(sc) sc.scrollLeft=sc.scrollWidth;
+}
+function vmHistCell(assetId,month){
+  var a=FP.Store.Assets.getById(assetId); if(!a) return;
+  var own=(a.snapshots||[]).find(function(s){return s.date===month;});
+  vmOpenSnapshot(assetId,month,own?own.value:null);
 }
 
 function vmRenderCharts(){
@@ -6379,6 +6430,9 @@ function vmRenderTotal(){
     });
     return{label:m,value:total,breakdown:breakdown};
   });
+  // ESPP hat keine Monatsstände: im laufenden Monat mitzählen, damit Verlauf = Historie = Gesamt oben
+  var esppNow=s.byType['espp']||0, curM=FP.currentMonthStr();
+  trendPts.forEach(function(p){ if(p.label===curM) p.value=r2(p.value+esppNow); });
 
   // Legend (single column für schmalere Donut-Spalte)
   var legHtml=segs.map(function(sg,i){
@@ -6528,237 +6582,133 @@ function vmDonutHighlight(idx){
   });
 }
 
+// Verlauf Gesamtvermögen: EINE Linie + gestrichelter Einstand (vorher 11 gestapelte Flächen mit
+// abgeschnittener Legende — die Aufteilung nach Anlagen zeigt jetzt die Historie-Tabelle).
+// Canvas-Regel: style.width='100%' VOR der Messung, danach nur die Höhe setzen. Farben (Token)
+// werden bei jedem Zeichnen gelesen; Hell/Dunkel-Wechsel zeichnet über vmRender neu.
 function vmDrawTrendRight(canvas,pts,costBasis){
   if(!pts||pts.length<1)return;
-
-  // Alle Assets über alle Datenpunkte sammeln (Name → {type, farbe, werte[]})
-  var assetMap={};
-  pts.forEach(function(pt){
-    (pt.breakdown||[]).forEach(function(b){
-      if(!assetMap[b.name])assetMap[b.name]={type:b.type,values:[]};
-    });
-  });
-  var assetNames=Object.keys(assetMap);
-  // Farben zuweisen: je Asset eine eindeutige Farbe per Typ, mehrere desselben Typs mit Helligkeit gestaffelt
-  function _hexToRgb(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return{r:parseInt(h.slice(0,2),16)||0,g:parseInt(h.slice(2,4),16)||0,b:parseInt(h.slice(4,6),16)||0};}
-  function _lighten(c,a){return{r:Math.round(c.r+(255-c.r)*a),g:Math.round(c.g+(255-c.g)*a),b:Math.round(c.b+(255-c.b)*a)};}
-  function _rgba(c,a){return'rgba('+c.r+','+c.g+','+c.b+','+a+')';}
-  // Jedes Asset eine eigene Farbe: Basis aus dem Typ (wie Donut), mehrere desselben Typs
-  // progressiv aufgehellt, damit gestapelte Flächen unterscheidbar bleiben.
-  var typeSeen={};
-  assetNames.forEach(function(n){
-    var base=_hexToRgb(VM_TYPE_COLOR[assetMap[n].type]||'#94A3B8');
-    var k=typeSeen[assetMap[n].type]||0; typeSeen[assetMap[n].type]=k+1;
-    var rgb=k>0?_lighten(base,Math.min(0.16*k,0.55)):base;
-    assetMap[n].rgb=rgb;
-    assetMap[n].color=_rgba(rgb,1);
-  });
-
-  // Pro Asset die Werte je Datenpunkt (0 wenn nicht vorhanden)
-  assetNames.forEach(function(n){
-    assetMap[n].values=pts.map(function(pt){
-      var found=(pt.breakdown||[]).find(function(b){return b.name===n;});
-      return found?found.value:0;
-    });
-  });
-
   var dpr=window.devicePixelRatio||1;
-  var W=Math.max(canvas.parentElement?canvas.parentElement.clientWidth||280:280,100);
-  var LEGEND_H=assetNames.length>1?Math.ceil(assetNames.length/2)*18+8:0;
-  var H=250+LEGEND_H;
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  canvas.style.width='100%';
+  var W=Math.max(Math.round(canvas.getBoundingClientRect().width)||(canvas.parentElement?canvas.parentElement.clientWidth:0)||280,100);
+  var H=230;
+  canvas.width=Math.round(W*dpr); canvas.height=H*dpr;
+  canvas.style.height=H+'px';
   canvas.style.cursor='crosshair';
 
-  var pL=52,pR=14,pT=12,pB=30+LEGEND_H;
+  var pL=52,pR=14,pT=12,pB=28;
   var cW=W-pL-pR,cH=H-pT-pB;
-
-  // Gestapelte Flächen → Y-Achse von 0 bis Gesamtsumme (Stapel-Oberkante = Gesamt)
-  var maxTotal=Math.max.apply(null,pts.map(function(p){return p.value;}).concat(costBasis>0?[costBasis]:[]))||1;
-  var minV=0;
-  var maxV=maxTotal*1.08;
-  var vRange=maxV-minV;
-
+  var vals=pts.map(function(p){return p.value;}).concat(costBasis>0?[costBasis]:[]);
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+  var pad=(hi-lo)*0.12||hi*0.05||1;
+  var minV=Math.max(0,lo-pad),maxV=hi+pad,vRange=maxV-minV||1;
   function vy(v){return pT+cH*(1-(v-minV)/vRange);}
   function vx(i){return pL+(pts.length<2?cW/2:i/(pts.length-1)*cW);}
 
-  var cs=getComputedStyle(document.documentElement);
-  var brd=cs.getPropertyValue('--brd').trim()||'#E5E7EB';
-  var tx=cs.getPropertyValue('--tx').trim()||'#111';
-  var tx2=cs.getPropertyValue('--tx2').trim()||'#555';
-  var tx3=cs.getPropertyValue('--tx3').trim()||'#888';
-  var surf=cs.getPropertyValue('--surf').trim()||'#fff';
-  var totalColor='#64748B';
-
-  function draw(hi){
+  function draw(hov){
+    var cs=getComputedStyle(document.documentElement);
+    function tok(n,fb){return cs.getPropertyValue(n).trim()||fb;}
+    var brd=tok('--brd','#E5E7EB'),tx=tok('--tx','#111'),tx2=tok('--tx2','#555'),tx3=tok('--tx3','#888'),surf=tok('--surf','#fff'),blue=tok('--blue','#4F46E5');
     var ctx=canvas.getContext('2d');
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(dpr,0,0,dpr,0,0);
 
-    // Grid + Y-Labels
-    var nGrid=4;
-    for(var g=0;g<=nGrid;g++){
-      var gv=minV+(g/nGrid)*vRange,gy=vy(gv);
+    // Raster + Y-Beschriftung
+    for(var g=0;g<=4;g++){
+      var gv=minV+(g/4)*vRange,gy=vy(gv);
       ctx.strokeStyle=brd;ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(W-pR,gy);ctx.stroke();
       ctx.fillStyle=tx3;ctx.font='500 10px Inter,system-ui,sans-serif';
       ctx.textAlign='right';ctx.textBaseline='middle';
       ctx.fillText(vmFmtK(gv),pL-5,gy);
     }
-
-    // Einstandslinie
+    // Einstand
     if(costBasis>0){
-      var cy2=vy(costBasis);
-      ctx.strokeStyle='#94A3B8';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
-      ctx.beginPath();ctx.moveTo(pL,cy2);ctx.lineTo(W-pR,cy2);ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle='#94A3B8';ctx.font='500 9px Inter,system-ui,sans-serif';
+      var cy=vy(costBasis);
+      ctx.strokeStyle=tx3;ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(pL,cy);ctx.lineTo(W-pR,cy);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=tx3;ctx.font='500 9px Inter,system-ui,sans-serif';
       ctx.textAlign='left';ctx.textBaseline='bottom';
-      ctx.fillText('Einstand',pL+3,cy2-2);
+      ctx.fillText('Einstand '+vmFmtK(costBasis),pL+3,cy-2);
     }
-
-    // Hover-Vertikale
-    if(hi>=0&&hi<pts.length){
-      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--brd').trim()||'rgba(0,0,0,0.10)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(vx(hi),pT);ctx.lineTo(vx(hi),pT+cH);ctx.stroke();
+    // Hover-Senkrechte
+    if(hov>=0){
+      ctx.strokeStyle=brd;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(vx(hov),pT);ctx.lineTo(vx(hov),pT+cH);ctx.stroke();
     }
-
-    // Gestapelte Flächen pro Asset — größtes unten, kleinste oben (Monarch-Stil)
-    var ordered=assetNames.filter(function(n){return assetMap[n].values.some(function(v){return v>0;});});
-    ordered.sort(function(a,b){return Math.max.apply(null,assetMap[b].values)-Math.max.apply(null,assetMap[a].values);});
-    var baseArr=pts.map(function(){return 0;});
-    ordered.forEach(function(n){
-      var vals=assetMap[n].values,rgb=assetMap[n].rgb;
-      // Fläche: Oberkante (base+val) hin, Unterkante (base) zurück
-      ctx.beginPath();
-      pts.forEach(function(p,i){var yT=vy(baseArr[i]+vals[i]);if(i===0)ctx.moveTo(vx(i),yT);else ctx.lineTo(vx(i),yT);});
-      for(var bi=pts.length-1;bi>=0;bi--){ctx.lineTo(vx(bi),vy(baseArr[bi]));}
-      ctx.closePath();
-      var grad=ctx.createLinearGradient(0,pT,0,pT+cH);
-      grad.addColorStop(0,_rgba(rgb,hi>=0?0.55:0.92));
-      grad.addColorStop(1,_rgba(rgb,hi>=0?0.40:0.70));
-      ctx.fillStyle=grad;ctx.fill();
-      // crisp Oberkante der Fläche
-      ctx.beginPath();
-      pts.forEach(function(p,i){var yT=vy(baseArr[i]+vals[i]);if(i===0)ctx.moveTo(vx(i),yT);else ctx.lineTo(vx(i),yT);});
-      ctx.strokeStyle=_rgba(rgb,1);ctx.lineWidth=1.25;ctx.lineJoin='round';ctx.stroke();
-      for(var ai=0;ai<pts.length;ai++){baseArr[ai]+=vals[ai];}
-    });
-
-    // Einstandslinie nochmal über die Flächen (sichtbar halten)
-    if(costBasis>0){
-      var cyT=vy(costBasis);
-      ctx.strokeStyle='#94A3B8';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
-      ctx.beginPath();ctx.moveTo(pL,cyT);ctx.lineTo(W-pR,cyT);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // Gesamtlinie = Oberkante des Stapels
+    // Fläche unter der Linie (zart) + Linie
     ctx.beginPath();
     pts.forEach(function(p,i){if(i===0)ctx.moveTo(vx(0),vy(p.value));else ctx.lineTo(vx(i),vy(p.value));});
-    ctx.strokeStyle=tx;ctx.globalAlpha=hi>=0?0.45:0.85;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();ctx.globalAlpha=1;
-
-    // Punkte auf der Gesamtlinie
+    ctx.lineTo(vx(pts.length-1),pT+cH);ctx.lineTo(vx(0),pT+cH);ctx.closePath();
+    ctx.fillStyle=blue;ctx.globalAlpha=0.10;ctx.fill();ctx.globalAlpha=1;
+    ctx.beginPath();
+    pts.forEach(function(p,i){if(i===0)ctx.moveTo(vx(0),vy(p.value));else ctx.lineTo(vx(i),vy(p.value));});
+    ctx.strokeStyle=blue;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
     pts.forEach(function(p,i){
-      ctx.beginPath();ctx.arc(vx(i),vy(p.value),hi===i?5:2.5,0,Math.PI*2);
-      ctx.fillStyle=tx;ctx.globalAlpha=(hi>=0&&hi!==i)?0.4:1;ctx.fill();ctx.globalAlpha=1;
-      if(hi===i){ctx.strokeStyle=surf;ctx.lineWidth=2;ctx.stroke();}
+      ctx.beginPath();ctx.arc(vx(i),vy(p.value),hov===i?5:3,0,Math.PI*2);
+      ctx.fillStyle=blue;ctx.fill();
+      if(hov===i){ctx.strokeStyle=surf;ctx.lineWidth=2;ctx.stroke();}
     });
-
-    // X-Labels
+    // X-Beschriftung kurz („Mai 26") und nur so viele, wie nebeneinander passen (iPhone)
     ctx.font='500 10px Inter,system-ui,sans-serif';ctx.fillStyle=tx3;ctx.textBaseline='top';
-    var step=Math.max(1,Math.ceil(pts.length/5));
-    var shown={};
+    var maxLbl=Math.max(2,Math.floor(cW/52));
+    var step=Math.max(1,Math.ceil(pts.length/maxLbl)),shown={};
     for(var xi=0;xi<pts.length;xi+=step){
+      if(xi!==pts.length-1&&pts.length-1-xi<step*0.6)continue;  // nicht kurz vor dem letzten
       shown[xi]=1;
-      var lx=vx(xi),ta='center';
-      if(lx<pL+20){lx=pL;ta='left';}
-      else if(lx>W-pR-20){lx=W-pR;ta='right';}
-      ctx.textAlign=ta;ctx.fillText(pts[xi].label,lx,pT+cH+5);
+      ctx.textAlign=xi===0?'left':'center';
+      ctx.fillText(vmShortMonth(pts[xi].label),xi===0?pL:vx(xi),pT+cH+6);
     }
-    if(!shown[pts.length-1]){ctx.textAlign='right';ctx.fillText(pts[pts.length-1].label,W-pR,pT+cH+5);}
-
-    // Legende
-    if(assetNames.length>1){
-      var legY=H-LEGEND_H+4;
-      var cols=2,colW=Math.floor(W/cols);
-      assetNames.forEach(function(n,i){
-        var col=i%cols,row=Math.floor(i/cols);
-        var lx2=col*colW+pL,ly2=legY+row*18;
-        ctx.beginPath();ctx.arc(lx2+4,ly2+5,4,0,Math.PI*2);
-        ctx.fillStyle=assetMap[n].color;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;
-        var label=n.length>22?n.slice(0,21)+'…':n;
-        ctx.font='500 10px Inter,system-ui,sans-serif';ctx.fillStyle=tx2;
-        ctx.textAlign='left';ctx.textBaseline='middle';
-        ctx.fillText(label,lx2+12,ly2+5);
-      });
-    } else if(assetNames.length===1){
-      // Einzelner Asset: Name als Titel
-      var sName=assetNames[0];
-      ctx.font='600 10px Inter,system-ui,sans-serif';ctx.fillStyle=assetMap[sName].color;
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(sName,pL+cW/2,H-8);
-    }
-
-    // Hover-Tooltip
-    if(hi>=0&&hi<pts.length){
-      var hp=pts[hi],hxc=vx(hi),hyc=vy(hp.value);
-      var bd=(hp.breakdown||[]).sort(function(a,b){return b.value-a.value;}).slice(0,6);
-      var lines=[hp.label,'Gesamt: '+eur(hp.value)];
-      bd.forEach(function(b){
-        var nm=b.name.length>18?b.name.slice(0,17)+'…':b.name;
-        lines.push(nm+': '+eur(b.value));
-      });
-      if((hp.breakdown||[]).length>6)lines.push('+'+(hp.breakdown.length-6)+' weitere');
-
-      ctx.font='500 10px Inter,system-ui,sans-serif';
-      var maxTW=0;lines.forEach(function(l){var fw=ctx.measureText(l).width;if(fw>maxTW)maxTW=fw;});
-      var ttPad=9,ttLH=15,ttW=maxTW+ttPad*2+4,ttH=lines.length*ttLH+ttPad*2;
-      var ttX=hxc+12,ttY=Math.max(pT+2,hyc-ttH/2);
-      if(ttX+ttW>W-2)ttX=hxc-ttW-12;
-      if(ttY+ttH>pT+cH-2)ttY=pT+cH-ttH-2;
-      if(ttY<pT)ttY=pT;
-
-      ctx.save();
-      ctx.shadowColor='oklch(0% 0 0 / 0.13)';ctx.shadowBlur=10;ctx.shadowOffsetY=3;
-      ctx.fillStyle=surf;
-      var tr=7;
-      ctx.beginPath();
-      ctx.moveTo(ttX+tr,ttY);ctx.lineTo(ttX+ttW-tr,ttY);ctx.quadraticCurveTo(ttX+ttW,ttY,ttX+ttW,ttY+tr);
-      ctx.lineTo(ttX+ttW,ttY+ttH-tr);ctx.quadraticCurveTo(ttX+ttW,ttY+ttH,ttX+ttW-tr,ttY+ttH);
-      ctx.lineTo(ttX+tr,ttY+ttH);ctx.quadraticCurveTo(ttX,ttY+ttH,ttX,ttY+ttH-tr);
-      ctx.lineTo(ttX,ttY+tr);ctx.quadraticCurveTo(ttX,ttY,ttX+tr,ttY);
-      ctx.closePath();ctx.fill();ctx.restore();
-      ctx.strokeStyle=brd;ctx.lineWidth=1;ctx.stroke();
-
+    if(!shown[pts.length-1]){ctx.textAlign='right';ctx.fillText(vmShortMonth(pts[pts.length-1].label),W-pR,pT+cH+6);}
+    // Tooltip: Monat, Gesamt, Änderung zum vorigen Punkt
+    if(hov>=0){
+      var p=pts[hov],lines=[p.label,eur(p.value)];
+      if(hov>0){
+        var d=p.value-pts[hov-1].value,pp=pts[hov-1].value?d/pts[hov-1].value*100:0;
+        lines.push((d>=0?'+':'')+eur(d)+' ('+(d>=0?'+':'')+pp.toFixed(1).replace('.',',')+' %)');
+      }
+      ctx.font='600 11px Inter,system-ui,sans-serif';
+      var tw=0;lines.forEach(function(l){tw=Math.max(tw,ctx.measureText(l).width);});
+      var bw=tw+18,bh=lines.length*16+12,bx=vx(hov)+10,by=Math.max(pT,vy(p.value)-bh-6);
+      if(bx+bw>W-2)bx=vx(hov)-bw-10;
+      ctx.fillStyle=surf;ctx.strokeStyle=brd;ctx.lineWidth=1;
+      ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.fill();ctx.stroke();
       ctx.textAlign='left';ctx.textBaseline='top';
       lines.forEach(function(l,i){
-        var ly=ttY+ttPad+i*ttLH;
-        if(i===0){ctx.font='500 10px Inter,system-ui,sans-serif';ctx.fillStyle=tx3;}
-        else if(i===1){ctx.font='700 11px Inter,system-ui,sans-serif';ctx.fillStyle=tx;}
-        else{
-          // Farbiger Punkt vor Asset-Zeile
-          var bItem=(hp.breakdown||[]).find(function(b){var nm=b.name.length>18?b.name.slice(0,17)+'…':b.name;return nm+': '+eur(b.value)===l;});
-          ctx.font='500 10px Inter,system-ui,sans-serif';
-          ctx.fillStyle=bItem&&assetMap[bItem.name]?assetMap[bItem.name].color:tx2;
-        }
-        ctx.fillText(l,ttX+ttPad,ly);
+        ctx.font=(i===1?'700 12px ':'500 10px ')+'Inter,system-ui,sans-serif';
+        ctx.fillStyle=i===0?tx3:(i===1?tx:tx2);
+        ctx.fillText(l,bx+9,by+6+i*16);
       });
     }
   }
 
-  canvas._trendHov=-1;
+  var hovIdx=-1;
   draw(-1);
-
-  canvas.onmousemove=function(e){
+  function pick(e){
     var r=canvas.getBoundingClientRect(),mx=(e.clientX-r.left)*(W/r.width);
     var ni=-1,nd=9999;
     pts.forEach(function(p,i){var d=Math.abs(vx(i)-mx);if(d<nd){nd=d;ni=i;}});
-    var idx=nd<40?ni:-1;
-    if(idx!==canvas._trendHov){canvas._trendHov=idx;draw(idx);}
-  };
-  canvas.onmouseleave=function(){canvas._trendHov=-1;draw(-1);};
+    return nd<40?ni:-1;
+  }
+  canvas.onmousemove=function(e){var i=pick(e);if(i!==hovIdx){hovIdx=i;draw(i);}};
+  canvas.onmouseleave=function(){hovIdx=-1;draw(-1);};
+  canvas.onclick=function(e){var i=pick(e);hovIdx=(i===hovIdx)?-1:i;draw(hovIdx);};  // iPhone: antippen
+}
+
+function vmShortMonth(mmyyyy){
+  var p=String(mmyyyy||'').split('.'); if(p.length!==2) return mmyyyy;
+  return ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][parseInt(p[0],10)-1]+' '+p[1].slice(2);
+}
+
+// Hell/Dunkel-Wechsel: Canvas kennt keine CSS-Variablen → Vermögen-Tab neu zeichnen (einmal registriert)
+if(window.matchMedia){
+  try{
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){
+      var p=document.getElementById('p-vermoegen');
+      if(p&&p.classList.contains('active'))vmRender();
+    });
+  }catch(e){}
 }
 
 function vmFmtK(v){
@@ -6903,18 +6853,19 @@ function vmRenderFsa(){
     '</div>';
 }
 
-function vmOpenSnapshot(assetId){
+// month/value optional (aus der Historie): Wert für einen bestimmten Monat eintragen bzw. korrigieren
+function vmOpenSnapshot(assetId,month,value){
   vmSnapAsset=assetId;
   var asset=FP.Store.Assets.getById(assetId);
-  var snap=FP.Store.Assets.getLatestSnapshot(assetId);
-  var today=new Date();
-  var mm=String(today.getMonth()+1).padStart(2,'0')+'.'+today.getFullYear();
+  var mm=FP.currentMonthStr();
+  var target=month||mm;
   document.getElementById('ms-ttl').textContent=asset?asset.name:'Wert erfassen';
-  document.getElementById('ms-date').value=mm;
-  document.getElementById('ms-value').value='';
+  document.getElementById('ms-date').value=target;
+  document.getElementById('ms-value').value=value!=null?value:'';
   document.getElementById('ms-fetch-result').textContent='';
 
-  var hasTicker=asset&&asset.ticker;
+  // Kursabruf liefert den HEUTIGEN Kurs — für einen vergangenen Monat wäre er falsch → dort Betragsfeld
+  var hasTicker=asset&&asset.ticker&&target===mm;
   document.getElementById('ms-fetch-row').style.display=hasTicker?'':'none';
   document.getElementById('ms-value-row').style.display=hasTicker?'none':'';
   var info=document.getElementById('ms-isin-info');

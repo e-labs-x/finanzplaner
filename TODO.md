@@ -4,6 +4,17 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
 
 ---
 
+## 👀 Sichtkontrolle offen — Vermögen-Tab (18.10.2026, `?v=20261018d`)
+- [x] Neue Karte „Historie · Stand je Monat": Anlagen × Monate wie die frühere Excel, ‹ Jahr ›, Summe, Δ Vormonat,
+      Δ Vorjahr (nur Anlagen mit Wert in beiden Monaten), grau = fortgeschrieben, Zelle antippen = Wert für den Monat
+      (vergangener Monat → Betragsfeld statt Kursabruf). Daten: `Calculator.getAssetHistory(year)`; Summe aktueller
+      Monat = Gesamtvermögen (geprüft, `_tests/lib/vermoegen.test.js`).
+- [x] Verlaufs-Chart: eine Gesamtlinie + Einstand statt 11 gestapelter Flächen; ESPP im laufenden Monat mitgezählt;
+      Canvas-Regel eingehalten; matchMedia-Neuzeichnen bei Hell/Dunkel.
+- [x] **Fehler behoben:** Monatsstände wurden als Text sortiert → ab 01.2027 hätte der Dezember-Wert als „aktuell"
+      gegolten (Gesamtvermögen, Rente). Jetzt `sortSnapshots` (chronologisch) beim Laden, addSnapshot, Merge.
+- [ ] **Nutzer schaut live** (Desktop + iPhone) — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
+
 ## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026
 
 Ergebnis: `Finanzen App/audit_ergebnis_2026-10-18.md` (OneDrive) — 32 Punkte in 5 Paketen, Summen-Abgleich

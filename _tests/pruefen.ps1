@@ -75,13 +75,16 @@ try {
   $szen = 'merge', 'remote', 'connect', 'pullrace', 'pushrace', 'retry', 'nonematch', 'espp', 'autosync'
   foreach ($s in $szen) { $runs += Start-Page ('sync_' + $s) ('sync.html?sc=' + $s) 90000 }
 
-  # --- 4. Node: Vorlagen-Regel gegen echte Daten (laeuft waehrenddessen) ---
-  $nodeOut = & node (Join-Path $lib 'vorlagen.test.js') (Join-Path $app 'store.js') $dataFile 2>&1
-  $nodeExit = $LASTEXITCODE
-  $sumLine = ($nodeOut | Where-Object { "$_" -like 'SUMMARY*' }) -join ''
-  $fails = ($nodeOut | Where-Object { "$_" -like 'FAIL*' }) -join ' | '
-  if (-not $sumLine) { $fails = 'Absturz: ' + ((@($nodeOut | Where-Object { "$_" -match 'Error' }) | Select-Object -First 1) -join '') }
-  Add-Result 'Vorlagen-Regel (Node, echte Daten)' ($nodeExit -eq 0) (($sumLine -replace 'SUMMARY ', '') + $(if ($fails) { ' - ' + $fails }))
+  # --- 4. Node: Store-Regeln gegen echte Daten (laeuft waehrenddessen), jede lib\*.test.js ---
+  foreach ($tf in Get-ChildItem (Join-Path $lib '*.test.js') | Sort-Object Name) {
+    $nodeOut = & node $tf.FullName (Join-Path $app 'store.js') $dataFile 2>&1
+    $nodeExit = $LASTEXITCODE
+    $sumLine = ($nodeOut | Where-Object { "$_" -like 'SUMMARY*' }) -join ''
+    $fails = ($nodeOut | Where-Object { "$_" -like 'FAIL*' }) -join ' | '
+    if (-not $sumLine) { $fails = 'Absturz: ' + ((@($nodeOut | Where-Object { "$_" -match 'Error' }) | Select-Object -First 1) -join '') }
+    $label = ($tf.Name -replace '\.test\.js$', '')
+    Add-Result ('Node ' + $label + ' (echte Daten)') ($nodeExit -eq 0) (($sumLine -replace 'SUMMARY ', '') + $(if ($fails) { ' - ' + $fails }))
+  }
 
   # --- 5. Browser-Ergebnisse einsammeln -----------------------------------
   # Chrome-Unterprozesse erben den Ausgabe-Handle -> geteilt lesen und warten, bis </html> da ist
