@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const FP_VERSION = '12.0.0';
-const STORE_VERSION    = 3;
+const STORE_VERSION    = 4;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
 const MAX_AUTO_BACKUPS = 5;
@@ -651,6 +651,32 @@ const MIGRATIONS = {
         data.transactions = data.transactions.filter(tx => !(tx.source === 'recurring' && deadIds.has(tx.recurringId)));
       }
     }
+    return data;
+  },
+  // v3 → v4: Leere eingebaute Unterkategorien, die der Nutzer unter derselben Oberkategorie mit gleichem
+  // Namen selbst angelegt hat (z. B. Versicherungen → Haftpflicht, Hausrat), stehen doppelt in der Liste.
+  // Entfernen wie Categories.delete: Papierkorb + deletedSystemCats (damit _patchSystemCategories sie nicht
+  // zurückholt). Nur ohne Buchungen, ohne Vorlagen, ohne Unterkategorien und ohne Budget. Idempotent.
+  3: (data) => {
+    const cats = Array.isArray(data.categories) ? data.categories : [];
+    const used = new Set();
+    (data.transactions || []).forEach(t => { used.add(t.categoryId); if (t.subcategoryId) used.add(t.subcategoryId); });
+    (data.recurring || []).forEach(r => used.add(r.categoryId));
+    Object.keys(data.categoryBudgets || {}).forEach(k => used.add(k));
+    const norm = s => String(s || '').trim().toLowerCase();
+    const dupes = cats.filter(c => c.source === 'system' && !used.has(c.id) &&
+      !cats.some(x => x.parentId === c.id) &&
+      cats.some(x => x !== c && x.source !== 'system' && !x.hidden && norm(x.name) === norm(c.name) && (x.parentId || null) === (c.parentId || null)));
+    if (!dupes.length) return data;
+    if (!data.settings) data.settings = {};
+    if (!Array.isArray(data.settings.deletedSystemCats)) data.settings.deletedSystemCats = [];
+    if (!Array.isArray(data.trash)) data.trash = [];
+    const at = new Date().toISOString();
+    dupes.forEach(c => {
+      if (!data.settings.deletedSystemCats.includes(c.id)) data.settings.deletedSystemCats.push(c.id);
+      data.trash.push({ id: generateId('tr'), type: 'category', item: JSON.parse(JSON.stringify(c)), deletedAt: at });
+    });
+    data.categories = cats.filter(c => !dupes.includes(c));
     return data;
   },
 };

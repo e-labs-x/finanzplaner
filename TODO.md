@@ -10,7 +10,12 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       (SAS-Banner → Sync, Ladefehler-Dialog → Auto-Sicherungen). Erweitert-Schalter entfällt.
 - [x] Rundgang prüft jeden Bereich (genau die passende Karte sichtbar).
 - [x] Feedback (`?v=20261018i`): PC-Menü blieb nicht im Bild (936 px Menü vs. 748 px Sichtfeld) → kompakter, max. Bildschirmhöhe mit eigenem Scroll, Auswahl beginnt oben.
-- [ ] **Nutzer schaut live** — danach Schritt 2: Kategorien kompakt (+ Doppel Haftpflicht/Hausrat klären).
+- [x] Nutzer: Schritt 1 passt (18.10.2026).
+- [x] **Schritt 2** (`?v=20261018j`): Kategorien kompakt — Unterkategorien zugeklappt (▸/▾), Buchungszahl je Zeile,
+      Aktionen hinter „⋯" (Dialog: Bearbeiten · Aus-/Einblenden · Löschen) statt 3 Dauer-Knöpfen, Namen über esc().
+      Migration v3→v4 (Nutzer-OK): leere eingebaute Unterkategorien neben gleichnamiger eigener → Papierkorb +
+      deletedSystemCats; betraf fk_haftpflicht, fk_hausrat (0 Buchungen, 0 Vorlagen). `_tests/lib/kategorien.test.js`.
+- [ ] **Nutzer schaut live** (Schritt 2).
 
 ## (Plan) Einstellungen neu ordnen (18.10.2026, freigegeben: Gliederung „passt")
 Befund: Einstellungen = eine Seite, ~5.100 px am PC, 12 Karten; Kategorien ~⅓ davon mit 3 Dauer-Knöpfen je Zeile

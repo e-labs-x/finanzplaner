@@ -1524,6 +1524,7 @@ function confirmDialog(msg, label, onOk){
   var cancel=document.getElementById('mconf-cancel');
   if(cancel){cancel.style.display='';cancel.textContent='Abbrechen';}
   var okBtn=document.getElementById('mconf-ok');
+  okBtn.style.display='';   // stCatActions blendet ihn aus
   okBtn.style.background='var(--red)';okBtn.style.borderColor='var(--red)';
   document.getElementById('mconf-msg').textContent=msg;
   okBtn.textContent=label||'OK';
@@ -2658,49 +2659,62 @@ function stSaveBudget(){
   toast('Budget gespeichert');
 }
 
+// Kategorien kompakt (18.10.2026): Unterkategorien zugeklappt, Aktionen hinter „⋯" statt drei Dauer-Knöpfen
+// je Zeile. Anzahl Buchungen je Kategorie sichtbar (leere fallen auf). Namen über esc() (vorher ungeschützt).
+var stCatOpen={};
+function stCatCounts(){
+  var n={};
+  FP.Store.Transactions.getAll().forEach(function(t){ n[t.categoryId]=(n[t.categoryId]||0)+1; });
+  return n;
+}
+function stCatToggleOpen(id){ stCatOpen[id]=!stCatOpen[id]; stRenderCats(); }
 function stRenderCats(){
   var el=document.getElementById('st-cats');
   if(!el)return;
   var allCats=FP.Store.Categories.getAll();
   var parents=allCats.filter(function(c){return!c.parentId;});
+  var cnt=stCatCounts();
+  function nTx(id){ var k=cnt[id]||0; return k?k+' Buchung'+(k>1?'en':''):'keine Buchungen'; }
+  function dots(id){ return '<button class="st-cat-more" onclick="event.stopPropagation();stCatActions(\''+id+'\')" aria-label="Aktionen">⋯</button>'; }
   var html='';
   parents.forEach(function(c){
-    var hidden=c.hidden;
     var icon=ICONS[c.id]||ICON_FALLBACK;
     var subs=allCats.filter(function(s){return s.parentId===c.id;});
-    // Hauptkategorie
-    html+='<div class="st-row">'+
-      '<div style="width:10px;height:10px;border-radius:50%;background:'+(c.color||'#6B7280')+';flex-shrink:0"></div>'+
-      '<div class="st-row-info">'+
-        '<div class="st-row-name" style="opacity:'+(hidden?0.4:1)+'">'+icon+'<span>'+c.name+'</span></div>'+
-        '<div class="st-row-sub">'+(c.group==='fixkosten'?'Notwendig':'Freizeit & Lifestyle')+
-          (subs.length?' · '+subs.length+' Unterkategor'+(subs.length===1?'ie':'ien'):'')+(hidden?' · ausgeblendet':'')+
-          (c.showInInput===false?'<span class="fk-only-badge">Nur Fixkosten</span>':'')+'</div>'+
-      '</div>'+
-      '<div class="st-row-actions">'+
-        '<button class="st-btn" onclick="stEditCat(\''+c.id+'\')">Bearbeiten</button>'+
-        '<button class="st-btn" onclick="stToggleCat(\''+c.id+'\','+hidden+')">'+(hidden?'Einblenden':'Ausblenden')+'</button>'+
-        '<button class="st-btn danger" onclick="stDeleteCat(\''+c.id+'\')">Löschen</button>'+
-      '</div>'+
-    '</div>';
-    // Unterkategorien eingerückt darunter
-    subs.forEach(function(s){
-      var shidden=s.hidden;
-      html+='<div class="st-row" style="padding-left:24px;background:var(--bg)">'+
-        '<div style="width:7px;height:7px;border-radius:50%;background:'+(s.color||'#6B7280')+';flex-shrink:0;margin-left:6px"></div>'+
-        '<div class="st-row-info">'+
-          '<div class="st-row-name" style="font-size:13px;opacity:'+(shidden?0.4:1)+'">'+s.name+'</div>'+
-          '<div class="st-row-sub">Unterkategorie von '+c.name+(shidden?' · ausgeblendet':'')+'</div>'+
-        '</div>'+
-        '<div class="st-row-actions">'+
-          '<button class="st-btn" onclick="stEditCat(\''+s.id+'\')">Bearbeiten</button>'+
-          '<button class="st-btn" onclick="stToggleCat(\''+s.id+'\','+shidden+')">'+(shidden?'Einblenden':'Ausblenden')+'</button>'+
-          '<button class="st-btn danger" onclick="stDeleteCat(\''+s.id+'\')">Löschen</button>'+
-        '</div>'+
-      '</div>';
+    var open=!!stCatOpen[c.id];
+    var subTx=subs.reduce(function(a,s){return a+(cnt[s.id]||0);},0);
+    var click=subs.length?'stCatToggleOpen(\''+c.id+'\')':'stCatActions(\''+c.id+'\')';
+    html+='<div class="st-cat'+(c.hidden?' off':'')+'" onclick="'+click+'">'+
+      '<span class="st-cat-chev">'+(subs.length?(open?'▾':'▸'):'')+'</span>'+
+      '<span class="st-cat-dot" style="background:'+(c.color||'#6B7280')+'"></span>'+
+      '<span class="st-cat-txt"><span class="st-cat-name">'+icon+'<span>'+esc(c.name)+'</span>'+
+        (c.showInInput===false?'<span class="fk-only-badge">Nur Fixkosten</span>':'')+'</span>'+
+      '<span class="st-cat-sub">'+(c.group==='fixkosten'?'Notwendig':'Freizeit & Lifestyle')+' · '+nTx(c.id)+
+        (subs.length?' · '+subs.length+' Unterkategor'+(subs.length===1?'ie':'ien')+(subTx?' ('+subTx+' Buchung'+(subTx>1?'en':'')+')':''):'')+
+        (c.hidden?' · ausgeblendet':'')+'</span></span>'+dots(c.id)+'</div>';
+    if(open) subs.forEach(function(s){
+      html+='<div class="st-cat st-cat-child'+(s.hidden?' off':'')+'" onclick="stCatActions(\''+s.id+'\')">'+
+        '<span class="st-cat-chev"></span><span class="st-cat-dot sm" style="background:'+(s.color||'#6B7280')+'"></span>'+
+        '<span class="st-cat-txt"><span class="st-cat-name"><span>'+esc(s.name)+'</span></span>'+
+        '<span class="st-cat-sub">'+nTx(s.id)+(s.hidden?' · ausgeblendet':'')+'</span></span>'+dots(s.id)+'</div>';
     });
   });
   el.innerHTML=html||'<div style="padding:14px 0;color:var(--tx3);font-size:13px">Keine Kategorien.</div>';
+}
+// Aktionen einer Kategorie im Bestätigungsdialog (Bearbeiten · Aus-/Einblenden · Löschen)
+function stCatActions(id){
+  var c=FP.Store.Categories.getAll().find(function(x){return x.id===id;}); if(!c) return;
+  var k=stCatCounts()[id]||0;
+  var recs=FP.Store.Recurring.getAll().filter(function(r){return r.categoryId===id;}).length;
+  confirmDialog((k?k+' Buchung'+(k>1?'en':''):'Keine Buchungen')+(recs?' · '+recs+' Fixkosten-Vorlage'+(recs>1?'n':''):'')+(c.hidden?' · ausgeblendet':''),'Schließen',function(){});
+  document.getElementById('mconf-ttl').textContent=c.name;
+  document.getElementById('mconf-ok').style.display='none';
+  document.getElementById('mconf-cancel').textContent='Schließen';
+  var ex=document.getElementById('mconf-extra');
+  ex.style.display='';
+  ex.innerHTML='<div class="st-cat-acts">'+
+    '<button class="st-btn" onclick="closeM(\'m-confirm\');stEditCat(\''+id+'\')">Bearbeiten</button>'+
+    '<button class="st-btn" onclick="closeM(\'m-confirm\');stToggleCat(\''+id+'\','+!!c.hidden+')">'+(c.hidden?'Einblenden':'Ausblenden')+'</button>'+
+    '<button class="st-btn danger" onclick="closeM(\'m-confirm\');stDeleteCat(\''+id+'\')">Löschen</button></div>';
 }
 
 function stToggleCat(id,hidden){
