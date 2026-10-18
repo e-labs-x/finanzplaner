@@ -21,6 +21,8 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       Einstand-Linie im Verlauf entfernt (gleicher Denkfehler: Einstand von 7 Anlagen gegen Wert aller).
 - [x] Feedback 2 (`?v=20261018f`): Anlagennamen nie abgeschnitten (PC volle Länge, iPhone Umbruch), Änderungszeilen
       links je Zeile beschriftet („Änderung Vormonat €/%"), Trennlinie an der festen Spalte.
+- [x] Feedback 3 (`?v=20261018g`): Namen in „Anlagen im Überblick" nicht mehr abgeschnitten (PC 280 px, iPhone
+      Umbruch); Reihenfolge jetzt Auswahl · Ring/Verlauf · Anlagen im Überblick · Historie · Anlagen-Karten.
 - [ ] **Nutzer schaut live** — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
 
 ## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026
