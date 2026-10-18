@@ -9,6 +9,7 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       PC (≥900 px): links Menü, rechts Bereich. Karten unverändert (data-st), `stOpen(k)`, `stGo(k)` für Sprünge
       (SAS-Banner → Sync, Ladefehler-Dialog → Auto-Sicherungen). Erweitert-Schalter entfällt.
 - [x] Rundgang prüft jeden Bereich (genau die passende Karte sichtbar).
+- [x] Feedback (`?v=20261018i`): PC-Menü blieb nicht im Bild (936 px Menü vs. 748 px Sichtfeld) → kompakter, max. Bildschirmhöhe mit eigenem Scroll, Auswahl beginnt oben.
 - [ ] **Nutzer schaut live** — danach Schritt 2: Kategorien kompakt (+ Doppel Haftpflicht/Hausrat klären).
 
 ## (Plan) Einstellungen neu ordnen (18.10.2026, freigegeben: Gliederung „passt")
