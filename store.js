@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const FP_VERSION = '12.0.0';
-const STORE_VERSION    = 2;
+const STORE_VERSION    = 3;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
 const MAX_AUTO_BACKUPS = 5;
@@ -359,6 +359,44 @@ function currentMonthStr() {
 }
 
 /** Alle Monate von MM.YYYY bis MM.YYYY als Array */
+// ── Vorlagen-Regel (Paket 3, 18.10.2026) ─────────────────────────────────────
+// EINE Antwort auf „welche Vorlage gilt in Monat M?" — Generierung, Bereinigung, Fixkosten-Liste
+// und Migration fragen nur diese Funktionen. Serie = Vorlagenname + Objekt (nie der Buchungsname).
+// Vorrang: späterer Start > längere Laufzeit (offen schlägt befristet) > höhere id. Damit gibt es
+// pro Serie und Monat genau einen Gewinner, auch bei gleichem Startmonat.
+const RECURRING_TYPES = ['fixed', 'variable', 'savings'];
+
+function recMonthNum(mmyyyy) {
+  const m = /^(\d{1,2})\.(\d{4})$/.exec(String(mmyyyy || ''));
+  if (!m || +m[1] < 1 || +m[1] > 12) return 0;   // 0 = ungültig (z. B. Monat 13)
+  return parseInt(m[2]) * 12 + parseInt(m[1]);
+}
+function recurringSeriesKey(r) { return (r.name || '') + '\u0001' + (r.objectId || ''); }
+function recurringCovers(r, n) {
+  const from = recMonthNum(r.validFrom);
+  if (!from || n < from) return false;
+  return !r.validUntil || n <= recMonthNum(r.validUntil);
+}
+function _recPriority(a, b) {   // < 0 → a hat Vorrang
+  const fa = recMonthNum(a.validFrom), fb = recMonthNum(b.validFrom);
+  if (fa !== fb) return fb - fa;
+  const ua = a.validUntil ? recMonthNum(a.validUntil) : Infinity;
+  const ub = b.validUntil ? recMonthNum(b.validUntil) : Infinity;
+  if (ua !== ub) return ub > ua ? 1 : -1;
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+}
+// Liefert owner(rec, monatsNum) → die geltende Vorlage der Serie von rec in diesem Monat (oder null)
+function recurringOwnerIndex(list) {
+  const bySeries = {};
+  (list || []).forEach(r => { const k = recurringSeriesKey(r); (bySeries[k] = bySeries[k] || []).push(r); });
+  Object.values(bySeries).forEach(arr => arr.sort(_recPriority));
+  return function owner(rec, n) {
+    const arr = bySeries[recurringSeriesKey(rec)] || [];
+    for (const r of arr) if (recurringCovers(r, n)) return r;
+    return null;
+  };
+}
+
 function monthRange(from, to) {
   const start = parseDate(from);
   const end   = to ? parseDate(to) : new Date();
@@ -568,6 +606,42 @@ const MIGRATIONS = {
       if (a.familienversicherungGrenze === 505)   a.familienversicherungGrenze = 565;   // § 10 SGB V, 2026
       if (a.gkvMindestBmg === 1131.67)            a.gkvMindestBmg = 1318.33;       // § 240 SGB V, 2026
       if (a.kvZusatzbeitrag === 2.99)             a.kvZusatzbeitrag = 2.9;         // Ø-Zusatzbeitrag 2026
+    }
+    return data;
+  },
+  // v2 → v3 (Paket 3): Vorlagen auf die gemeinsame Regel bringen.
+  // (a) Ungültiger Typ (z. B. "" nach dem alten ✏️-Formular) → Typ der neuesten gültigen Version
+  //     derselben Serie, sonst 'fixed'. (b) Vorlagen, die nach der Regel in KEINEM Monat ihres
+  //     Zeitraums gelten, wirken nicht mehr → in den Papierkorb (30 Tage wiederherstellbar).
+  //     Idempotent: ein zweiter Lauf findet nichts mehr.
+  2: (data) => {
+    const recs = Array.isArray(data.recurring) ? data.recurring : [];
+    recs.forEach(r => {
+      if (RECURRING_TYPES.includes(r.type)) return;
+      const sib = recs.filter(o => o !== r && recurringSeriesKey(o) === recurringSeriesKey(r) && RECURRING_TYPES.includes(o.type))
+                      .sort((a, b) => recMonthNum(b.validFrom) - recMonthNum(a.validFrom))[0];
+      r.type = sib ? sib.type : 'fixed';
+    });
+    const owner = recurringOwnerIndex(recs);
+    const nowNum = recMonthNum(currentMonthStr());
+    const dead = recs.filter(r => {
+      const from = recMonthNum(r.validFrom);
+      if (!from) return false;
+      const to = r.validUntil ? recMonthNum(r.validUntil) : Math.max(from, nowNum);
+      for (let n = from; n <= to; n++) if (owner(r, n) === r) return false;
+      return true;
+    });
+    if (dead.length) {
+      if (!Array.isArray(data.trash)) data.trash = [];
+      const at = new Date().toISOString();
+      dead.forEach(r => data.trash.push({ id: generateId('tr'), type: 'recurring', item: JSON.parse(JSON.stringify(r)), deletedAt: at }));
+      data.recurring = recs.filter(r => !dead.includes(r));
+      // Ihre Buchungen sind nach der Regel Doppel (die geltende Vorlage bucht denselben Monat) —
+      // entfernen, sonst würde der Abgleich sie als Waisen zu manuellen Buchungen machen
+      const deadIds = new Set(dead.map(r => r.id));
+      if (Array.isArray(data.transactions)) {
+        data.transactions = data.transactions.filter(tx => !(tx.source === 'recurring' && deadIds.has(tx.recurringId)));
+      }
     }
     return data;
   },
@@ -831,139 +905,97 @@ const Store = (() => {
     return parseInt(yyyy) * 12 + parseInt(mm);
   }
 
-  // Entfernt bereits gebuchte Duplikat-Transaktionen: pro Name+Monat bleibt nur die
-  // Transaktion der neuesten Vorlage (höchste validFrom). Betrifft nur source='recurring'.
-  function cleanupRecurringDuplicates(opts = {}) {
-    if (!_state) return 0;
+  // ── Vorlagen-Abgleich (Paket 3) ──
+  // Bringt die gebuchten Fixkosten in Übereinstimmung mit der Vorlagen-Regel (recurringOwnerIndex):
+  // pro Vorlage und Monat höchstens eine Buchung, nur wenn die Vorlage dort gilt und den Monat nicht
+  // überspringt (skipMonths). Ersetzt die frühere Trennung Bereinigung/Generierung, die mit
+  // verschiedenen Schlüsseln arbeiteten und sich bei jedem Start gegenseitig aufhoben.
+  // Speichert NICHT — Aufrufer schreiben Vorlage und Buchungen in EINEM _save().
+  // Rücklagen (type:'savings') werden nicht automatisch gebucht.
+  function _reconcileRecurring() {
+    const recs = _state.recurring || [];
     const recMap = {};
-    (_state.recurring || []).forEach(r => { recMap[r.id] = r; });
+    recs.forEach(r => { recMap[r.id] = r; });
+    const owner = recurringOwnerIndex(recs);
+    const skips = r => r.skipMonths || [];
 
-    const groups = {};
-    (_state.transactions || []).forEach(tx => {
-      if (tx.source !== 'recurring') return;
-      // objectId einbeziehen: TRV-Hausgeld und MIM-Hausgeld sind verschiedene Serien
-      const key = (tx.rawName || '') + '_' + (tx.objectId || '') + '_' + tx.date;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(tx);
-    });
-
-    const toDelete = new Set();
-    Object.values(groups).forEach(grp => {
-      if (grp.length <= 1) return;
-      grp.sort((a, b) => {
-        const ra = recMap[a.recurringId], rb = recMap[b.recurringId];
-        return _mmyyyyToNum(ra && ra.validFrom) - _mmyyyyToNum(rb && rb.validFrom);
-      });
-      grp.slice(0, -1).forEach(tx => toDelete.add(tx.id));
-    });
-
-    // Auch Transaktionen außerhalb des aktiven Zeitraums des Templates entfernen
-    (_state.transactions || []).forEach(tx => {
-      if (tx.source !== 'recurring' || toDelete.has(tx.id)) return;
-      const rec = recMap[tx.recurringId];
-      if (!rec) return;
-      const txNum = _mmyyyyToNum(tx.date);
-      if (rec.validUntil && txNum > _mmyyyyToNum(rec.validUntil)) toDelete.add(tx.id);
-      if (rec.validFrom  && txNum < _mmyyyyToNum(rec.validFrom))  toDelete.add(tx.id);
-    });
-
-    // H9: Waisen (recurringId zeigt auf gelöschtes Template) zu 'manual' machen — die
-    // Buchung ist passiert und bleibt als historischer Eintrag, aber ohne falsche
-    // recurring-Bindung (sonst taucht sie in Summen auf, ist aber nie steuerbar).
-    let orphansConverted = 0;
-    (_state.transactions || []).forEach(tx => {
-      if (tx.source === 'recurring' && tx.recurringId && !recMap[tx.recurringId] && !toDelete.has(tx.id)) {
+    // H9/3d: Waisen (Vorlage gelöscht) werden manuell, behalten aber ihre Herkunft —
+    // Trash.restore bindet sie darüber wieder an, statt die Historie doppelt zu buchen.
+    let orphans = 0;
+    _state.transactions.forEach(tx => {
+      if (tx.source === 'recurring' && tx.recurringId && !recMap[tx.recurringId]) {
         tx.source = 'manual';
+        tx.origRecurringId = tx.recurringId;
         tx.recurringId = null;
-        orphansConverted++;
+        orphans++;
       }
     });
 
-    if (toDelete.size > 0 || orphansConverted > 0) {
-      if (toDelete.size > 0) _state.transactions = _state.transactions.filter(tx => !toDelete.has(tx.id));
-      // silent (Start): lastModified NICHT bumpen und keinen Push triggern — sonst gilt
-      // jedes Gerät beim Start als "neuer" und löst falsche Sync-Konflikte aus.
-      const _prevSuppress = _suppressTouch;
-      if (opts.silent === true) _suppressTouch = true;
-      try {
-        _save();
-        appLog('recurring_cleanup', toDelete.size + ' bereinigt, ' + orphansConverted + ' Waisen→manuell');
-      } finally {
-        _suppressTouch = _prevSuppress;
+    const seen = new Set();
+    let removed = 0;
+    const keep = _state.transactions.filter(tx => {
+      if (tx.source !== 'recurring') return true;
+      const rec = recMap[tx.recurringId];
+      if (!rec) return true;
+      const k = rec.id + '_' + tx.date;
+      if (owner(rec, recMonthNum(tx.date)) !== rec || skips(rec).includes(tx.date) || seen.has(k)) {
+        removed++;
+        return false;
       }
-    }
-    return toDelete.size;
-  }
-
-  // ── Wiederkehrende Ausgaben buchen (v2.0) ──
-  // Ersetzt generateFixcostTransactions.
-  // Bucht alle aktiven recurring-Vorlagen für fehlende Monate.
-  // Rücklagen (type:'savings') werden NICHT auto-gebucht — nur auf Anforderung.
-  function generateRecurringTransactions(options = {}) {
-    if (!_state) return;
-    const { retroactive = false, silent = false } = options;
-    if (!_state.recurring) _state.recurring = [];
-
-    const existing = new Set(
-      _state.transactions
-        .filter(tx => tx.source === 'recurring')
-        .map(tx => `${tx.recurringId}_${tx.date}`)
-    );
-
-    const activeRec = _state.recurring.filter(rec => rec.type !== 'savings');
+      seen.add(k);
+      return true;
+    });
+    if (removed) _state.transactions = keep;
 
     const toAdd = [];
-    activeRec.forEach(rec => {
-        const months = monthRange(
-          retroactive ? rec.validFrom : currentMonthStr(),
-          rec.validUntil
-        );
-        const recFromNum = _mmyyyyToNum(rec.validFrom || '01.0000');
-        months.forEach(month => {
-          const monthNum = _mmyyyyToNum(month);
-          // Nur buchen wenn keine neuere Vorlage mit gleichem Namen diesen Monat abdeckt
-          const hasNewerVersion = activeRec.some(other => {
-            if (other.id === rec.id || other.name !== rec.name) return false;
-            // Nur gleiche Objekt-Serie vergleichen — TRV ≠ MIM
-            if ((other.objectId || null) !== (rec.objectId || null)) return false;
-            const otherFromNum = _mmyyyyToNum(other.validFrom || '01.0000');
-            if (otherFromNum > monthNum) return false;
-            if (other.validUntil && _mmyyyyToNum(other.validUntil) < monthNum) return false;
-            return otherFromNum > recFromNum;
-          });
-          if (hasNewerVersion) return;
-          const key = `${rec.id}_${month}`;
-          if (!existing.has(key)) {
-            toAdd.push({
-              id:          generateId('tx'),
-              date:        month,
-              categoryId:  rec.categoryId,
-              objectId:    rec.objectId  || null,
-              amount:      rec.amount,
-              rawName:     rec.name,
-              note:        '',
-              source:      'recurring',
-              recurringId: rec.id,
-              createdAt:   new Date().toISOString(),
-            });
-          }
+    recs.forEach(rec => {
+      if (rec.type === 'savings') return;
+      monthRange(rec.validFrom, rec.validUntil).forEach(month => {
+        const k = rec.id + '_' + month;
+        if (seen.has(k) || skips(rec).includes(month)) return;
+        if (owner(rec, recMonthNum(month)) !== rec) return;
+        seen.add(k);
+        toAdd.push({
+          id:          generateId('tx'),
+          date:        month,
+          categoryId:  rec.categoryId,
+          objectId:    rec.objectId  || null,
+          amount:      rec.amount,
+          rawName:     rec.name,
+          note:        '',
+          source:      'recurring',
+          recurringId: rec.id,
+          createdAt:   new Date().toISOString(),
         });
       });
+    });
+    if (toAdd.length) _state.transactions.push(...toAdd);
+    return { removed, added: toAdd.length, orphans };
+  }
 
-    if (toAdd.length > 0) {
-      _state.transactions.push(...toAdd);
-      // silent (Start): lastModified NICHT bumpen und keinen Push triggern (siehe cleanupRecurringDuplicates).
+  // Abgleich mit eigenem Speichern (Start, Fixkosten-Tab). silent (Start): lastModified NICHT
+  // bumpen und keinen Push auslösen — sonst gilt jedes Gerät beim Start als „neuer" (K2).
+  function _runReconcile(opts) {
+    if (!_state) return { removed: 0, added: 0, orphans: 0 };
+    if (!_state.recurring) _state.recurring = [];
+    const res = _reconcileRecurring();
+    if (res.removed || res.added || res.orphans) {
       const _prevSuppress = _suppressTouch;
-      if (silent) _suppressTouch = true;
+      if (opts && opts.silent === true) _suppressTouch = true;
       try {
         _save();
-        appLog('recurring_booked', toAdd.length + ' Transaktionen gebucht');
+        appLog('recurring_sync', res.removed + ' entfernt, ' + res.added + ' gebucht' +
+          (res.orphans ? ', ' + res.orphans + ' Waisen→manuell' : ''));
       } finally {
         _suppressTouch = _prevSuppress;
       }
     }
-    return toAdd.length;
+    return res;
   }
+
+  // Alte Namen bleiben als Einstieg erhalten — beide führen denselben Abgleich aus
+  function cleanupRecurringDuplicates(opts = {}) { return _runReconcile(opts).removed; }
+  function generateRecurringTransactions(options = {}) { return _runReconcile(options).added; }
 
   // Rückwärtskompatibilität
   function generateFixcostTransactions(options = {}) {
@@ -1001,11 +1033,39 @@ const Store = (() => {
       return _state.transactions[idx];
     },
 
+    // Bearbeiten durch den Nutzer (Dialog). Ändert er Betrag, Monat, Kategorie oder Objekt einer
+    // automatisch gebuchten Fixkosten-Buchung, wird sie von der Vorlage gelöst (manuell, Herkunft
+    // in detachedFrom) und die Vorlage überspringt den ursprünglichen Monat — sonst bucht der
+    // Abgleich ihn neu bzw. löscht die verschobene Buchung (3e). Nur Notiz ändern löst nichts.
+    edit(id, changes) {
+      const tx = _state.transactions.find(t => t.id === id);
+      if (!tx) return null;
+      changes = { ...changes };
+      if (changes.amount !== undefined) changes.amount = r2(changes.amount);
+      if (tx.source === 'recurring' && tx.recurringId) {
+        const binding = ['amount', 'date', 'categoryId', 'objectId'].some(k =>
+          changes[k] !== undefined && (changes[k] || null) !== (tx[k] || null));
+        if (binding) {
+          const rec = (_state.recurring || []).find(r => r.id === tx.recurringId);
+          if (rec) rec.skipMonths = Array.from(new Set([...(rec.skipMonths || []), tx.date]));
+          Object.assign(changes, { source: 'manual', detachedFrom: tx.recurringId, recurringId: null });
+        } else {
+          delete changes.rawName;   // bleibt an der Vorlage → behält deren Namen
+        }
+      }
+      return Transactions.update(id, changes);
+    },
+
     // Verschiebt in den Papierkorb — Liste und Papierkorb ändern sich in EINEM _save().
+    // Eine gelöschte Fixkosten-Buchung bleibt gelöscht: die Vorlage überspringt den Monat.
     delete(id) {
       const tx = _state.transactions.find(t => t.id === id);
       if (!tx) return false;
       Trash._add('transaction', tx);
+      if (tx.source === 'recurring' && tx.recurringId) {
+        const rec = (_state.recurring || []).find(r => r.id === tx.recurringId);
+        if (rec) rec.skipMonths = Array.from(new Set([...(rec.skipMonths || []), tx.date]));
+      }
       _state.transactions = _state.transactions.filter(t => t.id !== id);
       _save();
       return true;
@@ -1293,11 +1353,37 @@ const Store = (() => {
     getAll()    { return _state.recurring || []; },
     getActive() { return (_state.recurring || []).filter(r => !r.validUntil); },
 
+    // Die Vorlagen, die in diesem Monat gelten — eine je Serie (gleiche Regel wie die Buchung)
+    ownersInMonth(mmyyyy) {
+      const recs = _state.recurring || [];
+      const owner = recurringOwnerIndex(recs);
+      const n = recMonthNum(mmyyyy);
+      return recs.filter(r => owner(r, n) === r);
+    },
+    // Gilt diese Vorlage in irgendeinem Monat des Jahres?
+    ownsInYear(rec, year) {
+      const owner = recurringOwnerIndex(_state.recurring || []);
+      for (let m = 1; m <= 12; m++) if (owner(rec, year * 12 + m) === rec) return true;
+      return false;
+    },
+
+    // Invarianten — jede Vorlage im Store erfüllt sie, sonst wird die Änderung abgelehnt
+    _check(r) {
+      if (!String(r.name || '').trim())                 throw new Error('Name fehlt');
+      if (typeof r.amount !== 'number' || !isFinite(r.amount) || r.amount === 0) throw new Error('Betrag ungültig');
+      if (!RECURRING_TYPES.includes(r.type))            throw new Error('Typ ungültig: ' + r.type);
+      if (!recMonthNum(r.validFrom))                    throw new Error('Startmonat ungültig (MM.JJJJ): ' + r.validFrom);
+      if (r.validUntil) {
+        if (!recMonthNum(r.validUntil))                 throw new Error('Endmonat ungültig (MM.JJJJ): ' + r.validUntil);
+        if (recMonthNum(r.validUntil) < recMonthNum(r.validFrom)) throw new Error('Ende (' + r.validUntil + ') liegt vor dem Start (' + r.validFrom + ')');
+      }
+    },
+
     add(rec) {
       if (!_state.recurring) _state.recurring = [];
       const full = {
         id:          generateId('rec'),
-        name:        rec.name,
+        name:        String(rec.name || '').trim(),
         amount:      r2(rec.amount     || 0),
         type:        rec.type          || 'fixed',
         categoryId:  rec.categoryId    || 'cat_sonstiges',
@@ -1306,39 +1392,79 @@ const Store = (() => {
         validFrom:   rec.validFrom     || currentMonthStr(),
         validUntil:  rec.validUntil    || null,
       };
+      Recurring._check(full);
       _state.recurring.push(full);
+      _reconcileRecurring();
       _save();
       appLog('recurring_add', full.name);
       return full;
     },
 
+    // ✏️ = Korrektur dieser Vorlage für ihren ganzen Zeitraum (Nutzer-Entscheid 18.10.2026).
+    // Geänderte Felder gehen auch in ihre bereits gebuchten Buchungen. Eine Preisänderung ab
+    // einem Monat ist split(). Die Vorlage wird als neues Objekt ersetzt — wer eine alte
+    // Referenz hält, liest nie einen halb geänderten Stand (Ursache des ↕-Fehlers).
     update(id, changes) {
       if (!_state.recurring) _state.recurring = [];
       const idx = _state.recurring.findIndex(r => r.id === id);
       if (idx < 0) return null;
-      if (changes.amount !== undefined) changes.amount = r2(changes.amount);
-      // Betragsänderung → alten Eintrag beenden, neuen anlegen (Audit-Trail)
-      if (changes.amount !== undefined && changes.amount !== _state.recurring[idx].amount) {
-        const old = _state.recurring[idx];
-        const newFrom = changes.validFrom || currentMonthStr();
-        // M9: alter Eintrag endet im Vormonat des neuen Starts — kein Monat doppelt abgedeckt
-        old.validUntil = _prevMonthStr(newFrom);
-        const newRec = { ...old, ...changes, id: generateId('rec'), validFrom: newFrom, validUntil: null };
-        _state.recurring.push(newRec);
-        _save();
-        appLog('recurring_update', old.name + ' Betrag geändert');
-        return newRec;
-      }
-      Object.assign(_state.recurring[idx], changes);
-      // M2: beim Umbenennen rawName aller gebuchten Transaktionen mitziehen — sonst
-      // gruppiert cleanupRecurringDuplicates nach altem Namen, generate nach neuem → Duplikate.
-      if (changes.name) {
-        (_state.transactions || []).forEach(tx => {
-          if (tx.source === 'recurring' && tx.recurringId === id) tx.rawName = changes.name;
+      const cur = _state.recurring[idx];
+      const next = { ...cur, ...changes, id };
+      next.amount = r2(next.amount);
+      if (typeof next.name === 'string') next.name = next.name.trim();
+      if (!next.validUntil) next.validUntil = null;
+      if (!next.objectId) next.objectId = null;
+      Recurring._check(next);
+      _state.recurring[idx] = next;
+      const sync = {};
+      if (next.amount !== cur.amount)                         sync.amount = next.amount;
+      if (next.categoryId !== cur.categoryId)                 sync.categoryId = next.categoryId;
+      if ((next.objectId || null) !== (cur.objectId || null)) sync.objectId = next.objectId;
+      // M2: Namen mitziehen, damit Anzeige und Suche die Buchungen der Vorlage zuordnen
+      if (next.name !== cur.name)                             sync.rawName = next.name;
+      if (Object.keys(sync).length) {
+        _state.transactions.forEach(tx => {
+          if (tx.source === 'recurring' && tx.recurringId === id) Object.assign(tx, sync);
         });
       }
+      _reconcileRecurring();
       _save();
-      return _state.recurring[idx];
+      if (sync.amount !== undefined) appLog('recurring_update', next.name + ' korrigiert auf ' + next.amount);
+      return next;
+    },
+
+    // ↕ Betrag ab Monat: alte Version endet im Vormonat, neue übernimmt deren ursprüngliches Ende.
+    // Beide Versionen und die Buchungen gehen in EINEM _save().
+    split(id, fromMonth, amount) {
+      const old = (_state.recurring || []).find(r => r.id === id);
+      if (!old) throw new Error('Eintrag nicht gefunden');
+      const fromNum = recMonthNum(fromMonth);
+      if (!fromNum) throw new Error('Monat ungültig (MM.JJJJ)');
+      if (fromNum <= recMonthNum(old.validFrom)) throw new Error('Datum muss nach dem Start-Monat des Eintrags liegen');
+      if (old.validUntil && fromNum > recMonthNum(old.validUntil)) throw new Error('Datum liegt nach Ende des Eintrags (' + old.validUntil + ')');
+      const newRec = {
+        id:         generateId('rec'),
+        name:       old.name,
+        amount:     r2(amount),
+        type:       old.type,
+        categoryId: old.categoryId,
+        objectId:   old.objectId || null,
+        personId:   old.personId || 'person_1',
+        validFrom:  fromMonth,
+        validUntil: old.validUntil || null,
+      };
+      const skips = (old.skipMonths || []);
+      if (skips.length) newRec.skipMonths = skips.filter(m => recMonthNum(m) >= fromNum);
+      Recurring._check(newRec);
+      const oldNext = { ...old, validUntil: _prevMonthStr(fromMonth) };
+      if (skips.length) oldNext.skipMonths = skips.filter(m => recMonthNum(m) < fromNum);
+      Recurring._check(oldNext);
+      _state.recurring = _state.recurring.map(r => r.id === id ? oldNext : r);
+      _state.recurring.push(newRec);
+      _reconcileRecurring();
+      _save();
+      appLog('recurring_update', old.name + ' ab ' + fromMonth + ': ' + newRec.amount);
+      return newRec;
     },
 
     delete(id) {
@@ -1348,7 +1474,8 @@ const Store = (() => {
       Trash._add('recurring', rec);
       _state.recurring = _state.recurring.filter(r => r.id !== id);
       // Automatisch gebuchte Transaktionen dieses Templates ab aktuellem Monat löschen
-      // (historische Daten vor dem Löschen bleiben erhalten)
+      // (historische Daten vor dem Löschen bleiben erhalten — der Abgleich macht sie manuell
+      // und merkt sich die Herkunft für Trash.restore)
       const currentNum = _mmyyyyToNum(currentMonthStr());
       const removed = _state.transactions.filter(tx =>
         tx.source === 'recurring' && tx.recurringId === id && _mmyyyyToNum(tx.date) >= currentNum
@@ -1356,6 +1483,7 @@ const Store = (() => {
       _state.transactions = _state.transactions.filter(tx =>
         !(tx.source === 'recurring' && tx.recurringId === id && _mmyyyyToNum(tx.date) >= currentNum)
       );
+      _reconcileRecurring();
       _save();
       appLog('recurring_delete', rec.name + (removed ? ' (' + removed + ' Buchungen entfernt)' : ''));
     },
@@ -1385,15 +1513,35 @@ const Store = (() => {
       if (!entry) return;
       if (entry.type === 'category')  _state.categories.push(entry.item);
       if (entry.type === 'object')    _state.objects.push(entry.item);
-      if (entry.type === 'recurring') _state.recurring.push(entry.item);
-      if (entry.type === 'transaction') {
-        // Nur zurückholen, wenn sie nicht schon wieder da ist (Sync-Merge / Fixkosten-Generator)
-        const t = entry.item;
-        const dup = _state.transactions.some(x => x.id === t.id
-          || (t.source === 'recurring' && t.recurringId && x.source === 'recurring'
-              && x.recurringId === t.recurringId && x.date === t.date));
-        if (!dup) _state.transactions.push(t);
+      if (entry.type === 'recurring') {
+        const rec = entry.item;
+        if (!_state.recurring.some(r => r.id === rec.id)) _state.recurring.push(rec);
+        // 3d: alte Buchungen wieder anbinden statt die Historie doppelt neu zu buchen
+        _state.transactions.forEach(tx => {
+          if (tx.source === 'manual' && tx.origRecurringId === rec.id) {
+            tx.source = 'recurring';
+            tx.recurringId = rec.id;
+            delete tx.origRecurringId;
+          }
+        });
       }
+      if (entry.type === 'transaction') {
+        const t = entry.item;
+        // Gelöschte Fixkosten-Buchung: Monat wieder freigeben, der Abgleich bucht ihn neu
+        const rec = t.source === 'recurring' && t.recurringId
+          ? (_state.recurring || []).find(r => r.id === t.recurringId) : null;
+        if (rec && (rec.skipMonths || []).includes(t.date)) {
+          rec.skipMonths = rec.skipMonths.filter(m => m !== t.date);
+          if (!rec.skipMonths.length) delete rec.skipMonths;
+        } else {
+          // Nur zurückholen, wenn sie nicht schon wieder da ist (Sync-Merge / Fixkosten-Generator)
+          const dup = _state.transactions.some(x => x.id === t.id
+            || (t.source === 'recurring' && t.recurringId && x.source === 'recurring'
+                && x.recurringId === t.recurringId && x.date === t.date));
+          if (!dup) _state.transactions.push(t);
+        }
+      }
+      if (entry.type === 'recurring' || entry.type === 'transaction') _reconcileRecurring();
       // Aus deletedSystemCats entfernen falls vorhanden
       if (entry.type === 'category' && _state.settings.deletedSystemCats) {
         _state.settings.deletedSystemCats = _state.settings.deletedSystemCats.filter(id => id !== entry.item.id);

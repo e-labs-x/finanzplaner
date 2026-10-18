@@ -359,6 +359,63 @@ async function runTests() {
       FP.Store.load();
     });
 
+    // ── 3c. Vorlagen-Regel (Paket 3, 18.10.2026) ──────────────────────────────
+
+    function recTx(name, date) {
+      var ids = FP.Store.Recurring.getAll().filter(function(r) { return r.name === name; }).map(function(r) { return r.id; });
+      return FP.Store.Transactions.getAll().filter(function(t) {
+        return t.source === 'recurring' && ids.indexOf(t.recurringId) >= 0 && (!date || t.date === date);
+      });
+    }
+
+    await test('Gleicher Startmonat: eine Buchung je Monat, Start bleibt stabil', 'Vorlagen', function() {
+      FP.Store.load();
+      FP.Store.Recurring.add({ name: 'T-Gleichstart', amount: 10, validFrom: '01.2025', validUntil: '01.2025' });
+      FP.Store.Recurring.add({ name: 'T-Gleichstart', amount: 12, validFrom: '01.2025' });
+      var jan = recTx('T-Gleichstart', '01.2025');
+      assert(jan.length === 1 && jan[0].amount === 12, 'Jan 2025: ' + jan.map(function(t) { return t.amount; }).join('+'));
+      var a = FP.Store.cleanupRecurringDuplicates({ silent: true });
+      var b = FP.Store.generateRecurringTransactions({ retroactive: true, silent: true });
+      assert(a === 0 && b === 0, 'Start ändert noch etwas: ' + a + ' entfernt, ' + b + ' gebucht');
+    });
+
+    await test('↕ Betrag ab Monat: beide Versionen richtig, Ende übernommen', 'Vorlagen', function() {
+      var r = FP.Store.Recurring.add({ name: 'T-Split', amount: 100, validFrom: '01.2025', validUntil: '12.2025' });
+      FP.Store.Recurring.split(r.id, '06.2025', 120);
+      var all = recTx('T-Split');
+      assert(all.length === 12, 'Monate: ' + all.length);
+      assert(all.every(function(t) { return t.amount === (parseInt(t.date) < 6 ? 100 : 120); }), 'Beträge falsch');
+      var neu = FP.Store.Recurring.getAll().filter(function(x) { return x.name === 'T-Split' && x.validFrom === '06.2025'; })[0];
+      assert(neu && neu.validUntil === '12.2025', 'Ende der neuen Version: ' + (neu && neu.validUntil));
+    });
+
+    await test('✏️ korrigiert den ganzen Zeitraum und behält das Ende', 'Vorlagen', function() {
+      var r = FP.Store.Recurring.add({ name: 'T-Edit', amount: 50, validFrom: '01.2025', validUntil: '03.2025' });
+      FP.Store.Recurring.update(r.id, { amount: 60, validFrom: '01.2025' });
+      var all = recTx('T-Edit');
+      assert(all.length === 3 && all.every(function(t) { return t.amount === 60; }), all.map(function(t) { return t.amount; }).join(','));
+      assert(FP.Store.Recurring.getAll().filter(function(x) { return x.id === r.id; })[0].validUntil === '03.2025', 'Ende verloren');
+    });
+
+    await test('Ungültiger Zeitraum oder Typ wird abgelehnt', 'Vorlagen', function() {
+      var r = FP.Store.Recurring.add({ name: 'T-Check', amount: 5, validFrom: '03.2025', validUntil: '04.2025' });
+      var n = 0;
+      try { FP.Store.Recurring.update(r.id, { validUntil: '02.2025' }); } catch(e) { n++; }
+      try { FP.Store.Recurring.update(r.id, { type: '' }); } catch(e) { n++; }
+      try { FP.Store.Recurring.add({ name: 'T-Check2', amount: 5, validFrom: '13.2025' }); } catch(e) { n++; }
+      assert(n === 3, 'nur ' + n + ' von 3 abgelehnt');
+    });
+
+    await test('Fixkosten-Buchung verschieben bleibt verschoben', 'Vorlagen', function() {
+      FP.Store.Recurring.add({ name: 'T-Move', amount: 7, validFrom: '01.2025', validUntil: '03.2025' });
+      var feb = recTx('T-Move', '02.2025')[0];
+      FP.Store.Transactions.edit(feb.id, { date: '03.2025' });
+      FP.Store.generateRecurringTransactions({ retroactive: true });
+      var moved = FP.Store.Transactions.getById(feb.id);
+      assert(moved && moved.date === '03.2025' && moved.source === 'manual', 'Buchung nicht gelöst');
+      assert(recTx('T-Move', '02.2025').length === 0, 'Februar wurde neu gebucht');
+    });
+
     // ── 4. Rentenberechnung ───────────────────────────────────────────────────
 
     await test('calcRente gibt vollständiges Ergebnis zurück', 'Rentenberechnung', function() {

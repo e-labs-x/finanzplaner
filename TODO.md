@@ -13,13 +13,20 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    ETag + markDirty). tests.html 24/24 (7 neu, scheitern alle am alten Code); E2E mit echten Daten + Sync-Attrappe:
    Import überlebt Neustart und wird mit If-Match hochgeladen bzw. Konfliktdialog. Offen daraus: Punkt 5 (Pull belegt
    Backup-Plätze), Punkt 6 (16 direkte Store-Zugriffe aus app.js). **iPhone hatte < 5 Auto-Sicherungen = Speicher am Limit.**
-2. **Paket 3 — Vorlagen-Regel** (KRITISCH): ↕ Betrag ändern + ✏️-Betrag zerstören Buchungen; 4 Doppelbuchungen
-   in echten Daten (01.2022/01.2023), BU-Versicherung-Typ verloren → **Datenreparatur, Nutzer wählt Fassung**.
+2. ~~**Paket 3 — Vorlagen-Regel**~~ ✅ 18.10.2026 `?v=20261018b`: `recurringOwnerIndex` als einzige Regel,
+   Abgleich bei jeder Vorlagenänderung, `Recurring.split`, ✏️ = Korrektur (Nutzer-Entscheid), Invarianten,
+   Typ „variabel" im Formular, Papierkorb bindet Buchungen wieder an, bearbeitete/gelöschte Fixkosten-Buchung
+   → `skipMonths`. Migration v2→v3: BU-Typ → variable, 4 tote Einzelmonats-Vorlagen in den Papierkorb samt
+   ihrer 4 Doppelbuchungen (2022 −173,81 €, 2023 −284,78 €; Nutzer: neuere Beträge gelten). Belege: tests.html
+   29/29, Echtdaten-Test 27/27 (beide Blob-Stände), alle Tabs ohne Fehler, Fixkosten-Liste 10/2026 = gebucht
+   (1.707,06 €). Sicherung: Tag `vor-paket3`, `files/sync_2026-10-18_vor-paket3.fpbackup`.
+   **Offen aus Paket 3 (MITTEL):** archivierte Objekte buchen weiter; „Ins Folgejahr kopieren" holt beendete
+   Vorlagen zurück; XLSX-Import-Dialog verspricht „ersetzen", addiert; Vorlage löschen ohne Rückfrage.
 3. **Paket 2 — Sync-Garantie** (KRITISCH): „Zusammenführen" übernimmt lokal nichts, connect/Import/Pull-Race,
    `esppRender` speichert beim Anzeigen.
 4. **Paket 4 — Sicherheitshärtung** (HOCH): Details nur in der Audit-Datei auf OneDrive (Repo ist öffentlich).
 5. Paket 5 — Einzelfehler (MITTEL).
-**Bis dahin:** im Konflikt nicht „Zusammenführen", Fixkosten-Beträge nicht über ↕/✏️ ändern. (Backup-Import geht seit 1018a wieder.)
+**Bis dahin:** im Konflikt nicht „Zusammenführen". (Backup-Import geht seit 1018a, ↕/✏️ seit 1018b wieder.)
 
 ## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 

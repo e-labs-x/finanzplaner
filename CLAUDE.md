@@ -1,7 +1,7 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`) | **Cache-Stand:** `?v=20261018a`
-**Letzter Stand:** 18.10.2026 (Audit-Paket 1: ein Schreibweg für den Store) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 3`) | **Cache-Stand:** `?v=20261018b`
+**Letzter Stand:** 18.10.2026 (Audit-Pakete 1 + 3: ein Schreibweg für den Store, eine Vorlagen-Regel) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
 
@@ -149,6 +149,19 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 
 **Store-Schlüssel:** `localStorage('finanzplaner_v3')` — `LS_KEY_STORE`
 
+**Fixkosten-Vorlagen — eine Regel (seit 18.10.2026, niemals umgehen):**
+- Welche Vorlage in Monat M gilt, entscheidet **nur** `recurringOwnerIndex` (store.js): Serie = Vorlagenname + Objekt,
+  Vorrang späterer Start > längere Laufzeit > höhere id. Generierung, Bereinigung (`_reconcileRecurring`),
+  Fixkosten-Liste (`Recurring.ownsInYear`) und Kacheln (`Recurring.ownersInMonth`) fragen alle diese Funktion.
+  Nie wieder eigene „neuere Version"-Logik in der UI oder Gruppierung nach Buchungs-`rawName`.
+- Jede Vorlagenänderung (`add`/`update`/`split`/`delete`, `Trash.restore`) gleicht die Buchungen im **selben**
+  `_save()` ab — nicht erst beim nächsten Start. `Recurring._check` lehnt Ende vor Start und unbekannten Typ ab.
+- ✏️ (`update`) = Korrektur für den ganzen Zeitraum (geänderte Felder gehen in die gebuchten Buchungen);
+  ↕ (`split`) = Betrag ab Monat. Kein stilles Versionieren in `update`.
+- `skipMonths` an der Vorlage: Monat wird nicht gebucht (gesetzt von `Transactions.edit`, wenn der Nutzer eine
+  Fixkosten-Buchung in Betrag/Monat/Kategorie/Objekt ändert — sie wird dann `manual` mit `detachedFrom` —
+  und von `Transactions.delete`). Waisen behalten `origRecurringId`, `Trash.restore` bindet sie wieder an.
+
 ---
 
 ## Design-System (niemals brechen)
@@ -212,6 +225,7 @@ Vollständige Chronik steht in `TODO.md` — hier nur die Meilensteine:
 - ~~Renten-Audit R1–R15~~ (Stammwerte 2026, GFB, Migration v1→v2, Fünftelregelung u. a.)
 - ~~iOS-Rotationsfix~~ (16.08.2026, `?v=20260816d`) — vom Nutzer am 18.10.2026 bestätigt, Befund in `TODO.md`
 - ~~Audit-Paket 1 „ein Schreibweg"~~ (18.10.2026, `?v=20261018a`) — weitere Pakete in `TODO.md`
+- ~~Audit-Paket 3 „eine Vorlagen-Regel"~~ (18.10.2026, `?v=20261018b`, Migration v2→v3)
 
 ### Offen (Reihenfolge)
 

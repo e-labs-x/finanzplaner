@@ -1326,7 +1326,8 @@ function etxSave() {
   var note  = document.getElementById('etx-note').value.trim();
   var cat   = FP.Store.Categories.getAll().find(function(c) { return c.id === catId; });
   var signed = typ === 'erstattung' ? -val : val;
-  FP.Store.Transactions.update(_etxId, {
+  // edit(): löst eine Fixkosten-Buchung von ihrer Vorlage, wenn Betrag/Monat/Kategorie/Objekt sich ändern
+  FP.Store.Transactions.edit(_etxId, {
     amount:     signed,
     categoryId: catId,
     objectId:   objId,
@@ -3695,19 +3696,9 @@ function fkSplitSave(){
   var fromStr=document.getElementById('mfks-from').value.trim();
   var amount=parseFloat(document.getElementById('mfks-amount').value);
   if(!fromStr||!amount||amount<=0){toast('Betrag und Monat eingeben');return;}
-  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
-  if(!fc){toast('Eintrag nicht gefunden');return;}
-  if(_fkToMonths(fromStr)<=_fkToMonths(fc.validFrom)){
-    toast('Datum muss nach dem Start-Monat des Eintrags liegen');return;
-  }
-  if(fc.validUntil&&_fkToMonths(fromStr)>_fkToMonths(fc.validUntil)){
-    toast('Datum liegt nach Ende des Eintrags ('+fc.validUntil+')');return;
-  }
-  FP.Store.Recurring.update(id,{validUntil:_fkPrevMonth(fromStr)});
-  FP.Store.Recurring.add({name:fc.name,amount:amount,type:fc.type,
-    categoryId:fc.categoryId,objectId:fc.objectId,
-    validFrom:fromStr,validUntil:fc.validUntil||null});
-  FP.Store.generateRecurringTransactions({retroactive:true});
+  // Store prüft Zeitraum und schreibt beide Versionen samt Buchungen in einem Schritt
+  try{ FP.Store.Recurring.split(id,fromStr,amount); }
+  catch(err){ toast(err.message); return; }
   closeM('m-fk-split');
   fkRender();
   toast('Betrag geändert ab '+fromStr);
@@ -3723,11 +3714,12 @@ function fkRender(){
 function fkRenderStats(){
   var el=document.getElementById('fk-stats');
   if(!el)return;
-  var items=FP.Store.Recurring.getActive();
+  // Was diesen Monat tatsächlich gilt — dieselbe Regel wie die Buchung
+  var items=FP.Store.Recurring.ownersInMonth(FP.currentMonthStr());
   var totFix=0,totRue=0;
   items.forEach(function(fc){
-    if(fc.type==='fixed'||fc.type==='variable')totFix+=fc.amount;
-    else if(fc.type==='savings')totRue+=fc.amount;
+    if(fc.type==='savings')totRue+=fc.amount;
+    else totFix+=fc.amount;
   });
   var grand=FP.r2(totFix+totRue);
   var cards=[
@@ -3749,20 +3741,12 @@ function fkRenderList(){
   if(!el)return;
   var year=_fkNavYear;
   var all=FP.Store.Recurring.getAll();
-  // Einträge für dieses Jahr — ältere Split-Version ausblenden wenn Nachfolger vorhanden
-  var items=all.filter(function(r){
-    if(!_fkCoversYear(r,year))return false;
-    // Ältere Version ausblenden wenn eine neuere mit gleichem Namen UND gleichem Objekt existiert
-    // objectId einbeziehen: TRV-Hausgeld und MIM-Hausgeld sind verschiedene Serien
-    var hasSuccessor=all.some(function(o){
-      return o.id!==r.id&&o.name===r.name&&
-             (o.objectId||null)===(r.objectId||null)&&
-             _fkCoversYear(o,year)&&
-             _fkToMonths(o.validFrom)>_fkToMonths(r.validFrom||'01.0000');
-    });
-    if(hasSuccessor)return false;
-    return true;
-  });
+  // Einträge, die in diesem Jahr in mindestens einem Monat gelten — dieselbe Regel wie die
+  // Buchung (Paket 3). Wechselt eine Serie im Jahr den Betrag, stehen beide Versionen mit Zeitraum da.
+  var items=all.filter(function(r){ return FP.Store.Recurring.ownsInYear(r,year); });
+  // Summe „/Monat" = was im Bezugsmonat gilt (laufender Monat bzw. Dezember vergangener Jahre)
+  var refMonth=(year===new Date().getFullYear())?FP.currentMonthStr():'12.'+year;
+  var refIds={};FP.Store.Recurring.ownersInMonth(refMonth).forEach(function(r){refIds[r.id]=true;});
 
   var cats=FP.Store.Categories.getAll();
   var objs=FP.Store.Objects.getAll();
@@ -3776,8 +3760,9 @@ function fkRenderList(){
 
   var groups={fixkosten:[],savings:[]};
   items.forEach(function(fc){
-    if(fc.type==='fixed'||fc.type==='variable') groups.fixkosten.push(fc);
-    else if(fc.type==='savings') groups.savings.push(fc);
+    // unbekannter Typ landet sichtbar bei den Fixkosten — nie unsichtbar weiterbuchen
+    if(fc.type==='savings') groups.savings.push(fc);
+    else groups.fixkosten.push(fc);
   });
   var groupDef=[
     {key:'fixkosten',lbl:'Fixkosten',color:'var(--blue)'},
@@ -3787,7 +3772,7 @@ function fkRenderList(){
   var curMonthN=_fkToMonths(FP.currentMonthStr());
   el.innerHTML=groupDef.filter(function(g){return groups[g.key].length>0;}).map(function(g){
     var list=groups[g.key];
-    var total=FP.r2(list.reduce(function(s,fc){return s+fc.amount;},0));
+    var total=FP.r2(list.reduce(function(s,fc){return s+(refIds[fc.id]?fc.amount:0);},0));
     var rows=list.map(function(fc){
       var cat=catMap[fc.categoryId];
       var obj=fc.objectId?objMap[fc.objectId]:null;
@@ -3827,6 +3812,7 @@ function fkOpenNew(){
   document.getElementById('mfk-amount').value='';
   document.getElementById('mfk-type').value='fixed';
   document.getElementById('mfk-from').value='01.'+_fkNavYear;
+  document.getElementById('mfk-hint').style.display='none';
   fkFillCatSelect('');
   fkFillObjSelect('');
   openM('m-fk');
@@ -3842,6 +3828,7 @@ function fkOpenEdit(id){
   document.getElementById('mfk-amount').value=fc.amount;
   document.getElementById('mfk-type').value=fc.type;
   document.getElementById('mfk-from').value=fc.validFrom||FP.currentMonthStr();
+  document.getElementById('mfk-hint').style.display='';
   fkFillCatSelect(fc.categoryId);
   fkFillObjSelect(fc.objectId);
   openM('m-fk');
@@ -3894,22 +3881,12 @@ function fkSave(){
   };
   // Neuer Eintrag in historischem Jahr → automatisch auf Jahresende begrenzen
   if(!id&&_fkNavYear<curYear) data.validUntil='12.'+_fkNavYear;
-  if(id){
-    FP.Store.Recurring.update(id,data);
-    // Bestehende Transaktionen synchronisieren (objectId / categoryId geändert)
-    FP.Store.get().transactions
-      .filter(function(tx){return tx.source==='recurring'&&tx.recurringId===id;})
-      .forEach(function(tx){
-        var changes={};
-        if(tx.objectId!==newObjectId)   changes.objectId=newObjectId;
-        if(tx.categoryId!==newCategoryId) changes.categoryId=newCategoryId;
-        if(Object.keys(changes).length)  FP.Store.Transactions.update(tx.id,changes);
-      });
-  } else {
-    FP.Store.Recurring.add(data);
-  }
-  // Fehlende Monate nachgenerieren
-  FP.Store.generateRecurringTransactions({retroactive:true});
+  // ✏️ = Korrektur für den ganzen Zeitraum; der Store zieht die gebuchten Buchungen mit
+  // und gleicht in demselben Schritt ab (Paket 3)
+  try{
+    if(id) FP.Store.Recurring.update(id,data);
+    else   FP.Store.Recurring.add(data);
+  }catch(err){ toast(err.message); return; }
   closeM('m-fk');
   fkRender();
   toast('Gespeichert');
