@@ -4,7 +4,16 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
 
 ---
 
-## 👀 Sichtkontrolle offen — Vermögen-Tab (18.10.2026, `?v=20261018d`)
+## ⏭️ Vorschlag nächste Sitzung — Einstellungen neu ordnen (18.10.2026, noch NICHT freigegeben)
+Befund: Einstellungen = eine Seite, ~5.100 px am PC, 12 Karten; Kategorien ~⅓ davon mit 3 Dauer-Knöpfen je Zeile
+(44 Zeilen); Sync/Backup/Papierkorb ganz unten. „Mehr" selbst ist ok.
+Vorschlag (Nutzer entscheidet): Menü mit Statuszeilen + Unterseiten (iPhone: Zurück-Pfeil; PC: links Menü,
+rechts Bereich). Gruppen: Daten & Sicherheit (Sync, Backup & Import, Auto-Sicherungen, Papierkorb) · Haushalt
+(Personen & Steuer, Budget) · Ordnung (Kategorien, Objekte, Währungen) · Rechengrundlagen (Inflation, Kursabruf) ·
+Technik (Log, Version). Schritt 2 getrennt: Kategorien kompakt (Unterkategorien zugeklappt, Aktionen per Antippen).
+Nur Neuordnung, keine Änderung am Speichern. Nebenbefund: Haftpflicht + Hausrat je doppelt unter Versicherungen.
+
+## ✅ Vermögen-Tab (18.10.2026, `?v=20261018d`–`g`) — vom Nutzer abgenommen („sieht gut aus")
 - [x] Neue Karte „Historie · Stand je Monat": Anlagen × Monate wie die frühere Excel, ‹ Jahr ›, Summe, Δ Vormonat,
       Δ Vorjahr (nur Anlagen mit Wert in beiden Monaten), grau = fortgeschrieben, Zelle antippen = Wert für den Monat
       (vergangener Monat → Betragsfeld statt Kursabruf). Daten: `Calculator.getAssetHistory(year)`; Summe aktueller
@@ -23,7 +32,7 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       links je Zeile beschriftet („Änderung Vormonat €/%"), Trennlinie an der festen Spalte.
 - [x] Feedback 3 (`?v=20261018g`): Namen in „Anlagen im Überblick" nicht mehr abgeschnitten (PC 280 px, iPhone
       Umbruch); Reihenfolge jetzt Auswahl · Ring/Verlauf · Anlagen im Überblick · Historie · Anlagen-Karten.
-- [ ] **Nutzer schaut live** — danach ggf. Feinschliff. Altwerte aus Excel: Nutzer will keinen Import.
+- [x] Nutzer: „sieht gut aus" (18.10.2026). Altwerte aus Excel: Nutzer will keinen Import.
 
 ## ⏭️ Nächste Sitzung — Reparatur nach Voll-Audit vom 18.10.2026
 
