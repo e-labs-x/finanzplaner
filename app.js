@@ -2501,7 +2501,9 @@ function stOpen(k){
   wrap.querySelectorAll('[data-st]').forEach(function(c){ c.classList.toggle('st-show',c.getAttribute('data-st')===k); });
   var ttl=document.getElementById('st-subttl'); if(ttl) ttl.textContent=k?stTitleOf(k):'';
   stRenderMenu();
-  var pg=wrap.closest('.page'); if(pg&&!stIsWide()) pg.scrollTop=0;
+  // Nach jeder Auswahl oben beginnen: iPhone zeigt dann den Bereich, PC den Bereich rechts —
+  // das Menü links bleibt dabei stehen (sticky), man muss nicht mehr zurückscrollen
+  var pg=wrap.closest('.page'); if(pg) pg.scrollTop=0;
 }
 
 function stRender(){

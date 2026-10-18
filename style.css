@@ -925,7 +925,13 @@ button { cursor: pointer; border: none; background: none; }
 }
 @media(min-width:900px){
   .st-wrap.st-mode{display:grid;grid-template-columns:300px minmax(0,1fr);align-items:start;column-gap:20px;row-gap:16px}
-  .st-wrap.st-mode .st-menu{grid-column:1;grid-row:1 / span 20;position:sticky;top:0}
+  /* Menü bleibt immer ganz im Bild: kompakter + eigener Scrollbereich, falls der Bildschirm niedrig ist */
+  .st-wrap.st-mode .st-menu{grid-column:1;grid-row:1 / span 20;position:sticky;top:0;max-height:calc(100vh - 40px);overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+  .st-wrap.st-mode .st-menu-item{padding:7px 12px}
+  .st-wrap.st-mode .st-menu-t{font-size:13px}
+  .st-wrap.st-mode .st-menu-s{font-size:11px}
+  .st-wrap.st-mode .st-menu-card{margin-bottom:8px}
+  .st-wrap.st-mode .st-menu-grp{margin:2px 4px 4px}
   .st-wrap.st-mode [data-st]{grid-column:2}
   .st-wrap.st-mode .st-subhdr{display:flex;grid-column:2}
   .st-wrap.st-mode .st-back{display:none}
