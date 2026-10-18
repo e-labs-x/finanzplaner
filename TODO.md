@@ -15,7 +15,7 @@ Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, �
       Aktionen hinter „⋯" (Dialog: Bearbeiten · Aus-/Einblenden · Löschen) statt 3 Dauer-Knöpfen, Namen über esc().
       Migration v3→v4 (Nutzer-OK): leere eingebaute Unterkategorien neben gleichnamiger eigener → Papierkorb +
       deletedSystemCats; betraf fk_haftpflicht, fk_hausrat (0 Buchungen, 0 Vorlagen). `_tests/lib/kategorien.test.js`.
-- [ ] **Nutzer schaut live** (Schritt 2).
+- [x] Nutzer: Schritt 2 „sieht gut aus"; Aufklapp-Pfeil vergrößert (`?v=20261018k`). **Einstellungen-Umbau abgeschlossen.**
 
 ## (Plan) Einstellungen neu ordnen (18.10.2026, freigegeben: Gliederung „passt")
 Befund: Einstellungen = eine Seite, ~5.100 px am PC, 12 Karten; Kategorien ~⅓ davon mit 3 Dauer-Knöpfen je Zeile
