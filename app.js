@@ -66,15 +66,27 @@ var AzureSync = (function() {
   // Lokale Änderungen über App-Neustart hinweg persistieren — localStorage statt sessionStorage,
   // sonst geht der Dirty-Flag beim Schließen verloren und ein Auto-Pull überschreibt offline
   // gemachte, noch nicht hochgeladene Änderungen still (statt einen Konflikt zu erkennen).
-  try { if (localStorage.getItem(DIRTY_KEY) === '1') { _dirtyLocal = true; _pendingPush = true; } } catch(e) {}
+  // Paket 2: DIRTY_KEY ist ein Zähler (jede lokale Änderung +1), kein Ja/Nein. Ein Push löscht
+  // ihn nur, wenn er beim Hochladen denselben Stand hatte (_clearDirtyIf) — eine Änderung während
+  // des Uploads bleibt offen und wird nachgeschoben. Ein Pull ersetzt den lokalen Stand nur bei 0.
+  // Altwert '1' liest sich als 1.
+  function _dirtyGen() {
+    try { return parseInt(localStorage.getItem(DIRTY_KEY) || '0', 10) || 0; } catch(e) { return 0; }
+  }
+  if (_dirtyGen() > 0) { _dirtyLocal = true; _pendingPush = true; }
 
   function _clearDirty() {
     _dirtyLocal = false;
     try { localStorage.removeItem(DIRTY_KEY); } catch(e) {}
   }
+  function _clearDirtyIf(gen) {
+    if (_dirtyGen() !== gen) return false;
+    _clearDirty();
+    return true;
+  }
   function _setDirty() {
     _dirtyLocal = true;
-    try { localStorage.setItem(DIRTY_KEY, '1'); } catch(e) {}
+    try { localStorage.setItem(DIRTY_KEY, String(_dirtyGen() + 1)); } catch(e) {}
   }
   // M8: localStorage statt sessionStorage → wirklich ein Backup pro Kalendertag (nicht pro Session).
   function _maybeDailyBackup(backup) {
@@ -170,9 +182,12 @@ var AzureSync = (function() {
       _syncingNow = true;
       FP.Store.Settings.setAzureSync({ enabled: true, blobUrl: blobUrl, lastSync: null, lastETag: null, autoSync: true });
       _syncingNow = false;
+      // In der Sitzung verbunden: init() hat die Startsperre nie gelöst → sonst bleibt jeder Push hängen
+      _startupLock = false;
       azsRenderUI();
       if (r.status === 200) {
-        // Azure hat bereits Daten → zuerst laden, nicht überschreiben
+        // Azure hat bereits Daten → laden; sind lokal Änderungen offen (z. B. Token war abgelaufen),
+        // zeigt pull() den Konfliktdialog statt sie zu überschreiben
         toast('Azure verbunden — lade vorhandene Daten…');
         return pull(false, remoteETag);
       } else {
@@ -192,20 +207,25 @@ var AzureSync = (function() {
     if (!_active() || _busy || FP.Store.writeLock() === 'load-failed') return Promise.resolve();
     _busy = true;
     _setBusy(true);
+    clearTimeout(_retryTimer); _retryTimer = null;
+    var gen     = _dirtyGen();          // Stand, der jetzt hochgeht
     var backup  = FP.BackupManager.create('Auto-Sync');
     var content = JSON.stringify(backup);
     var lastETag = _cfg().lastETag;
-    var extraHeaders = {};
-    if (lastETag) extraHeaders['If-Match'] = lastETag;
+    // Ohne bekannten Server-Stand nie blind überschreiben: dann nur anlegen, wenn noch nichts da ist
+    // (existiert der Blob doch, kommt 412 → Konfliktdialog)
+    var extraHeaders = lastETag ? { 'If-Match': lastETag } : { 'If-None-Match': '*' };
     return _fetch('PUT', extraHeaders, content).then(function(r) {
       if (r.ok) {
         _busy = false;
         _setBusy(false);
-        _clearDirty();
+        _retryN = 0;
+        // Während des Uploads geändert? Dann bleibt der Zähler und der neue Stand geht gleich hinterher
+        if (!_clearDirtyIf(gen)) _pendingPush = true;
         var newETag = r.headers.get('ETag');
         var now = new Date().toISOString();
         _justPushed = true;
-        setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; schedulePush(); } }, 12000);
+        setTimeout(function() { _justPushed = false; if (_pendingPush) { _pendingPush = false; _kickPush(); } }, 12000);
         _syncingNow = true;
         FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
         FP.Store.appLog('SYNC', '↑ Hochgeladen');
@@ -243,7 +263,23 @@ var AzureSync = (function() {
       _syncingNow = false;
       if (!silent) toast('Sync-Fehler: ' + err.message);
       console.error('[AzureSync] push:', err);
+      _scheduleRetry();
     });
+  }
+
+  // Nach Netz-/Serverfehler erneut versuchen (30 s, 2 min, dann alle 5 min), solange etwas offen ist.
+  // Zusätzlich stößt flush() (online / App wieder im Vordergrund) sofort an.
+  var _retryTimer = null, _retryN = 0;
+  function _scheduleRetry() {
+    if (_dirtyGen() === 0) return;
+    var delays = [30000, 120000, 300000];
+    var d = delays[Math.min(_retryN, delays.length - 1)];
+    _retryN++;
+    clearTimeout(_retryTimer);
+    _retryTimer = setTimeout(function() { _retryTimer = null; _kickPush(); }, d);
+  }
+  function flush() {
+    if (_dirtyGen() > 0 && !_busy) _kickPush();
   }
 
   // ── Konflikt-Auflösung ───────────────────────────────────────────────────
@@ -255,25 +291,85 @@ var AzureSync = (function() {
     // wird angelegt falls sie remote noch fehlt (H1) — sonst gingen nur-lokal vorhandene
     // Einträge (z.B. recurring/assets auf einem neuen Gerät) beim Merge verloren.
     // Bei id-Kollision gewinnt die Remote-Version des Eintrags (M11 — bewusst akzeptiert).
+    lStore = JSON.parse(JSON.stringify(lStore));
+    function mergeList(target, local, filterFn) {
+      var ids = new Set(target.map(function(e) { return e.id; }));
+      (local || []).forEach(function(e) {
+        if (e && !ids.has(e.id) && (!filterFn || filterFn(e))) target.push(e);
+      });
+      return target;
+    }
     function mergeById(key, filterFn) {
       if (!Array.isArray(rStore[key])) rStore[key] = [];
-      var ids = new Set(rStore[key].map(function(e) { return e.id; }));
-      (lStore[key] || []).forEach(function(e) {
-        if (!ids.has(e.id) && (!filterFn || filterFn(e))) rStore[key].push(e);
-      });
+      mergeList(rStore[key], lStore[key], filterFn);
     }
+
+    // Papierkorb beider Seiten = Löschvermerk: was ein Gerät gelöscht hat, holt das andere
+    // nicht zurück (bleibt 30 Tage im Papierkorb wiederherstellbar)
+    mergeById('trash');
+    var gone = new Set(rStore.trash.map(function(e) { return e.type + ':' + (e.item && e.item.id); }));
+    var TRASH_TYPE = { transactions: 'transaction', recurring: 'recurring', objects: 'object', categories: 'category' };
+
+    // Transaktionen: bei gleicher id gewinnt die lokal von einer Vorlage gelöste Fassung (3e) —
+    // sonst würde die Server-Fassung (noch Fixkosten-Buchung) im übersprungenen Monat gelöscht
+    var lTx = {}; (lStore.transactions || []).forEach(function(t) { lTx[t.id] = t; });
+    if (!Array.isArray(rStore.transactions)) rStore.transactions = [];
+    rStore.transactions = rStore.transactions.map(function(t) {
+      var l = lTx[t.id];
+      return (l && l.detachedFrom && !t.detachedFrom) ? l : t;
+    });
     mergeById('transactions');
     mergeById('objects');
     mergeById('categories', function(c) { return c.source !== 'system'; }); // keine System-Kategorien
     mergeById('recurring');
+    // Übersprungene Monate einer Vorlage von beiden Seiten vereinigen
+    var lRec = {}; (lStore.recurring || []).forEach(function(r) { lRec[r.id] = r; });
+    rStore.recurring.forEach(function(r) {
+      var l = lRec[r.id];
+      if (l && l.skipMonths && l.skipMonths.length) {
+        r.skipMonths = Array.from(new Set((r.skipMonths || []).concat(l.skipMonths)));
+      }
+    });
+    Object.keys(TRASH_TYPE).forEach(function(key) {
+      rStore[key] = rStore[key].filter(function(e) { return !gone.has(TRASH_TYPE[key] + ':' + e.id); });
+    });
+
+    // Anlagen: neue Anlagen übernehmen, bei gleicher Anlage fehlende Wertstände (Monat) ergänzen
     mergeById('assets');
-    // Gehaltseinträge (Objekt nach Jahr — lokal fehlende Jahre aus Remote übernehmen)
+    var lAsset = {}; (lStore.assets || []).forEach(function(a) { lAsset[a.id] = a; });
+    rStore.assets.forEach(function(a) {
+      var l = lAsset[a.id];
+      if (!l || !Array.isArray(l.snapshots)) return;
+      if (!Array.isArray(a.snapshots)) a.snapshots = [];
+      var dates = new Set(a.snapshots.map(function(s) { return s.date; }));
+      l.snapshots.forEach(function(s) { if (!dates.has(s.date)) a.snapshots.push(s); });
+      a.snapshots.sort(function(x, y) { return String(x.date).localeCompare(String(y.date)); });
+    });
+    mergeById('freistellungsauftraege');
+    mergeById('savingsPlans');
+    if (lStore.espp && Array.isArray(lStore.espp.zyklen)) {
+      if (!rStore.espp) rStore.espp = lStore.espp;
+      else { if (!Array.isArray(rStore.espp.zyklen)) rStore.espp.zyklen = []; mergeList(rStore.espp.zyklen, lStore.espp.zyklen); }
+    }
+
+    // Gehalt: salary[person][MM.JJJJ] — lokal vorhandene Monate ergänzen, die remote fehlen
     if (lStore.salary) {
       if (!rStore.salary) rStore.salary = {};
-      Object.keys(lStore.salary).forEach(function(yr) {
-        if (!rStore.salary[yr]) rStore.salary[yr] = lStore.salary[yr];
+      Object.keys(lStore.salary).forEach(function(pid) {
+        if (!rStore.salary[pid]) rStore.salary[pid] = {};
+        Object.keys(lStore.salary[pid] || {}).forEach(function(m) {
+          if (!rStore.salary[pid][m]) rStore.salary[pid][m] = lStore.salary[pid][m];
+        });
       });
     }
+    // Budgets je Kategorie: lokal gesetzte, remote fehlende übernehmen
+    if (lStore.categoryBudgets) {
+      if (!rStore.categoryBudgets) rStore.categoryBudgets = {};
+      Object.keys(lStore.categoryBudgets).forEach(function(k) {
+        if (!(k in rStore.categoryBudgets)) rStore.categoryBudgets[k] = lStore.categoryBudgets[k];
+      });
+    }
+
     return Object.assign({}, remoteBackup, { store: rStore });
   }
 
@@ -307,45 +403,40 @@ var AzureSync = (function() {
     _startupLock = false;
     setSyncStatus('pending', 'Arbeite…');
     var remoteETag = _conflictRemoteETag;
-    var lBackup    = _conflictLocalBackup;
     var rBackup    = _conflictRemoteBackup;
-
-    if (choice === 'local' || choice === 'merge') {
-      var backupToUse = choice === 'merge' ? _mergeBackups(lBackup, rBackup) : lBackup;
-      var extraHeaders = { 'If-Match': remoteETag };
-      _fetch('PUT', extraHeaders, JSON.stringify(backupToUse)).then(function(r) {
-        if (r.ok) {
-          var newETag = r.headers.get('ETag');
-          var now = new Date().toISOString();
-          _syncingNow = true;
-          FP.Store.Settings.setAzureSync({ lastSync: now, lastETag: newETag });
-          FP.Store.appLog('SYNC', choice === 'merge' ? '⊕ Konflikt: zusammengeführt' : '↑ Konflikt: lokal hochgeladen');
-          _syncingNow = false;
-          _clearDirty();
-          azsRenderUI();
-          setSyncStatus('synced', 'Synchronisiert');
-          toast(choice === 'merge' ? '⊕ Daten zusammengeführt' : '↑ Deine Daten wurden hochgeladen');
-        } else if (r.status === 412) {
-          // Erneuter Konflikt während Auflösung → Remote nochmal laden und Dialog erneut zeigen
-          setSyncStatus('pending', 'Erneuter Konflikt — bitte nochmal wählen');
-          _fetch('GET').then(function(r2) {
-            var eTag = r2.headers.get('ETag');
-            r2.json().then(function(rB) { _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), rB, eTag); });
-          }).catch(function() { setSyncStatus('error', 'Fehler'); toast('Konflikt konnte nicht aufgelöst werden'); });
-        } else {
-          setSyncStatus('error', 'Fehler'); toast('Fehler: HTTP ' + r.status);
-        }
-      }).catch(function(err) { setSyncStatus('error', 'Fehler'); toast('Fehler: ' + err.message); });
+    // Paket 2: kein eigener Upload-Weg mehr. Hochgeladen wird immer der LOKALE Stand über den
+    // normalen push() — gegen den Server-Stand, den der Nutzer gesehen hat (If-Match remoteETag).
+    // Hat sich der Server inzwischen wieder geändert, kommt 412 → Dialog erneut.
+    if (choice === 'local') {
+      _syncingNow = true;
+      FP.Store.Settings.setAzureSync({ lastETag: remoteETag });
+      FP.Store.appLog('SYNC', '↑ Konflikt: lokale Daten behalten');
+      _syncingNow = false;
+      if (_dirtyGen() === 0) _setDirty();
+      push(false);
+    } else if (choice === 'merge') {
+      // Zusammengeführten Stand ZUERST lokal übernehmen (versiegelt bis Neuladen), als offen
+      // markieren; nach dem Neuladen lädt der Start ihn mit If-Match remoteETag hoch.
+      // Aus dem aktuellen lokalen Stand bauen, nicht aus dem Schnappschuss beim Öffnen des Dialogs.
+      try {
+        var merged = _mergeBackups(FP.BackupManager.create('Zusammenführen'), rBackup);
+        var syncCfg = _pulledSync(remoteETag); syncCfg.lastSync = _cfg().lastSync || null;
+        FP.BackupManager.importData(merged, { azureSync: syncCfg, log: ['SYNC', '⊕ Konflikt: zusammengeführt'] });
+      } catch(err) { setSyncStatus('error', 'Fehler'); toast('Zusammenführen fehlgeschlagen: ' + err.message); return; }
+      _setDirty();
+      clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+      toast('⊕ Zusammengeführt — App wird neu gestartet und lädt hoch');
+      window.__fpReloading = true;
+      setTimeout(function() { location.reload(); }, 1200);
     } else if (choice === 'remote') {
-      var blob = new Blob([JSON.stringify(rBackup)], { type: 'application/json' });
-      var f = new File([blob], 'conflict.fpbackup');
-      FP.BackupManager.import(f, { azureSync: _pulledSync(remoteETag) }).then(function() {
-        clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
-        _clearDirty();
-        toast('↓ Azure-Daten geladen — App wird neu gestartet');
-        window.__fpReloading = true;  // M12: beforeunload-Warnung beim Sync-Reload unterdrücken
-        setTimeout(function() { location.reload(); }, 1200);
-      }).catch(function(err) { toast('Fehler beim Laden: ' + err.message); });
+      // Bewusste Entscheidung des Nutzers: lokale, nicht hochgeladene Änderungen verwerfen
+      try { FP.BackupManager.importData(rBackup, { azureSync: _pulledSync(remoteETag) }); }
+      catch(err) { toast('Fehler beim Laden: ' + err.message); return; }
+      clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+      _clearDirty();
+      toast('↓ Azure-Daten geladen — App wird neu gestartet');
+      window.__fpReloading = true;  // M12: beforeunload-Warnung beim Sync-Reload unterdrücken
+      setTimeout(function() { location.reload(); }, 1200);
     }
   }
 
@@ -369,15 +460,18 @@ var AzureSync = (function() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       var newETag = r.headers.get('ETag') || remoteETag;
       return r.json().then(function(backup) {
-        var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
-        var f = new File([blob], 'sync.fpbackup');
-        return FP.BackupManager.import(f, { azureSync: _pulledSync(newETag) }).then(function() {
-          // _busy bleibt true bis Reload; der Store ist ab hier versiegelt (replaceState),
-          // ein Speichern im 1,2s-Fenster kann den geladenen Stand nicht mehr überschreiben
-          clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
-          _clearDirty();
-          if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); window.__fpReloading = true; setTimeout(function(){ location.reload(); }, 1200); }
-        });
+        // Paket 2: Prüfen und Ersetzen im selben Takt. Ist lokal etwas nicht hochgeladen — schon
+        // vorher oder während des Downloads geändert —, entscheidet der Nutzer (Konfliktdialog).
+        if (_dirtyGen() > 0) {
+          _setBusy(false);
+          _showConflict(FP.BackupManager.create('Konflikt-Snapshot'), backup, newETag);
+          return;
+        }
+        FP.BackupManager.importData(backup, { azureSync: _pulledSync(newETag) });
+        // _busy bleibt true bis Reload; der Store ist ab hier versiegelt (replaceState),
+        // ein Speichern im 1,2s-Fenster kann den geladenen Stand nicht mehr überschreiben
+        clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
+        if (!silent) { toast('↓ Daten geladen — App wird neu gestartet'); window.__fpReloading = true; setTimeout(function(){ location.reload(); }, 1200); }
       });
     }).catch(function(err) {
       _busy = false;
@@ -393,6 +487,11 @@ var AzureSync = (function() {
     _scheduleCount++;
     if (_syncingNow) return;
     _setDirty();
+    _kickPush();
+  }
+
+  // Upload anstoßen, ohne den Zähler zu erhöhen (Nachholen, Wiederholen, Startsperre gelöst)
+  function _kickPush() {
     if (!_active() || _cfg().autoSync === false) return;
     if (_justPushed) { _pendingPush = true; return; }
     if (_startupLock) { _pendingPush = true; setSyncStatus('pending', 'Ausstehend…'); return; }
@@ -403,7 +502,7 @@ var AzureSync = (function() {
 
   function _releaseLock() {
     _startupLock = false;
-    if (_pendingPush) { _pendingPush = false; schedulePush(); }
+    if (_pendingPush) { _pendingPush = false; _kickPush(); }
   }
 
   function _checkRemote() {
@@ -413,8 +512,9 @@ var AzureSync = (function() {
       if (!r.ok) { _authFailed(r); return; }
       _authErrShown = false;  // erfolgreicher Request → Token wieder gültig
       var remoteETag = r.headers.get('ETag');
-      if (!remoteETag || remoteETag === localETag) return;
-      if (_dirtyLocal) {
+      // Server unverändert: Offenes jetzt hochladen (Netz zurück, App im Vordergrund, alle 3 Min)
+      if (!remoteETag || remoteETag === localETag) { flush(); return; }
+      if (_dirtyGen() > 0) {
         // _busy bleibt true von hier bis _showConflict (hält den Lock über den GET +
         // JSON-Parse). Nur die Fallback-Pfade (kein Konflikt → pull) geben ihn frei,
         // damit pull() laufen kann.
@@ -484,7 +584,7 @@ var AzureSync = (function() {
           return;
         }
         // ETag-Mismatch: echte lokale Änderungen → Konflikt, sonst sicher pullen
-        if (_pendingPush) {
+        if (_dirtyGen() > 0) {
           // Lock von GET bis _showConflict halten (siehe _checkRemote). Fallback-Pfade
           // (kein Konflikt → pull) geben _busy frei, damit pull() laufen kann.
           _busy = true;
@@ -511,12 +611,14 @@ var AzureSync = (function() {
     toast('Azure-Verbindung getrennt');
   }
 
+  // Auto-Sync aus: nur Zeitgeber stoppen. Der Zähler bleibt — sonst würde ein späterer Pull
+  // die hier gemachten Änderungen still überschreiben.
   function clearPending() {
     clearTimeout(_pushTimer); _pushTimer = null; _pendingPush = false;
-    _clearDirty();
+    clearTimeout(_retryTimer); _retryTimer = null;
   }
 
-  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, markDirty: _setDirty, maybeDailyBackup: maybeDailyBackup, sasExpiry: _sasExpiry, sasDaysLeft: _sasDaysLeft };
+  return { connect: connect, push: push, pull: pull, checkRemote: _checkRemote, schedulePush: schedulePush, disconnect: disconnect, init: init, startPolling: startPolling, conflictChoose: conflictChoose, clearPending: clearPending, markDirty: _setDirty, flush: flush, maybeDailyBackup: maybeDailyBackup, sasExpiry: _sasExpiry, sasDaysLeft: _sasDaysLeft };
 })();
 
 // ── GitHub Sync UI-Funktionen ─────────────────────────────────────────────────
@@ -3408,7 +3510,9 @@ function esppRender(){
   var s=store.espp.settings;
   // Auto-sync EUR/USD aus Währungen-Einstellungen
   var usdCur=(store.currencies||[]).find(function(c){return c.code==='USD';});
-  if(usdCur&&usdCur.rate){s.eurUsdKurs=usdCur.rate;FP.Store.save();}
+  // Nur speichern, wenn sich der Kurs wirklich geändert hat — sonst würde jedes Öffnen des Tabs
+  // lastModified setzen und einen Push auslösen (falsche Sync-Konflikte, Audit H-A3)
+  if(usdCur&&usdCur.rate&&s.eurUsdKurs!==usdCur.rate){s.eurUsdKurs=usdCur.rate;FP.Store.save();}
   var zyklen=(store.espp.zyklen||[]).slice().sort(function(a,b){
     if(a.jahr!==b.jahr) return b.jahr-a.jahr;
     return a.halbjahr==='H2'?-1:1;

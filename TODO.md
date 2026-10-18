@@ -22,11 +22,16 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    (1.707,06 €). Sicherung: Tag `vor-paket3`, `files/sync_2026-10-18_vor-paket3.fpbackup`.
    **Offen aus Paket 3 (MITTEL):** archivierte Objekte buchen weiter; „Ins Folgejahr kopieren" holt beendete
    Vorlagen zurück; XLSX-Import-Dialog verspricht „ersetzen", addiert; Vorlage löschen ohne Rückfrage.
-3. **Paket 2 — Sync-Garantie** (KRITISCH): „Zusammenführen" übernimmt lokal nichts, connect/Import/Pull-Race,
-   `esppRender` speichert beim Anzeigen.
+3. ~~**Paket 2 — Sync-Garantie**~~ ✅ 18.10.2026 `?v=20261018c`: Hochgeladen wird nur der lokale Stand (Konflikt
+   „Lokal"/„Zusammenführen" über normalen push, Merge erst lokal übernehmen); lokaler Stand wird nur bei `fp_dirty`=0
+   ersetzt (Prüfung in pull() synchron mit `importData`); `fp_dirty` als Zähler; `If-None-Match: *` ohne ETag;
+   Wiederholen 30 s/2 min/5 min + flush bei Poll/online/Vordergrund; Startsperre nach connect gelöst; Auto-Sync aus
+   löscht Zähler nicht; esppRender speichert nur bei Kursänderung; Merge vollständig + Papierkorb als Löschvermerk.
+   Belege: 9 Szenarien mit Azure-Attrappe + echten Daten bestanden, Gegenprobe am alten Code zeigt jeden Fehler;
+   tests.html 30/30; alle Tabs fehlerfrei. Hinweis: „↓ Laden" fragt jetzt bei offenen lokalen Änderungen nach.
 4. **Paket 4 — Sicherheitshärtung** (HOCH): Details nur in der Audit-Datei auf OneDrive (Repo ist öffentlich).
 5. Paket 5 — Einzelfehler (MITTEL).
-**Bis dahin:** im Konflikt nicht „Zusammenführen". (Backup-Import geht seit 1018a, ↕/✏️ seit 1018b wieder.)
+Alle KRITISCH-Pakete erledigt (1018a–c). Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).
 
 ## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 

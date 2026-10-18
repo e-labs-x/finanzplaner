@@ -1771,57 +1771,58 @@ const BackupManager = {
    *  opts.azureSync — Sync-Felder, die nach dem Import gelten (Pull: neuer ETag usw.)
    *  opts.log       — [level, msg] Log-Eintrag, der mit dem neuen Stand gespeichert wird */
   import(file, opts) {
-    opts = opts || {};
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        try {
-          const raw    = JSON.parse(e.target.result);
-          // Nur echte .fpbackup-Dateien akzeptieren
-          if (raw._backup?.format !== 'fpbackup') {
-            return reject(new Error('Ungültiges Format — nur .fpbackup-Dateien werden akzeptiert.'));
-          }
-          const backupStoreVersion = raw._backup?.storeVersion;
-          if (backupStoreVersion && backupStoreVersion > STORE_VERSION) {
-            return reject(new Error(
-              `Backup zu neu (Version ${backupStoreVersion}), diese App kennt nur Version ${STORE_VERSION}. ` +
-              `Bitte die aktuelle App-Version verwenden.`
-            ));
-          }
-          const data   = raw.store || raw;
-          // Grundstruktur prüfen bevor Migration
-          if (!Array.isArray(data.transactions) || !Array.isArray(data.categories) || !Array.isArray(data.persons)) {
-            return reject(new Error('Backup-Datei beschädigt oder unvollständig — Grundstruktur fehlt.'));
-          }
-          const migrated = migrateStore(data);
-          const errors = validateStore(migrated);
-          if (errors.length > 0) {
-            return reject(new Error('Validierungsfehler: ' + errors.join(', ')));
-          }
-          // Backup vor dem Import (bei unlesbaren Daten gibt es keinen sinnvollen „Vorher"-Stand)
-          if (!Store.writeLock()) BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
-          // H7: Speichern separat absichern — bei vollem localStorage (iOS) klare Meldung
-          // statt irreführendem "Datei konnte nicht gelesen werden".
-          try { BackupManager._apply(migrated, opts); }
-          catch(setErr) { return reject(setErr); }
-          // Auto-Sicherungs-Historie aus dem Backup wiederherstellen/mergen (Datensicherheit):
-          // nach Geräteverlust/„Website-Daten löschen" ist die Historie sonst weg. Best-effort —
-          // ein Fehler hier darf den erfolgreichen Daten-Import nicht scheitern lassen.
-          try { BackupManager.mergeAutoBackups(raw.autoBackups); } catch(e) {}
-          resolve({
-            ok: true,
-            transactions: migrated.transactions?.length || 0,
-            categories:   migrated.categories?.length   || 0,
-            warnings:     errors,
-          });
-        } catch(err) {
-          reject(new Error('Datei konnte nicht gelesen werden: ' + err.message));
-        }
+        let raw;
+        try { raw = JSON.parse(e.target.result); }
+        catch(err) { return reject(new Error('Datei konnte nicht gelesen werden: ' + err.message)); }
+        try { resolve(BackupManager.importData(raw, opts)); }
+        catch(err) { reject(err); }
       };
       // M5: Lesefehler abfangen — sonst hängt das Promise (und bei Sync-Pull _busy=true) für immer
       reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden (Lesefehler).'));
       reader.readAsText(file);
     });
+  },
+
+  /** Übernimmt einen bereits geparsten .fpbackup-Inhalt SYNCHRON (Paket 2). Der Sync prüft
+   *  „lokal nichts offen" und ersetzt im selben Takt — dazwischen kann keine Eingabe landen.
+   *  Wirft bei ungültigem Inhalt; der übergebene Inhalt wird nicht verändert. */
+  importData(raw, opts) {
+    opts = opts || {};
+    if (!raw || raw._backup?.format !== 'fpbackup') {
+      throw new Error('Ungültiges Format — nur .fpbackup-Dateien werden akzeptiert.');
+    }
+    const backupStoreVersion = raw._backup?.storeVersion;
+    if (backupStoreVersion && backupStoreVersion > STORE_VERSION) {
+      throw new Error(
+        `Backup zu neu (Version ${backupStoreVersion}), diese App kennt nur Version ${STORE_VERSION}. ` +
+        `Bitte die aktuelle App-Version verwenden.`
+      );
+    }
+    const data = JSON.parse(JSON.stringify(raw.store || raw));
+    // Grundstruktur prüfen bevor Migration
+    if (!Array.isArray(data.transactions) || !Array.isArray(data.categories) || !Array.isArray(data.persons)) {
+      throw new Error('Backup-Datei beschädigt oder unvollständig — Grundstruktur fehlt.');
+    }
+    const migrated = migrateStore(data);
+    const errors = validateStore(migrated);
+    if (errors.length > 0) throw new Error('Validierungsfehler: ' + errors.join(', '));
+    // Backup vor dem Import (bei unlesbaren Daten gibt es keinen sinnvollen „Vorher"-Stand)
+    if (!Store.writeLock()) BackupManager._saveAutoBackup(BackupManager.create('Vor Import'));
+    // H7: wirft bei vollem Speicher mit klarer Meldung; dann bleibt alles beim Alten
+    BackupManager._apply(migrated, opts);
+    // Auto-Sicherungs-Historie aus dem Backup wiederherstellen/mergen (Datensicherheit):
+    // nach Geräteverlust/„Website-Daten löschen" ist die Historie sonst weg. Best-effort —
+    // ein Fehler hier darf den erfolgreichen Daten-Import nicht scheitern lassen.
+    try { BackupManager.mergeAutoBackups(raw.autoBackups); } catch(e) {}
+    return {
+      ok: true,
+      transactions: migrated.transactions?.length || 0,
+      categories:   migrated.categories?.length   || 0,
+      warnings:     errors,
+    };
   },
 
   /** Eine Auto-Sicherung enthält nur {_backup, store} — nie die Liste anderer Sicherungen

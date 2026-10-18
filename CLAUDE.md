@@ -1,7 +1,7 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 3`) | **Cache-Stand:** `?v=20261018b`
-**Letzter Stand:** 18.10.2026 (Audit-Pakete 1 + 3: ein Schreibweg für den Store, eine Vorlagen-Regel) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 3`) | **Cache-Stand:** `?v=20261018c`
+**Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
 
@@ -191,6 +191,19 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 - **SAS-Token:** in `localStorage('fp_azure_sas')` — NICHT im Store-JSON / Backup. Eingabefeld `type=password`.
 - **Settings:** `settings.azureSync = { enabled, blobUrl, lastETag, lastSync, autoSync }`
 - **Atomare Writes:** PUT mit `If-Match: <lastETag>` → `412` bei Konflikt → Konflikt-Dialog (`AzureSync.conflictChoose`), kein stilles Überschreiben.
+  Ohne `lastETag` geht der PUT mit `If-None-Match: *` (nur anlegen, nie blind überschreiben).
+- **Zwei Sync-Garantien (Paket 2, 18.10.2026) — niemals umgehen:**
+  1. Hochgeladen wird **nur der lokale Stand** über `push()`. Konflikt „Lokal" = `lastETag:=remoteETag` + `push()`;
+     „Zusammenführen" = Ergebnis per `importData` lokal übernehmen (versiegelt), dirty markieren, Neuladen → Start-Push.
+     Kein eigener PUT-Weg im Konfliktcode.
+  2. Der lokale Stand wird **nur ersetzt, wenn `fp_dirty` 0 ist** — geprüft in `pull()` im selben Takt wie
+     `BackupManager.importData` (synchron, kein FileReader). Sonst Konfliktdialog. Ausnahme: Nutzer wählt „Server".
+- **`fp_dirty` ist ein Zähler** (jede Änderung +1). `push()` merkt sich den Stand, `_clearDirtyIf(gen)` löscht nur bei
+  Gleichstand, sonst wird nachgeschoben. `clearPending()` (Auto-Sync aus) löscht ihn NICHT.
+- **Wiederholen:** fehlgeschlagener Push → 30 s / 2 min / 5 min; `_checkRemote` (Poll, online, Vordergrund) ruft bei
+  unverändertem Server `flush()`. `_kickPush()` stößt an, ohne den Zähler zu erhöhen.
+- **Merge** (`_mergeBackups`): Listen per id (+ Freistellungsaufträge, Sparpläne, ESPP-Zyklen), Gehalt pro Monat,
+  Budgets, Anlagen-Wertstände pro Monat, `skipMonths` vereinigt; **Papierkorb beider Seiten = Löschvermerk**.
 - **Ein Schreibweg (seit 18.10.2026):** Nur `Store._save()` und `Store.replaceState()` schreiben `finanzplaner_v3`.
   Import, Auto-Sicherung, Pull und „Server-Daten laden" gehen über `BackupManager.import(file, {azureSync, log})` /
   `restoreAutoBackup(i, {log})` → `replaceState()`; danach ist der Store bis zum Neuladen **versiegelt**
@@ -206,7 +219,7 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
 - **Startup-Lock:** 15s nach App-Start kein Auto-Push (`_pendingPush=true` wird danach nachgeholt)
 - **Polling:** HEAD alle 3 Min (ETag-Vergleich)
 - **Token-Fehler:** 401/403 → `_authFailed()` zeigt „Token abgelaufen" + Toast (einmalig)
-- **Dirty-Flag:** `fp_dirty` in **localStorage** (`DIRTY_KEY`) — überlebt App-Neustart, schützt offline gemachte Änderungen vor stillem Überschreiben beim Auto-Pull (Konflikt statt Pull, wenn dirty).
+- **Dirty-Zähler:** `fp_dirty` in **localStorage** (`DIRTY_KEY`) — überlebt App-Neustart, schützt offline gemachte Änderungen vor stillem Überschreiben beim Auto-Pull (Konflikt statt Pull, wenn > 0).
 - **SAS-Ablauf-Erinnerung:** `AzureSync.sasExpiry()`/`sasDaysLeft()` lesen `se=` aus dem Token; `updateSasReminder()` steuert das globale Banner `#sas-bar` (gelb ≤14 T., rot abgelaufen) + „Zugang gültig bis"-Zeile in den Einstellungen (`st-az-expiry`).
 - **Das Token muss ein Konto-SAS sein**, kein Container-SAS: `connect()` baut die Blob-URL aus dem Teil vor `?`, braucht also das Format `…blob.core.windows.net/?sv=…`. Ein Container-SAS (`…/sync?sv=…`) führt zu `/sync/sync/…`. Rechte **`racwl`** (kein Löschen), nur Blob, Container+Objekt, Nur-HTTPS.
 - **Azure-Konfiguration:** Container privat, CORS nur `e-labs-x.github.io`, HTTPS-only, Soft Delete 30 T. (Blobs + Container)
@@ -226,6 +239,7 @@ Vollständige Chronik steht in `TODO.md` — hier nur die Meilensteine:
 - ~~iOS-Rotationsfix~~ (16.08.2026, `?v=20260816d`) — vom Nutzer am 18.10.2026 bestätigt, Befund in `TODO.md`
 - ~~Audit-Paket 1 „ein Schreibweg"~~ (18.10.2026, `?v=20261018a`) — weitere Pakete in `TODO.md`
 - ~~Audit-Paket 3 „eine Vorlagen-Regel"~~ (18.10.2026, `?v=20261018b`, Migration v2→v3)
+- ~~Audit-Paket 2 „Sync-Garantien"~~ (18.10.2026, `?v=20261018c`)
 
 ### Offen (Reihenfolge)
 

@@ -279,6 +279,21 @@ async function runTests() {
       FP.Store.Settings.setAzureSync({ lastETag: null });
     });
 
+    await test('importData übernimmt synchron und lässt die Quelle unverändert', 'Speichern', function() {
+      FP.Store.load();
+      FP.Store.Transactions.add({ amount: 9.01, date: '04.2026', categoryId: 'cat_sonstiges', note: 'SYNCHRON' });
+      var src = JSON.parse(JSON.stringify(FP.BackupManager.create('T')));
+      var before = JSON.stringify(src);
+      FP.Store.Transactions.add({ amount: 9.02, date: '04.2026', categoryId: 'cat_sonstiges', note: 'DANACH' });
+      FP.BackupManager.importData(src, { azureSync: { lastETag: '"S1"' } });
+      var s = lsStore();   // ohne await: schon im selben Takt geschrieben
+      assert(hasNote(s, 'SYNCHRON') && !hasNote(s, 'DANACH'), 'nicht synchron übernommen');
+      assert(s.settings.azureSync.lastETag === '"S1"', 'Sync-Felder nicht gesetzt');
+      assert(JSON.stringify(src) === before, 'Quelle wurde verändert');
+      FP.Store.load();
+      FP.Store.Settings.setAzureSync({ lastETag: null });
+    });
+
     await test('Unlesbare Daten werden nicht überschrieben', 'Speichern', function() {
       var good = localStorage.getItem('finanzplaner_v3');
       FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Gut'));
