@@ -1,0 +1,2 @@
+# Fremdbibliotheken byte-genau lassen - sonst bricht die SRI-Pruefsumme
+vendor/** -text
