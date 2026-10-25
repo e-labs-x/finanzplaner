@@ -83,7 +83,8 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    (Allowlist), SheetJS 0.20.3 selbst gehostet in `vendor/` mit SRI (Quelle cdn.sheetjs.com, 25.10.2026), Frankfurter
    auf neue Adresse `api.frankfurter.dev/v1` (alte leitet um), SAS-Feld `autocomplete=off` + nach Verbinden geleert.
    Prüfung belegt: CSP sperrt fremden Server, XLSX lädt als 0.20.3; Echtnetz-Test über lokalen Webserver ohne Verstoß.
-   **Offen:** Alpha-Vantage-Key aus dem Backup (Nutzer-Entscheid).
+   Alpha-Vantage-Key bleibt im Sync/Backup (Nutzer-Entscheid 25.10.2026: kostenloser Key, ein Mal für alle Geräte).
+   **Damit Paket 4 abgeschlossen.**
 5. Paket 5 — Einzelfehler (MITTEL).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
