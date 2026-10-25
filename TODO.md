@@ -114,6 +114,9 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    `rp-dt` wischbar, Dreier-Kacheln `auto-fit`. PC unverändert (Bildvergleich). Gemessen: iPhone 254 → 0, iPad 99 → 0
    Elemente über dem Rand. Dauerprüfung `lib/layout.js` (iframes 390/820 px).
    Azure-Versionen: so lassen (Nutzer-Entscheid), Erinnerung in `jaehrliche_pruefung.md`.
+   **Nachbesserung `?v=20261025j`** (Nutzer-Befund iPhone): ‹ blendete auch den Personen-Umschalter aus (ältere Regel
+   `.rp-collapsed .rp-sidebar{display:none}` gewann) → behoben; unter 960 px springt ‹ beim Aufklappen zu den
+   Einstellungen, beim Zuklappen nach oben. Nutzer: Einstellungen unten ist auf dem iPhone besser. layout.js prüft den Knopf.
    **Damit Paket 5 abgeschlossen.** Beobachtung (nicht im Auftrag): ‹-Knopf liegt auf dem iPhone über der Kachel
    „Depot reicht“ — gab es vorher auch.
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit

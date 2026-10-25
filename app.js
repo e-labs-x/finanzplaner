@@ -4025,7 +4025,17 @@ function rpToggleSidebar(){
   var collapsed=lay.classList.toggle('rp-collapsed');
   try{ localStorage.setItem('fp_rp_sb_collapsed', collapsed?'1':'0'); }catch(e){}
   // Breite ändert sich → Höhen-Logik + Chart neu
-  setTimeout(function(){ rpSidebarHeight(); rpRenderMain(); }, 60);
+  setTimeout(function(){
+    rpSidebarHeight(); rpRenderMain();
+    // Unter 960 px stehen die Einstellungen UNTER den Ergebnissen — sichtbar machen, was passiert:
+    // aufklappen → zu den Einstellungen springen, zuklappen → zurück nach oben
+    if(window.innerWidth<960){
+      var page=document.getElementById('p-rente');
+      var sec=document.querySelector('#p-rente .rp-sidebar .rp-sec');
+      if(!collapsed&&sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+      else if(page) page.scrollTo({top:0,behavior:'smooth'});
+    }
+  }, 60);
 }
 
 function rpApplySidebarCollapsed(){

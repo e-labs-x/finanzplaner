@@ -1150,7 +1150,10 @@ button { cursor: pointer; border: none; background: none; }
   #rp-person-bar{order:0}
   .rp-layout > .rp-main{order:1;min-width:0;width:100%;margin-bottom:8px}
   .rp-sidebar > :not(#rp-person-bar){order:2;min-width:0}
-  .rp-layout.rp-collapsed .rp-sidebar > :not(#rp-person-bar){display:none}
+  /* #p-rente: muss die spätere Regel „.rp-collapsed .rp-sidebar{display:none}“ schlagen — sonst verschwindet
+     beim Einklappen auch der Personen-Umschalter (iPhone-Befund 25.10.2026) */
+  #p-rente .rp-layout.rp-collapsed > .rp-sidebar{display:contents}
+  #p-rente .rp-layout.rp-collapsed .rp-sidebar > :not(#rp-person-bar){display:none}
   .rp-sz-bar{overflow-x:auto;scrollbar-width:none}
   /* Breite Jahres-Tabellen (Verlauf, Entnahme): seitlich wischen statt über den Rand ragen */
   .rp-dt{display:block;max-width:100%;overflow-x:auto}

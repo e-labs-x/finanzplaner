@@ -44,6 +44,18 @@
         if (main && main.getBoundingClientRect().width < 200) errs.push(s.id + ': Ergebnisbereich zu schmal');
       } catch (e) { errs.push(s.id + ': ' + e.message); }
     });
+    // Einklapp-Knopf (iPhone): Personen-Umschalter bleibt, Einstellungen gehen weg und kommen wieder
+    try {
+      var d = document.getElementById('iphone').contentDocument;
+      var vis = function (sel) { var e = d.querySelector(sel); return !!e && e.getBoundingClientRect().height > 0; };
+      var fab = d.querySelector('#p-rente .rp-fab');
+      fab.click();
+      var zu = { person: vis('#rp-person-bar'), einst: vis('#p-rente .rp-sidebar .rp-sec') };
+      fab.click();
+      var auf = { person: vis('#rp-person-bar'), einst: vis('#p-rente .rp-sidebar .rp-sec') };
+      info.push('Knopf zu: Person ' + zu.person + '/Einst. ' + zu.einst + ', auf: ' + auf.person + '/' + auf.einst);
+      if (!zu.person || zu.einst || !auf.person || !auf.einst) errs.push('iphone: Einklapp-Knopf ' + JSON.stringify({ zu: zu, auf: auf }));
+    } catch (e) { errs.push('Einklapp-Knopf: ' + e.message); }
     var pre = document.createElement('pre'); pre.id = 'out';
     pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join(', '), errors: errs });
     document.body.appendChild(pre);

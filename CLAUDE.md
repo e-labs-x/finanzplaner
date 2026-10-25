@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025i`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025j`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
