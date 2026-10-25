@@ -46,6 +46,7 @@ try {
   $app = Join-Path $work 'app'
   New-Item -ItemType Directory -Path $app | Out-Null
   foreach ($f in 'index.html', 'style.css', 'store.js', 'app.js', 'tests.html') { Copy-Item (Join-Path $repo $f) $app }
+  Copy-Item (Join-Path $repo 'vendor') $app -Recurse
   Copy-Item (Join-Path $lib '*.js') $app
   [IO.File]::WriteAllText((Join-Path $app 'data.js'), 'window.__REAL=' + [IO.File]::ReadAllText($dataFile) + ';', $utf8)
   $index = [IO.File]::ReadAllText((Join-Path $app 'index.html'))

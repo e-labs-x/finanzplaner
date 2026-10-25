@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261018k`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025b`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -78,11 +78,20 @@ Niemals klein anfangen und hoffen dass es reicht.
 | `sw.js` | Service Worker — `CACHE_NAME` muss bei **jedem** Deploy mit `?v=` übereinstimmen |
 | `tests.html` | Selbsttests (laufen in `_tests\pruefen.ps1` mit) |
 | `_tests/` | Prüfungen mit echten Daten + Git-Hook — **vor jedem Deploy**, siehe `_tests/README.md` |
+| `vendor/` | Fremdbibliotheken selbst gehostet (SheetJS 0.20.3 + Lizenz), Einbindung mit SRI |
 | `TODO.md` | Gepflegte Aufgabenliste + Befund-Dokumentation (z. B. iOS-Rotationsfix) |
 
 **Repo:** `C:\Users\enesc\finanzplaner-repo\`
 **Live-URL:** https://e-labs-x.github.io/finanzplaner/
 **Jährliche Prüfliste:** `C:\Users\enesc\OneDrive\Dokumente\07 Projekte\Claude\Finanzen\Finanzen App\jaehrliche_pruefung.md`
+
+### Sicherheitsregeln (Paket 4, 25.10.2026 — niemals brechen)
+- **Jeder Nutzertext in `innerHTML` geht durch `esc()`** — Namen, Notizen, Banktexte (`rawName`), ISIN, Personen,
+  Suchbegriff. `_tests/lib/sicherheit.js` vergiftet echte Daten und klickt 77 Ansichten durch; neue Ansichten dort eintragen.
+- **Farben** prüft der Store (`safeColor`: nur `#hex` / `var(--token)`) — nie am Store vorbei in `style` schreiben.
+- **CSP** steht als Meta-Tag in `index.html`. Neue Fremdadresse (API, CDN) = dort in `connect-src` bzw. `script-src`
+  eintragen, sonst blockiert der Browser sie still. Kein JSONP, kein `<script src>` von fremden Servern.
+- **Service Worker** cacht nur eigene Dateien + Google Fonts (Allowlist in `sw.js`).
 
 ### Trennungsregel (niemals brechen)
 - `store.js` enthält **kein** `document.`, **kein** `getElementById`, **kein** DOM-Zugriff
@@ -113,7 +122,7 @@ außer der Nutzer sagt es ausdrücklich. **Jede Korrektur bekommt eine Prüfung,
 **Nach Änderungen deployen:**
 ```
 cd C:\Users\enesc\finanzplaner-repo
-git add index.html style.css store.js app.js sw.js tests.html TODO.md
+git add index.html style.css store.js app.js sw.js tests.html TODO.md vendor/
 git commit -m "Deploy: Finanzplaner vX.Y — Beschreibung"
 git push
 ```

@@ -77,8 +77,13 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    für `'` und 0), Farben nur `#hex`/`var(--token)` — geprüft im Store bei load/replaceState/_save (`safeColor`),
    Kursabruf ohne JSONP über fremde Proxys (nur noch fetch; iOS-PWA darf jetzt auch). Neue Prüfung
    `_tests/lib/sicherheit.js`: ~900 Gift-Einträge in echten Daten, 75 Ansichten — am alten Code 18 Felder + 3 fremde
-   Scripte, jetzt 0. **Offen Schritt 2:** CSP, SW nur eigene Dateien cachen, XLSX 0.20.x selbst hosten,
-   Alpha-Vantage-Key aus dem Backup, SAS-Feld nach Verbinden leeren.
+   Scripte, jetzt 0.
+   **Schritt 2 ✅ 25.10.2026 `?v=20261025b`:** CSP als Meta-Tag (`connect-src` nur Blob-Konto, Alpha Vantage, jsdelivr,
+   frankfurter.dev, open.er-api; neue Fremdadresse = dort eintragen), SW cacht nur noch eigene Dateien + Google Fonts
+   (Allowlist), SheetJS 0.20.3 selbst gehostet in `vendor/` mit SRI (Quelle cdn.sheetjs.com, 25.10.2026), Frankfurter
+   auf neue Adresse `api.frankfurter.dev/v1` (alte leitet um), SAS-Feld `autocomplete=off` + nach Verbinden geleert.
+   Prüfung belegt: CSP sperrt fremden Server, XLSX lädt als 0.20.3; Echtnetz-Test über lokalen Webserver ohne Verstoß.
+   **Offen:** Alpha-Vantage-Key aus dem Backup (Nutzer-Entscheid).
 5. Paket 5 — Einzelfehler (MITTEL).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).

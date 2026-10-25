@@ -711,6 +711,7 @@ function azsConnect() {
   }
   toast('Verbinde mit Azure…');
   AzureSync.connect(url);
+  inp.value = '';  // Token nicht im Feld stehen lassen
 }
 
 function azsPush()       { AzureSync.push(false); }
@@ -3091,7 +3092,7 @@ var RATE_APIS=[
     getRates:function(d){ return d.eur||{}; }
   },
   {
-    url:'https://api.frankfurter.app/latest?from=EUR',
+    url:'https://api.frankfurter.dev/v1/latest?from=EUR',  // frankfurter.app leitet hierher um (geprüft 25.10.2026)
     getRates:function(d){ return d.rates||{}; }
   },
   {
@@ -3204,8 +3205,10 @@ function stDownload(){
   toast('Backup heruntergeladen');
 }
 
-var _XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-var _XLSX_SRI = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
+// SheetJS 0.20.3 selbst gehostet (vendor/, Apache-2.0) — 0.18.5 vom npm-CDN hatte CVE-2023-30533 und
+// CVE-2024-22363, behobene Versionen gibt es nur auf cdn.sheetjs.com (geprüft 25.10.2026)
+var _XLSX_SRC = 'vendor/xlsx-0.20.3.full.min.js';
+var _XLSX_SRI = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
 function _loadXLSX(onload, onerror) {
   var s = document.createElement('script');
   s.src = _XLSX_SRC; s.integrity = _XLSX_SRI; s.crossOrigin = 'anonymous';

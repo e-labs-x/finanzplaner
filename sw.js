@@ -1,7 +1,7 @@
 'use strict';
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20261025a';
+const CACHE_NAME = 'fp-20261025b';
 
 // Bewusst OHNE ?v-Marker: Für JS/CSS gilt unten Network-First (echte Version kommt immer
 // frisch aus dem Netz + wird unter ihrer ?v-URL gecacht). Der SHELL-Precache ist nur der
@@ -35,15 +35,11 @@ self.addEventListener('fetch', evt => {
   if (evt.request.method !== 'GET') return;
   const url = evt.request.url;
 
-  // GitHub API, externe CDNs UND Azure-Blob-Sync: nie cachen, immer netzwerk.
-  // H3: Azure-Blob ausnehmen — sonst landet das komplette Klartext-Finanzdaten-Backup
-  // im SW-Cache und künftige Pulls würden veraltete Daten aus dem Cache bedienen.
-  if (
-    url.includes('api.github.com') ||
-    url.includes('cdn.jsdelivr.net') ||
-    url.includes('unpkg.com') ||
-    url.includes('.blob.core.windows.net')
-  ) return;
+  // Gecacht wird NUR, was ausdrücklich erlaubt ist (Allowlist statt Denylist, Paket 4):
+  // eigene Dateien und Google Fonts. Alles andere — Azure-Blob (Finanzdaten), Kurs-APIs,
+  // Alpha Vantage (Key in der URL) — geht immer direkt ans Netz und landet nie im Cache.
+  const host = new URL(url).host;
+  if (host !== self.location.host && host !== 'fonts.googleapis.com' && host !== 'fonts.gstatic.com') return;
 
   // App-Shell (HTML/JS/CSS + Navigation): NETWORK-FIRST — online immer frischer Code,
   // Cache nur als Offline-Fallback. Verhindert, dass alte Versionen "kleben bleiben".

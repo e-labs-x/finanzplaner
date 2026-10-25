@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="referrer" content="no-referrer">
+<!-- CSP (Paket 4): Daten dürfen nur an diese Server gehen. Neue Fremdadresse = hier eintragen.
+     'unsafe-inline' bleibt nötig (Inline-Handler) — die Sperre wirkt gegen das Ausleiten, nicht gegen Injection. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://finanzplanersync.blob.core.windows.net https://www.alphavantage.co https://cdn.jsdelivr.net https://api.frankfurter.dev https://open.er-api.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <script>(function(){var u=navigator.userAgent;if(/iPad|iPhone|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))document.documentElement.classList.add('ios');})();</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -16,7 +19,7 @@
 <title>Finanzplaner v12.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261025a">
+<link rel="stylesheet" href="style.css?v=20261025b">
 </head>
 <body>
 
@@ -36,7 +39,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 1025a</div>
+      <div class="sb-ver">v12.0 · build 1025b</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -788,7 +791,7 @@
             <div id="st-az-setup" style="padding:0 16px 14px">
               <p class="ghs-hint">Verbinde die App mit Azure Blob Storage um Daten automatisch auf allen Geräten zu synchronisieren.</p>
               <p class="ghs-hint">Die SAS URL findest du im Azure Portal unter deinem Storage Account → <b>Shared Access Signature</b> → <b>Blob-Dienst-SAS-URL</b>.</p>
-              <input type="password" id="st-az-sas-input" class="ghs-token-input" placeholder="https://....blob.core.windows.net/?sv=…">
+              <input type="password" id="st-az-sas-input" class="ghs-token-input" autocomplete="off" placeholder="https://....blob.core.windows.net/?sv=…">
               <button class="st-btn primary" onclick="azsConnect()" style="width:100%">Mit Azure verbinden</button>
             </div>
             <!-- Verbunden-Bereich -->
@@ -1473,8 +1476,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261025a"></script>
-<script src="app.js?v=20261025a"></script>
+<script src="store.js?v=20261025b"></script>
+<script src="app.js?v=20261025b"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
