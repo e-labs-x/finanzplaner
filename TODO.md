@@ -85,6 +85,9 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    Prüfung belegt: CSP sperrt fremden Server, XLSX lädt als 0.20.3; Echtnetz-Test über lokalen Webserver ohne Verstoß.
    Alpha-Vantage-Key bleibt im Sync/Backup (Nutzer-Entscheid 25.10.2026: kostenloser Key, ein Mal für alle Geräte).
    **Damit Paket 4 abgeschlossen.**
+   Danach 25.10.2026: Excel-Export `?v=20261025c` Sparplaene aus den Anlagen, `?v=20261025d` Text-Spalte (rawName),
+   Vorlagen mit Objekt + Person, ESPP-Zeile im Vermoegen (Summe = App), neue Blaetter Gehalt + ESPP (`esppZyklen`
+   = eine Berechnung fuer Tabelle und Export). Rundgang zaehlt jedes Blatt gegen die Daten (Gegenprobe rot).
 5. Paket 5 — Einzelfehler (MITTEL).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).

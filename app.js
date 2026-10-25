@@ -3233,7 +3233,7 @@ function stExportExcel(btn) {
   var wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Transaktionen ──
-  var txRows = [['Datum','Betrag (€)','Kategorie','Gruppe','Objekt','Person','Notiz']];
+  var txRows = [['Datum','Betrag (€)','Kategorie','Text','Gruppe','Objekt','Person','Notiz']];
   var txSorted = store.transactions.slice().sort(function(a,b){
     var pa=a.date.split('.'),pb=b.date.split('.');
     return (pa[1]-pb[1])||((pa[0]||0)-(pb[0]||0));
@@ -3245,6 +3245,7 @@ function stExportExcel(btn) {
       tx.date,
       tx.amount,
       cat ? cat.name : '',
+      tx.rawName || '',
       cat ? (cat.group==='fixkosten' ? 'Fixkosten' : 'Freizeit') : '',
       obj ? obj.name : '',
       ownerLbl(tx.personId || 'person_1'),
@@ -3252,18 +3253,19 @@ function stExportExcel(btn) {
     ]);
   });
   var wsTx = XLSX.utils.aoa_to_sheet(txRows);
-  wsTx['!cols'] = [{wch:10},{wch:12},{wch:22},{wch:12},{wch:20},{wch:14},{wch:30}];
+  wsTx['!cols'] = [{wch:10},{wch:12},{wch:22},{wch:32},{wch:12},{wch:20},{wch:14},{wch:30}];
   XLSX.utils.book_append_sheet(wb, wsTx, 'Transaktionen');
 
   // ── Sheet 2: Vorlagen (Fixkosten/Wiederkehrend) ──
   var TYPE_LBL = {fixed:'Fix', variable:'Variabel', savings:'Rücklage'};
-  var fkRows = [['Name','Betrag (€/Mo)','Typ','Kategorie','Gültig ab','Gültig bis']];
+  var fkRows = [['Name','Betrag (€/Mo)','Typ','Kategorie','Objekt','Person','Gültig ab','Gültig bis']];
   (store.recurring || []).forEach(function(r){
     var cat = cats[r.categoryId];
-    fkRows.push([r.name, r.amount, TYPE_LBL[r.type]||r.type, cat?cat.name:'', r.validFrom||'', r.validUntil||'']);
+    var obj = r.objectId ? objs[r.objectId] : null;
+    fkRows.push([r.name, r.amount, TYPE_LBL[r.type]||r.type, cat?cat.name:'', obj?obj.name:'', r.personId?ownerLbl(r.personId):'', r.validFrom||'', r.validUntil||'']);
   });
   var wsFk = XLSX.utils.aoa_to_sheet(fkRows);
-  wsFk['!cols'] = [{wch:32},{wch:14},{wch:12},{wch:22},{wch:12},{wch:12}];
+  wsFk['!cols'] = [{wch:32},{wch:14},{wch:12},{wch:22},{wch:20},{wch:14},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsFk, 'Vorlagen');
 
   // ── Sheet 3: Vermögen / Assets ──
@@ -3272,6 +3274,9 @@ function stExportExcel(btn) {
     var snap = a.snapshots && a.snapshots.length ? a.snapshots[a.snapshots.length-1] : null;
     asRows.push([a.name, VM_TYPE_LABEL[a.type]||a.type, ownerLbl(a.ownerId), snap?snap.value:'', snap?snap.date:'', a.isin||'', a.wkn||'']);
   });
+  // ESPP zählt wie in der App zum Vermögen (gehaltene Zyklen, Wert aus getAssetSummary)
+  var esppWert = FP.Calculator.getAssetSummary().byType['espp'] || 0;
+  if (esppWert > 0) asRows.push(['ESPP (gehaltene Zyklen)', VM_TYPE_LABEL.espp||'ESPP', ownerLbl('person_1'), esppWert, FP.currentMonthStr(), '', '']);
   var wsAs = XLSX.utils.aoa_to_sheet(asRows);
   wsAs['!cols'] = [{wch:30},{wch:14},{wch:14},{wch:16},{wch:12},{wch:18},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsAs, 'Vermögen');
@@ -3288,6 +3293,32 @@ function stExportExcel(btn) {
   var wsSp = XLSX.utils.aoa_to_sheet(spRows);
   wsSp['!cols'] = [{wch:30},{wch:14},{wch:14},{wch:14},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsSp, 'Sparpläne');
+
+  // ── Sheet 5: Gehalt — ein Monat je Zeile und Person, chronologisch ──
+  var monKey = function(m){ var p = m.split('.'); return (+p[1])*100 + (+p[0]); };
+  var glRows = [['Monat','Person','Brutto (€)','Netto (€)','Bonus brutto (€)','Bonus netto (€)','Notiz']];
+  Object.keys(store.salary || {}).forEach(function(pid){
+    var months = store.salary[pid] || {};
+    Object.keys(months).sort(function(a,b){ return monKey(a) - monKey(b); }).forEach(function(m){
+      var g = months[m] || {};
+      glRows.push([m, ownerLbl(pid), g.grossSalary||0, g.netSalary||0, g.grossBonus||0, g.netBonus||0, g.note||'']);
+    });
+  });
+  var wsGl = XLSX.utils.aoa_to_sheet(glRows);
+  wsGl['!cols'] = [{wch:10},{wch:14},{wch:12},{wch:12},{wch:15},{wch:15},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsGl, 'Gehalt');
+
+  // ── Sheet 6: ESPP — dieselbe Berechnung wie die Tabelle im Vermögen-Tab (esppZyklen) ──
+  var ESPP_STATUS = {laufend:'Laufend', gekauft:'Gehalten', verkauft:'Verkauft'};
+  var esRows = [['Zyklus','Status','Kaufkurs USD','Kaufpreis USD (mit Rabatt)','Aktien','Geldwerter Vorteil (€)','Steuer auf GWV (€)','Depotwert (€)','Verkaufskurs USD','Verkaufsdatum','Erlös (€)','Netto-Erlös (€)','Erlös geschätzt']];
+  var num = function(v){ return v == null ? '' : v; };
+  if (store.espp && store.espp.settings) esppZyklen(store).forEach(function(e){
+    var z = e.z, c = e.c;
+    esRows.push([z.halbjahr+' '+z.jahr, ESPP_STATUS[e.status], num(z.kaufkursUsd), num(c.kaufpreisUsd), num(c.anzahlAktien), num(c.gwvEur), num(c.steuerEur), num(c.depotWertEur), num(z.verkaufskursUsd), z.verkaufsDatum||'', num(c.erlösEur), num(c.nettoErlösEur), c.erlösEur!=null ? (c.erlösTheoretisch ? 'ja (aktueller Kurs)' : 'nein') : '']);
+  });
+  var wsEs = XLSX.utils.aoa_to_sheet(esRows);
+  wsEs['!cols'] = [{wch:10},{wch:10},{wch:12},{wch:22},{wch:8},{wch:20},{wch:17},{wch:14},{wch:15},{wch:13},{wch:12},{wch:15},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsEs, 'ESPP');
 
   var date = new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
   var time = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}).replace(':', '-');
@@ -3580,6 +3611,23 @@ function esppCalc(z,s){
   return res;
 }
 
+// Zyklen sortiert (neueste zuerst) mit Berechnung — eine Quelle für Tabelle und Excel-Export.
+// Freibetrag und Sparerpauschbetrag werden auf die Zyklen desselben Jahres aufgeteilt.
+function esppZyklen(store){
+  var s=store.espp.settings;
+  var zyklen=(store.espp.zyklen||[]).slice().sort(function(a,b){
+    if(a.jahr!==b.jahr) return b.jahr-a.jahr;
+    return a.halbjahr==='H2'?-1:1;
+  });
+  var zyklenPerJahr={};
+  zyklen.forEach(function(z){ zyklenPerJahr[z.jahr]=(zyklenPerJahr[z.jahr]||0)+1; });
+  return zyklen.map(function(z){
+    var anzZ=zyklenPerJahr[z.jahr]||1;
+    var sZ=Object.assign({},s,{_fbProZyklus:s.rabattFreibetrag/anzZ,_spbProZyklus:(s.sparerpauschbetrag||0)/anzZ});
+    return { z:z, c:esppCalc(z,sZ), status:!z.kaufkursUsd?'laufend':(!z.verkaufskursUsd?'gekauft':'verkauft') };
+  });
+}
+
 function esppRender(){
   var el=document.getElementById('vm-espp');
   if(!el) return;
@@ -3620,14 +3668,8 @@ function esppRender(){
   if(!zyklen.length){
     tblHtml='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Noch keine Zyklen erfasst.</div>';
   } else {
-    // Zyklen pro Jahr zählen → Freibetrag korrekt anteilig aufteilen
-    var zyklenPerJahr={};
-    zyklen.forEach(function(z){ zyklenPerJahr[z.jahr]=(zyklenPerJahr[z.jahr]||0)+1; });
-    var rows=zyklen.map(function(z){
-      var anzZ=zyklenPerJahr[z.jahr]||1;
-      var sZ=Object.assign({},s,{_fbProZyklus:s.rabattFreibetrag/anzZ,_spbProZyklus:(s.sparerpauschbetrag||0)/anzZ});
-      var c=esppCalc(z,sZ);
-      var status=!z.kaufkursUsd?'laufend':(!z.verkaufskursUsd?'gekauft':'verkauft');
+    var rows=esppZyklen(store).map(function(e){
+      var z=e.z, c=e.c, status=e.status;
       var statusLbl={laufend:'Laufend',gekauft:'Gehalten',verkauft:'Verkauft'}[status];
       var kursStr=z.kaufkursUsd?'$'+z.kaufkursUsd.toFixed(2):'<span style="color:var(--tx3)">–</span>';
       var aktStr=c.anzahlAktien!=null?c.anzahlAktien:'–';

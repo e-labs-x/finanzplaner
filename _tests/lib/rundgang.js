@@ -54,16 +54,29 @@
           gleich('Transaktionen Zeilen', tx.length, S.transactions.length);
           gleich('Transaktionen Summe (Cent)', summe(tx, 1), Math.round(S.transactions.reduce(function (a, t) { return a + t.amount; }, 0) * 100));
           gleich('Transaktionen ohne Kategorie', tx.filter(function (z) { return !z[2]; }).length, 0);
+          var txt = function (arr) { return arr.slice().sort().join(''); };
+          gleich('Transaktionen Spalte Text = Buchungstexte', txt(tx.map(function (z) { return String(z[3] == null ? '' : z[3]); })) === txt(S.transactions.map(function (t) { return t.rawName || ''; })), true);
           // Vorlagen: jede Vorlage, Summe der Monatsbeträge
           var fk = blatt('Vorlagen') || [];
           gleich('Vorlagen Zeilen', fk.length, (S.recurring || []).length);
+          var objIds = {}; S.objects.forEach(function (o) { objIds[o.id] = 1; });
+          gleich('Vorlagen mit Objekt', fk.filter(function (z) { return z[4]; }).length, (S.recurring || []).filter(function (r) { return objIds[r.objectId]; }).length);
           gleich('Vorlagen Summe (Cent)', summe(fk, 1), Math.round((S.recurring || []).reduce(function (a, r) { return a + (r.amount || 0); }, 0) * 100));
-          // Vermögen: jede aktive Anlage mit ihrem neuesten Wert
+          // Vermögen: jede aktive Anlage + ESPP-Zeile, Summe = Gesamtvermögen der App
           var akt = (S.assets || []).filter(function (a) { return a.status === 'aktiv'; });
           var vm = blatt('Vermögen') || [];
-          gleich('Vermoegen Zeilen', vm.length, akt.length);
-          gleich('Vermoegen Summe (Cent)', summe(vm, 3), Math.round(akt.reduce(function (a, x) { var s = FP.Store.Assets.getLatestSnapshot(x.id); return a + (s ? s.value : 0); }, 0) * 100));
-          xInfo = 'Excel ' + tx.length + ' Buchungen, ' + fk.length + ' Vorlagen, ' + vm.length + ' Anlagen, ' + rows + ' Sparplaene geprueft';
+          var vs = FP.Calculator.getAssetSummary();
+          gleich('Vermoegen Zeilen', vm.length, akt.length + ((vs.byType.espp || 0) > 0 ? 1 : 0));
+          gleich('Vermoegen Summe (Cent) gegen App', summe(vm, 3), Math.round(vs.total * 100));
+          // Gehalt: jeder Monat jeder Person, Netto-Summe
+          var gl = blatt('Gehalt') || [], gSoll = 0, gNetto = 0;
+          Object.keys(S.salary || {}).forEach(function (pid) { Object.keys(S.salary[pid] || {}).forEach(function (m) { gSoll++; gNetto += S.salary[pid][m].netSalary || 0; }); });
+          gleich('Gehalt Zeilen', gl.length, gSoll);
+          gleich('Gehalt Netto (Cent)', summe(gl, 3), Math.round(gNetto * 100));
+          // ESPP: jeder Zyklus
+          var es = blatt('ESPP') || [];
+          gleich('ESPP Zeilen', es.length, ((S.espp && S.espp.zyklen) || []).length);
+          xInfo = 'Excel ' + tx.length + ' Buchungen, ' + fk.length + ' Vorlagen, ' + vm.length + ' Vermoegen, ' + rows + ' Sparplaene, ' + gl.length + ' Gehalt, ' + es.length + ' ESPP geprueft';
         } catch (e) { errs.push('Excel-Export: ' + e.message); }
         finish();
       }, function () { errs.push('Excel-Bibliothek laedt nicht'); finish(); });
