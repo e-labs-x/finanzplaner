@@ -43,10 +43,27 @@
           stExportExcel();
           var S = FP.Store.get();
           var soll = (S.assets || []).filter(function (a) { return a.status === 'aktiv' && a.monthlyPlan > 0; }).length + (S.savingsPlans || []).length;
-          var rows = wb ? XLSX.utils.sheet_to_json(wb.Sheets['Sparpläne'], { header: 1 }).length - 1 : -1;
-          xInfo = 'Excel Sparplaene ' + rows + '/' + soll;
-          if (rows !== soll) errs.push('Excel-Export: Blatt Sparplaene hat ' + rows + ' Zeilen, Daten haben ' + soll + ' Sparplaene');
+          function blatt(n) { return wb && wb.Sheets[n] ? XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1 }).slice(1) : null; }
+          function summe(r, col) { return Math.round(r.reduce(function (a, z) { return a + (Number(z[col]) || 0); }, 0) * 100); }
+          function gleich(name, ist, sollW) { if (ist !== sollW) errs.push('Excel-Export ' + name + ': ' + ist + ' statt ' + sollW); }
+          var rows = (blatt('Sparpläne') || []).length;
+          gleich('Sparplaene Zeilen', rows, soll);
           if (!soll) errs.push('Excel-Export: Testdaten ohne Sparplan - Pruefung waere wirkungslos');
+          // Buchungen: jede Zeile, Summe auf den Cent, Kategorie überall gesetzt
+          var tx = blatt('Transaktionen') || [];
+          gleich('Transaktionen Zeilen', tx.length, S.transactions.length);
+          gleich('Transaktionen Summe (Cent)', summe(tx, 1), Math.round(S.transactions.reduce(function (a, t) { return a + t.amount; }, 0) * 100));
+          gleich('Transaktionen ohne Kategorie', tx.filter(function (z) { return !z[2]; }).length, 0);
+          // Vorlagen: jede Vorlage, Summe der Monatsbeträge
+          var fk = blatt('Vorlagen') || [];
+          gleich('Vorlagen Zeilen', fk.length, (S.recurring || []).length);
+          gleich('Vorlagen Summe (Cent)', summe(fk, 1), Math.round((S.recurring || []).reduce(function (a, r) { return a + (r.amount || 0); }, 0) * 100));
+          // Vermögen: jede aktive Anlage mit ihrem neuesten Wert
+          var akt = (S.assets || []).filter(function (a) { return a.status === 'aktiv'; });
+          var vm = blatt('Vermögen') || [];
+          gleich('Vermoegen Zeilen', vm.length, akt.length);
+          gleich('Vermoegen Summe (Cent)', summe(vm, 3), Math.round(akt.reduce(function (a, x) { var s = FP.Store.Assets.getLatestSnapshot(x.id); return a + (s ? s.value : 0); }, 0) * 100));
+          xInfo = 'Excel ' + tx.length + ' Buchungen, ' + fk.length + ' Vorlagen, ' + vm.length + ' Anlagen, ' + rows + ' Sparplaene geprueft';
         } catch (e) { errs.push('Excel-Export: ' + e.message); }
         finish();
       }, function () { errs.push('Excel-Bibliothek laedt nicht'); finish(); });
