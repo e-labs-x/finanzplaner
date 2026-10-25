@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-10-17 — Betragssuche, Papierkorb für Buchungen, Übersicht + Kategorie-Detail umgebaut (`?v=20261017h`)
+Letzte Aktualisierung: 2026-10-25 — Audit-Pakete 1–5 alle erledigt, Excel-Export vollständig (`?v=20261025j`)
 
 ---
 
@@ -121,7 +121,9 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    „Depot reicht“ — gab es vorher auch.
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
-Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).
+Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Pakete 1–5 erledigt (Stand 25.10.2026);
+Reste aus Paket 3 in Paket 5 erledigt. **Noch offen aus Paket 1 (NIEDRIG):** Punkt 5 (Pull belegt Auto-Sicherungsplätze),
+Punkt 6 (16 direkte Store-Zugriffe aus app.js, Trennungsregel). Kleinkram: ‹-Knopf überdeckt auf dem iPhone die Kachel „Depot reicht“.
 
 ## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 
