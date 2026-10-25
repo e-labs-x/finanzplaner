@@ -3220,7 +3220,7 @@ function stExportExcel(btn) {
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
     _loadXLSX(
       function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } stExportExcel(btn); },
-      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); }
+      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } toast('Fehler: Excel-Bibliothek konnte nicht geladen werden'); }
     );
     return;
   }
@@ -3276,13 +3276,17 @@ function stExportExcel(btn) {
   wsAs['!cols'] = [{wch:30},{wch:14},{wch:14},{wch:16},{wch:12},{wch:18},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsAs, 'Vermögen');
 
-  // ── Sheet 4: Sparpläne ──
-  var spRows = [['Name','Betrag (€/Mo)','Gültig bis']];
+  // ── Sheet 4: Sparpläne — dieselben zwei Quellen wie die Rente (Calculator): Sparrate an der
+  // Anlage (asset.monthlyPlan, heute der Normalfall) und die ältere Liste savingsPlans ──
+  var spRows = [['Name','Betrag (€/Mo)','Eigentümer','Typ','Gültig bis']];
+  (store.assets || []).filter(function(a){ return a.status==='aktiv' && a.monthlyPlan>0; }).forEach(function(a){
+    spRows.push([a.name, a.monthlyPlan, ownerLbl(a.ownerId), VM_TYPE_LABEL[a.type]||a.type, '']);
+  });
   (store.savingsPlans || []).forEach(function(sp){
-    spRows.push([sp.name||'Sparplan', sp.monthlyAmount, sp.validUntil||'']);
+    spRows.push([sp.name||'Sparplan', sp.monthlyAmount, ownerLbl(sp.personId || 'person_1'), '', sp.validUntil||'']);
   });
   var wsSp = XLSX.utils.aoa_to_sheet(spRows);
-  wsSp['!cols'] = [{wch:28},{wch:14},{wch:12}];
+  wsSp['!cols'] = [{wch:30},{wch:14},{wch:14},{wch:14},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsSp, 'Sparpläne');
 
   var date = new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
@@ -8535,7 +8539,7 @@ function rp2ExportExcel(btn) {
     var _svgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel';
     _loadXLSX(
       function() { if (btn) { btn.disabled = false; btn.innerHTML = _svgIcon; } rp2ExportExcel(null); },
-      function() { if (btn) { btn.disabled = false; btn.innerHTML = _svgIcon; } toast('Fehler: Internetverbindung für Excel-Export benötigt'); }
+      function() { if (btn) { btn.disabled = false; btn.innerHTML = _svgIcon; } toast('Fehler: Excel-Bibliothek konnte nicht geladen werden'); }
     );
     return;
   }
