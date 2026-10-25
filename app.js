@@ -308,7 +308,8 @@ var AzureSync = (function() {
     // nicht zurück (bleibt 30 Tage im Papierkorb wiederherstellbar)
     mergeById('trash');
     var gone = new Set(rStore.trash.map(function(e) { return e.type + ':' + (e.item && e.item.id); }));
-    var TRASH_TYPE = { transactions: 'transaction', recurring: 'recurring', objects: 'object', categories: 'category' };
+    var TRASH_TYPE = { transactions: 'transaction', recurring: 'recurring', objects: 'object', categories: 'category',
+                       assets: 'asset', freistellungsauftraege: 'fsa' };
 
     // Transaktionen: bei gleicher id gewinnt die lokal von einer Vorlage gelöste Fassung (3e) —
     // sonst würde die Server-Fassung (noch Fixkosten-Buchung) im übersprungenen Monat gelöscht
@@ -330,10 +331,6 @@ var AzureSync = (function() {
         r.skipMonths = Array.from(new Set((r.skipMonths || []).concat(l.skipMonths)));
       }
     });
-    Object.keys(TRASH_TYPE).forEach(function(key) {
-      rStore[key] = rStore[key].filter(function(e) { return !gone.has(TRASH_TYPE[key] + ':' + e.id); });
-    });
-
     // Anlagen: neue Anlagen übernehmen, bei gleicher Anlage fehlende Wertstände (Monat) ergänzen
     mergeById('assets');
     var lAsset = {}; (lStore.assets || []).forEach(function(a) { lAsset[a.id] = a; });
@@ -346,6 +343,11 @@ var AzureSync = (function() {
       FP.sortSnapshots(a.snapshots);   // chronologisch, nicht als Text ("01.2027" < "12.2026")
     });
     mergeById('freistellungsauftraege');
+    // Löschvermerke anwenden — erst nach allen Listen, die im Papierkorb landen können
+    Object.keys(TRASH_TYPE).forEach(function(key) {
+      if (!Array.isArray(rStore[key])) return;
+      rStore[key] = rStore[key].filter(function(e) { return !gone.has(TRASH_TYPE[key] + ':' + e.id); });
+    });
     mergeById('savingsPlans');
     if (lStore.espp && Array.isArray(lStore.espp.zyklen)) {
       if (!rStore.espp) rStore.espp = lStore.espp;
@@ -2812,7 +2814,7 @@ function stRenderTrash(){
     el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Papierkorb ist leer.</div>';
     return;
   }
-  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung'};
+  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung',asset:'Anlage',fsa:'Freistellungsauftrag'};
   var now=Date.now();
   el.innerHTML=items.map(function(e){
     var daysLeft=Math.max(0,30-Math.floor((now-new Date(e.deletedAt).getTime())/86400000));
@@ -2831,7 +2833,7 @@ function stRenderTrash(){
 // Buchungen haben kein name-Feld → „Kategorie · Bezeichnung · Betrag · Monat"
 function trashItemName(e){
   var it=e.item||{};
-  if(e.type!=='transaction')return it.name||e.id;
+  if(e.type!=='transaction')return it.name||it.institution||e.id;
   var cat=FP.Store.Categories.getAll().find(function(c){return c.id===it.categoryId;});
   var parts=[cat?cat.name:'?'];
   if(it.rawName&&(!cat||it.rawName!==cat.name))parts.push(it.rawName);
@@ -4116,9 +4118,13 @@ function fkSave(){
 }
 
 function fkDelete(id){
-  FP.Store.Recurring.delete(id);
-  fkRender();
-  toast('Gelöscht');
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc)return;
+  confirmDialog('Vorlage „'+fc.name+'“ löschen? Ihre Buchungen ab diesem Monat werden entfernt, frühere bleiben. Die Vorlage liegt 30 Tage im Papierkorb.','Löschen',function(){
+    FP.Store.Recurring.delete(id);
+    fkRender();
+    toast('Gelöscht');
+  });
 }
 
 /* ════════════════════════════════════════
@@ -4222,11 +4228,25 @@ function rpToNominal(r){
   return out;
 }
 
+// Hinweis über den Kennzahlen, wenn calcRente mit Ersatz- oder unplausiblen Werten rechnen musste
+function rpRenderWarnings(store,r1,r2){
+  var el=document.getElementById('rp-warn');
+  if(!el)return;
+  var lines=[];
+  [[r1,'person_1'],[r2,'person_2']].forEach(function(x){
+    if(!x[0]||!x[0].warnings)return;
+    x[0].warnings.forEach(function(w){ lines.push('<b>'+rpPersonName(x[1],store)+':</b> '+esc(w)); });
+  });
+  el.hidden=!lines.length;
+  el.innerHTML=lines.length?'⚠ Bitte Eingaben prüfen — das Ergebnis ist sonst nicht verlässlich.<br>'+lines.join('<br>'):'';
+}
+
 function rpRenderMain(){
   var store=FP.Store.get();
   var partnerOn=store.settings.partnerEnabled;
   var r1=FP.Calculator.calcRente('person_1',rpS.scenarioId);
   var r2=partnerOn?FP.Calculator.calcRente('person_2',rpS.scenarioId):null;
+  rpRenderWarnings(store,r1,r2);
   // Ehegattensplitting: Steuerverteilung korrigieren wenn gemeinsame Veranlagung
   if(partnerOn && r1 && r2 && store.settings.steuerlicheVeranlagung==='gemeinsam'){
     var zvE1=r1.netResult.stpflichtigJahr||0;
@@ -4490,7 +4510,7 @@ function rpRuerupProject(suppressSave){
   var store=FP.Store.get();
   var prof=(store.persons||[]).find(function(p){return p.id===rpS.person;})
          ||(store.persons||[])[0]||{};
-  var birthYear=prof.birthDate?parseInt(prof.birthDate.split('.').pop()):1990;
+  var birthYear=FP.Calculator.birthInfo(prof).year;   // gleiche Regel wie calcRente
   var currentAge=new Date().getFullYear()-birthYear;
   var years=Math.max(0,retAge-currentAge);
   var retYear=new Date().getFullYear()+years;
@@ -6995,7 +7015,7 @@ function vmDelAsset(evt,id){
   evt.stopPropagation();
   var asset=FP.Store.Assets.getById(id);
   var aname=asset?asset.name:id;
-  confirmDialog('Anlage wirklich löschen?','Löschen',function(){
+  confirmDialog('Anlage löschen? Sie liegt mit allen Wertständen 30 Tage im Papierkorb.','Löschen',function(){
     FP.Store.Assets.delete(id);
     vmRender();
     appLog('VERMÖGEN', 'Gelöscht: '+aname);
@@ -7120,10 +7140,12 @@ function vmSaveFsa(){
 
 function vmDelFsa(evt,id){
   evt.stopPropagation();
-  FP.Store.Freistellung.delete(id);
-  appLog('VERMÖGEN','Freistellungsauftrag gelöscht: '+id);
-  vmRender();
-  toast('Gelöscht');
+  confirmDialog('Freistellungsauftrag löschen? Er liegt danach 30 Tage im Papierkorb.','Löschen',function(){
+    FP.Store.Freistellung.delete(id);
+    appLog('VERMÖGEN','Freistellungsauftrag gelöscht: '+id);
+    vmRender();
+    toast('Gelöscht');
+  });
 }
 
 // Zeigt/versteckt Wertpapier-Felder je nach Typ
@@ -7777,7 +7799,7 @@ function srSearch(q){
       var cat=cMap[tx.categoryId];
       var obj=oMap[tx.objectId];
       var color=cat?cat.color:'var(--cat-slate)';
-      var title=(cat?cat.name:'?')+(tx.rawName&&tx.rawName!==cat.name?' · '+tx.rawName:'');
+      var title=(cat?cat.name:'Ohne Kategorie')+(tx.rawName&&(!cat||tx.rawName!==cat.name)?' · '+tx.rawName:'');
       var subParts=[tx.date];
       if(tx.note)subParts.push(tx.note);
       if(obj)subParts.push(obj.name);
@@ -8421,11 +8443,15 @@ function rp2Filter() {
   var catParent = {};
   FP.Store.Categories.getAll().forEach(function(c) { catParent[c.id] = c.parentId || c.id; });
 
+  // „Alle gewählt" heißt kein Kategoriefilter — sonst fielen Buchungen ohne (gelöschte) Kategorie heraus
+  var roots = Object.keys(catParent).filter(function(id) { return catParent[id] === id; });
+  var allSel = roots.every(function(id) { return _rp2.cats.indexOf(id) >= 0; });
+
   var all = FP.Store.Transactions.getAll();
   var arch = _archObjSet(); // M4: archivierte Objekte ausschließen
   return all.filter(function(tx) {
     if (tx.objectId && arch[tx.objectId]) return false;
-    if (_rp2.cats.length) {
+    if (_rp2.cats.length && !allSel) {
       var rootId = catParent[tx.categoryId] || tx.categoryId;
       if (_rp2.cats.indexOf(tx.categoryId) < 0 && _rp2.cats.indexOf(rootId) < 0) return false;
     }

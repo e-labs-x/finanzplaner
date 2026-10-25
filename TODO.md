@@ -88,7 +88,17 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    Danach 25.10.2026: Excel-Export `?v=20261025c` Sparplaene aus den Anlagen, `?v=20261025d` Text-Spalte (rawName),
    Vorlagen mit Objekt + Person, ESPP-Zeile im Vermoegen (Summe = App), neue Blaetter Gehalt + ESPP (`esppZyklen`
    = eine Berechnung fuer Tabelle und Export). Rundgang zaehlt jedes Blatt gegen die Daten (Gegenprobe rot).
-5. Paket 5 — Einzelfehler (MITTEL).
+5. **Paket 5 — Einzelfehler** (MITTEL), vier Schritte. Nutzer-Entscheide 25.10.2026: Ø/Monat = durch alle Monate des
+   Zeitraums mit Buchung (wie Kacheln/Detail); Objekt archivieren fragt „Vorlagen beenden?“; Budget auf Oberkategorie
+   zählt Unterkategorien; Excel-Import alter Ausgaben wird ENTFERNT.
+   **Schritt 1 ✅ `?v=20261025e` Robustheit:** Suche/Reports mit Buchung ohne Kategorie („Ohne Kategorie“, „Alle“ =
+   kein Filter), Papierkorb für Anlagen + Freistellungsaufträge (auch als Sync-Löschvermerk), Wiederherstellen ohne
+   Doppel, Rückfrage bei Vorlage/FSA löschen, `calcRente.warnings` + Hinweis im Rente-Tab, `zugangsfaktorOverride
+   != null` (fehlend = 0 € Rente!), eine Geburtsdatum-Regel `Calculator.birthInfo`, SW 3 s Zeitlimit, Schrift
+   blockiert nicht. Prüfungen: `robust.test.js` (Node), Waise/Rückfragen in `sicherheit.js`, Merge-Szenario mit
+   gelöschter Anlage — alter Code jeweils rot.
+   Offen: Schritt 2 (Ø, Einnahmen-Basis, Budget, Reports-Vorzeichen), 3 (Archivieren, Folgejahr, Import raus),
+   4 (Charts Drehung/Dunkel, Rente-Tab iPhone — Design-Freigabe), Azure-Lifecycle (Nutzerfrage).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
 Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).

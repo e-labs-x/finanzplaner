@@ -1637,3 +1637,6 @@ button { cursor: pointer; border: none; background: none; }
 .sas-bar{margin:0 0 12px;padding:11px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:600;line-height:1.4;cursor:pointer;border:1px solid transparent}
 .sas-bar.warn{background:var(--amber-lt);color:var(--amber);border-color:var(--amber)}
 .sas-bar.danger{background:var(--red-lt);color:var(--red);border-color:var(--red)}
+/* Rente: Eingaben, mit denen nicht sinnvoll gerechnet werden kann (calcRente.warnings) */
+.rp-warn{margin:0 0 12px;padding:10px 14px;border-radius:var(--r-sm);font-size:13px;line-height:1.5;background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber)}
+.rp-warn[hidden]{display:none}

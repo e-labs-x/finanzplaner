@@ -33,6 +33,9 @@
     (st.retirement.profiles[k].weitereRentenversicherungen || []).forEach(function (w) { vergiften(w, 'name', 'Rente.weitere.name'); });
   });
   (st.log || []).slice(-5).forEach(function (l) { vergiften(l, 'level', 'Log.level'); vergiften(l, 'msg', 'Log.msg'); });
+  // Waise: Buchung, deren Kategorie gelöscht wurde (entsteht über Sync-Merge oder Papierkorb)
+  var _d = new Date(), _m = ('0' + (_d.getMonth() + 1)).slice(-2) + '.' + _d.getFullYear();
+  st.transactions.push({ id: 'tx_waise', date: _m, categoryId: 'cat_geloescht', objectId: null, amount: 123.45, rawName: 'Waisenbuchung', note: '', source: 'manual', recurringId: null, createdAt: _d.toISOString() });
   localStorage.setItem('finanzplaner_v3', JSON.stringify(st));
 
   // fremde Scripte beobachten (eigene Dateien und das SRI-gesicherte jsdelivr sind erlaubt)
@@ -63,6 +66,21 @@
     S.objects.forEach(function (o) { add('Objekt-Detail', function () { nav('objekte'); obRenderDetail(o.id); }); });
     ['x', 'img', 'a', '<img src=x onerror=__x(' + (fields.push('Suchbegriff') - 1) + ')>'].forEach(function (q) {
       add('Suche ' + q.slice(0, 5), function () { srSearch(q); });
+    });
+    add('Suche Waise', function () { srSearch('waisenbuchung'); if (document.getElementById('sr-results').textContent.indexOf('Ohne Kategorie') < 0) errs.push('Suche zeigt Buchung ohne Kategorie nicht'); });
+    add('Reports alle', function () { nav('reports'); rp2SelectAll(); if (!rp2Filter().some(function (t) { return t.id === 'tx_waise'; })) errs.push('Reports: Alle waehlen blendet Buchung ohne Kategorie aus'); });
+    add('Vorlage loeschen fragt', function () {
+      nav('fixkosten'); var id = S.recurring[0].id; fkDelete(id);
+      var asked = document.getElementById('m-confirm').classList.contains('open'), still = S.recurring.some(function (r) { return r.id === id; });
+      closeM('m-confirm');
+      if (!asked || !still) errs.push('Vorlage loeschen ohne Rueckfrage');
+    });
+    add('FSA loeschen fragt', function () {
+      nav('vermoegen'); var f = (S.freistellungsauftraege || [])[0]; if (!f) return;
+      vmDelFsa({ stopPropagation: function () {} }, f.id);
+      var asked = document.getElementById('m-confirm').classList.contains('open');
+      closeM('m-confirm');
+      if (!asked || !S.freistellungsauftraege.some(function (x) { return x.id === f.id; })) errs.push('Freistellungsauftrag loeschen ohne Rueckfrage');
     });
     if (window.ST_MENU) ST_MENU.forEach(function (g) { g.items.forEach(function (it) { add('Einstellungen ' + it.k, function () { nav('einstellungen'); stOpen(it.k); }); }); });
     add('Log', function () { stOpenLog(); });

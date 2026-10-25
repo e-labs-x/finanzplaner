@@ -17,7 +17,14 @@
   var S = {
     // Konflikt → Zusammenführen: Ergebnis lokal UND auf dem Server, spätere Buchung geht hinterher
     merge: {
-      setup: function (st, remote) { st.transactions.push(__mkTx('L1')); localStorage.setItem('fp_dirty', '1'); remoteWith(remote, 'R1', '"E2"'); },
+      setup: function (st, remote) {
+        st.transactions.push(__mkTx('L1')); localStorage.setItem('fp_dirty', '1');
+        // Server hat die erste Anlage gelöscht (Papierkorb = Löschvermerk), lokal steht sie noch
+        var a = remote.store.assets.shift();
+        sessionStorage.setItem('goneAsset', a.id);
+        remote.store.trash = (remote.store.trash || []).concat([{ id: 'tr_test', type: 'asset', item: a, deletedAt: new Date().toISOString() }]);
+        remoteWith(remote, 'R1', '"E2"');
+      },
       run: function (ph) {
         if (ph === '1') after(5000, function () {
           if (!conflictOpen()) return __done({ pass: false, info: 'kein Konfliktdialog' });
@@ -30,7 +37,9 @@
             var ok = __hasNote(sb, 'L1') && __hasNote(sb, 'R1') && __hasNote(sb, 'L2') &&
                      __hasNote(l, 'L1') && __hasNote(l, 'R1') && __hasNote(l, 'L2') &&
                      !localStorage.getItem('fp_dirty') && l.settings.azureSync.lastETag === __srv().etag;
-            __done({ pass: ok, info: 'Server+lokal L1/R1/L2, ETag gleich' });
+            var gone = sessionStorage.getItem('goneAsset');
+            var assetBack = l.assets.some(function (a) { return a.id === gone; }) || ((sb.store || sb).assets || []).some(function (a) { return a.id === gone; });
+            __done({ pass: ok && !assetBack, info: 'Server+lokal L1/R1/L2, ETag gleich, geloeschte Anlage ' + (assetBack ? 'KAM ZURUECK' : 'bleibt weg') });
           });
         });
       }

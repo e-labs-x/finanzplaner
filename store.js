@@ -1359,6 +1359,9 @@ const Store = (() => {
     },
 
     delete(id) {
+      const asset = _state.assets.find(a => a.id === id);
+      if (!asset) return;
+      Trash._add('asset', asset);   // mit allen Wertständen, 30 Tage wiederherstellbar
       _state.assets = _state.assets.filter(a => a.id !== id);
       _save();
     },
@@ -1394,6 +1397,9 @@ const Store = (() => {
     },
 
     delete(id) {
+      const fsa = _state.freistellungsauftraege.find(f => f.id === id);
+      if (!fsa) return;
+      Trash._add('fsa', fsa);
       _state.freistellungsauftraege = _state.freistellungsauftraege.filter(f => f.id !== id);
       _save();
     },
@@ -1564,8 +1570,13 @@ const Store = (() => {
       if (!_state.trash) return;
       const entry = _state.trash.find(e => e.id === trashId);
       if (!entry) return;
-      if (entry.type === 'category')  _state.categories.push(entry.item);
-      if (entry.type === 'object')    _state.objects.push(entry.item);
+      // Einfache Typen: zurücklegen, sofern die id nicht schon wieder da ist (Sync-Merge)
+      const LIST = { category: 'categories', object: 'objects', asset: 'assets', fsa: 'freistellungsauftraege' };
+      const key = LIST[entry.type];
+      if (key) {
+        if (!Array.isArray(_state[key])) _state[key] = [];
+        if (!_state[key].some(x => x.id === entry.item.id)) _state[key].push(entry.item);
+      }
       if (entry.type === 'recurring') {
         const rec = entry.item;
         if (!_state.recurring.some(r => r.id === rec.id)) _state.recurring.push(rec);
@@ -1601,7 +1612,7 @@ const Store = (() => {
       }
       _state.trash = _state.trash.filter(e => e.id !== trashId);
       _save();
-      appLog('PAPIERKORB', 'Wiederhergestellt: ' + (entry.item.name || entry.item.rawName || trashId));
+      appLog('PAPIERKORB', 'Wiederhergestellt: ' + (entry.item.name || entry.item.rawName || entry.item.institution || trashId));
     },
     permanentDelete(trashId) {
       if (!_state.trash) return;
@@ -2528,6 +2539,16 @@ const Calculator = {
   },
 
   // ── Rentenplanung ──
+  // Geburtsdatum TT.MM.JJJJ → Jahr/Monat. Ungültig oder fehlend: 1988/Jahresmitte, valid=false
+  // (eine Regel für Rente und Rürup-Rechner; die UI zeigt dann einen Hinweis)
+  birthInfo(person) {
+    const parts = person?.birthDate ? String(person.birthDate).trim().split('.') : [];
+    const y = parts.length ? parseInt(parts[parts.length - 1]) : NaN;
+    const m = parts.length === 3 ? parseInt(parts[1]) : NaN;
+    const valid = parts.length === 3 && y >= 1900 && y <= new Date().getFullYear() && m >= 1 && m <= 12;
+    return { year: (y >= 1900 && y <= new Date().getFullYear()) ? y : 1988, month: (m >= 1 && m <= 12) ? m : 6, valid };
+  },
+
   calcRente(personId, scenarioId) {
     const store    = Store.get();
     const profile  = store.retirement.profiles[personId];
@@ -2546,14 +2567,13 @@ const Calculator = {
     };
 
     const person       = store.persons.find(pe => pe.id === personId);
-    const _bdParts  = person?.birthDate ? String(person.birthDate).split('.') : [];
-    const _rawYear  = _bdParts.length ? parseInt(_bdParts[_bdParts.length - 1]) : NaN;
-    const birthYear = (_rawYear >= 1900 && _rawYear <= 2100) ? _rawYear : 1988;
-    // R11: Geburtsmonat einbeziehen (Format TT.MM.JJJJ). Zuverlässig nur bei
-    // vollständigem Datum (3 Teile); sonst Jahresmitte als Fallback (max. ±6 Monate
-    // statt ±12 bei reiner Jahresrechnung).
-    const _rawMonth  = _bdParts.length === 3 ? parseInt(_bdParts[1]) : NaN;
-    const birthMonth = (_rawMonth >= 1 && _rawMonth <= 12) ? _rawMonth : 6;
+    // R11: Geburtsmonat einbeziehen; Regel und Ersatzwerte in birthInfo
+    const _birth     = Calculator.birthInfo(person);
+    const birthYear  = _birth.year;
+    const birthMonth = _birth.month;
+    // Eingaben prüfen statt still mit 0 zu rechnen (r2 macht NaN zu 0) — Liste für die UI
+    const warnings = [];
+    if (!_birth.valid) warnings.push('Geburtsdatum fehlt oder ist kein TT.MM.JJJJ — gerechnet mit ' + birthYear);
     const _now         = new Date();
     const currentYear  = _now.getFullYear();
     const currentAge   = currentYear - birthYear;  // ganzzahlig — für Anzeige-Labels
@@ -2563,6 +2583,9 @@ const Calculator = {
 
     // Gesetzliche Rente berechnen
     const rente    = profile.gesetzlicheRente;
+    if (!(p.targetRetirementAge >= 50 && p.targetRetirementAge <= 75)) warnings.push('Renteneintrittsalter ' + p.targetRetirementAge + ' ist unplausibel (50–75)');
+    if (!isFinite(rente?.currentEntgeltpunkte)) warnings.push('Entgeltpunkte fehlen oder sind keine Zahl');
+    if (!(rente?.rentenwertWest > 0)) warnings.push('Rentenwert fehlt oder ist 0');
 
     // EP/Jahr: Auto aus Gehaltsdaten oder manueller Override
     const epMode = profile.epPerYearMode || 'auto';
@@ -2602,7 +2625,8 @@ const Calculator = {
     const regularRetirementAge = p.regularRetirementAge || 67;
     const abstandMonate = (regularRetirementAge - p.targetRetirementAge) * 12;
     let zugangsfaktor;
-    if (rente.zugangsfaktorOverride !== null) {
+    // != null: auch ein fehlendes Feld (undefined, z. B. aus Import/Sync) ist KEIN Override
+    if (rente.zugangsfaktorOverride != null && isFinite(rente.zugangsfaktorOverride)) {
       zugangsfaktor = rente.zugangsfaktorOverride;
     } else if (abstandMonate > 0) {
       // 0,3% Abschlag pro Monat vor Regelrentenalter (§ 77 SGB VI)
@@ -2964,6 +2988,7 @@ const Calculator = {
 
     return {
       personId,
+      warnings,
       scenario:              scenario.name || 'Basis',
       currentAge,
       yearsToRetire,
