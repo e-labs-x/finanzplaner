@@ -28,6 +28,7 @@ wird der Push abgebrochen.
 | Robustheit | `lib/robust.test.js` (Node) | Papierkorb für Anlagen/Freistellungsaufträge, Wiederherstellen ohne Doppel, Rentenrechnung meldet fehlende Eingaben statt 0, Service Worker nimmt bei hängendem Netz nach 3 s den Cache |
 | Rundgang | `lib/rundgang.js` | Alle 13 Tabs öffnen sich mit echten Daten ohne Fehler |
 | Sicherheit | `lib/sicherheit.js` | Gift-Einträge (Namen, Notizen, Farben, Suchbegriff …) in allen Ansichten führen keinen Code aus; „Kurse aktualisieren“ lädt kein Script von fremden Servern; CSP sperrt Abruf an fremden Server; Excel-Bibliothek lädt als 0.20.3 mit Prüfsumme |
+| Konsistenz | `lib/konsistenz.js` | Ø/Monat Reports = Kategorie-Detail, Einnahmen Home = Budget = Cashflow (mit Partner), Budget auf Oberkategorie = Gruppensumme, Vorzeichen der Reports-Liste |
 | Sync (9 Szenarien) | `lib/sync-harness.js` + `lib/sync-szenarien.js` | Zusammenführen, Server-Daten, Neu verbinden, Buchung während Download/Upload, Wiederholen, If-None-Match, Vermögen-Tab, Auto-Sync aus |
 
 ## Regel für neue Korrekturen

@@ -4,7 +4,7 @@
 const NET_TIMEOUT_MS = 3000;
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20261025e';
+const CACHE_NAME = 'fp-20261025f';
 
 // Bewusst OHNE ?v-Marker: Für JS/CSS gilt unten Network-First (echte Version kommt immer
 // frisch aus dem Netz + wird unter ihrer ?v-URL gecacht). Der SHELL-Precache ist nur der

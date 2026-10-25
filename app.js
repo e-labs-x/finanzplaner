@@ -1731,7 +1731,7 @@ function avKpis(){
   // Sparquote: nur Monate mit erfasstem Nettogehalt (sonst verzerrt ein Monat ohne Gehalt die Quote)
   var net=0,spent=0,nSal=0;
   avMonths().forEach(function(m){
-    var s=FP.Store.Salary.get('person_1',m);var n=s?(s.netSalary||0):0;
+    var n=FP.Calculator.householdNetIncome(m);
     if(n>0){net+=n;spent+=avSum([m]).total;nSal++;}
   });
   var sqVal='—',sqSub='Kein Gehalt erfasst';
@@ -7944,15 +7944,22 @@ function bgtRender() {
   store.categories.forEach(function(c) { catMap[c.id] = c; });
 
   // Kategorien mit Budget
+  // Budget auf einer Oberkategorie zählt ihre Unterkategorien mit (Nutzer-Entscheid 25.10.2026, wie die Gruppen der Übersicht)
+  var parentOf = function(id) { return catMap[id] && catMap[id].parentId || null; };
+  var spentOf  = function(id) {
+    return Object.keys(byCat).reduce(function(s, k) { return (k === id || parentOf(k) === id) ? s + byCat[k].total : s; }, 0);
+  };
+  var covered  = function(id) { return !!budgets[id] || !!(parentOf(id) && budgets[parentOf(id)]); };
   var budgeted = Object.keys(budgets).map(function(catId) {
-    var spent   = byCat[catId] ? byCat[catId].total : 0;
+    var spent   = spentOf(catId);
     var limit   = budgets[catId];
     var cat     = catMap[catId];
     return { catId: catId, name: cat ? cat.name : catId, color: cat ? cat.color : 'var(--cat-slate)', spent: spent, limit: limit };
   }).sort(function(a, b) { return b.spent - a.spent; });
 
   // Gesamtsummary
-  var totalSpent = budgeted.reduce(function(s, b) { return s + b.spent; }, 0);
+  // Unterkategorie mit eigenem Budget UND budgetierter Oberkategorie nicht doppelt zählen
+  var totalSpent = budgeted.reduce(function(s, b) { return budgets[parentOf(b.catId)] ? s : s + b.spent; }, 0);
   var totalLimit = budgeted.reduce(function(s, b) { return s + b.limit; }, 0);
   var totalPct   = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
   var sumBarCls  = totalPct >= 100 ? 'bgt-bar-over' : totalPct >= 80 ? 'bgt-bar-warn' : 'bgt-bar-ok';
@@ -8009,7 +8016,7 @@ function bgtRender() {
 
   // Kategorien ohne Budget aber mit Ausgaben
   var unbudgetedWithSpend = Object.keys(byCat)
-    .filter(function(catId) { return !budgets[catId] && byCat[catId].total > 0; })
+    .filter(function(catId) { return !covered(catId) && byCat[catId].total > 0; })
     .map(function(catId) { return { catId: catId, name: byCat[catId].name, color: (catMap[catId] && catMap[catId].color) || 'var(--cat-slate)', spent: byCat[catId].total }; })
     .sort(function(a, b) { return b.spent - a.spent; });
 
@@ -8123,12 +8130,7 @@ function cfGetData() {
   var months = [];
   for (var m = 1; m <= 12; m++) {
     var ds = String(m).padStart(2, '0') + '.' + cfY;
-    var inc = 0;
-    ['person_1', 'person_2'].forEach(function(pid) {
-      if (store.salary && store.salary[pid] && store.salary[pid][ds]) {
-        inc += store.salary[pid][ds].netSalary || 0;
-      }
-    });
+    var inc = FP.Calculator.householdNetIncome(ds);
     // H6: alle Buchungen netto (Erstattungen mindern die Ausgabe) statt nur amount>0
     // M4: Buchungen archivierter Objekte ausschließen
     var exp = store.transactions
@@ -8504,7 +8506,7 @@ function rp2Render() {
 
   // H6: netto summieren (Erstattungen mindern die Ausgabe) — konsistent mit Übersicht/Budget
   var total  = txs.reduce(function(s, tx) { return s + Number(tx.amount); }, 0);
-  var months = rp2CountMonths(txs);
+  var months = rp2CountMonths(rp2GetRange());
   var avg    = months > 0 ? total / months : 0;
   rp2SetKpi(total, txs.length, avg);
 
@@ -8519,13 +8521,20 @@ function rp2Render() {
   rp2RenderTxList(txs);
 }
 
-function rp2CountMonths(txs) {
-  var keys = {};
-  txs.forEach(function(tx) {
+// Ø-Nenner (Nutzer-Entscheid 25.10.2026, gleiche Regel wie Übersicht-Kacheln und Kategorie-Detail):
+// alle Monate des Zeitraums, in denen IRGENDEINE Buchung steht — unabhängig vom Kategorie-/Suchfilter.
+// So ergeben die Ø-Werte einzelner Kategorien zusammen den Ø aller Ausgaben.
+function rp2CountMonths(range) {
+  var keys = {}, arch = _archObjSet();
+  FP.Store.Transactions.getAll().forEach(function(tx) {
+    if (tx.objectId && arch[tx.objectId]) return;
     var d = rp2TxISO(tx);
-    if (d) keys[d.substring(0, 7)] = true;
+    if (!d) return;
+    if (range.from && d < range.from) return;
+    if (range.to   && d > range.to)   return;
+    keys[d.substring(0, 7)] = true;
   });
-  return Object.keys(keys).length || 1;
+  return Object.keys(keys).length;
 }
 
 function rp2SetKpi(total, count, avg) {
@@ -8576,7 +8585,8 @@ function rp2RenderTxList(txs) {
     var cat   = tx.categoryId ? cats[tx.categoryId] : null;
     var obj   = tx.objectId   ? objs[tx.objectId]   : null;
     var dFmt  = rp2TxFmt(tx);
-    var isPos = Number(tx.amount) > 0;
+    // Ausgaben sind positiv gespeichert → „−“; Erstattungen (negativ) → „+“ in Grün, wie im Rest der App
+    var isPos = Number(tx.amount) < 0;
     var amt   = isFinite(tx.amount) ? Math.abs(Number(tx.amount)) : 0;
 
     var catName = cat && cat.name && cat.name !== 'undefined' ? cat.name : '';

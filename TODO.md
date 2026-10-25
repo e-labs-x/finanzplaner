@@ -97,7 +97,12 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    != null` (fehlend = 0 € Rente!), eine Geburtsdatum-Regel `Calculator.birthInfo`, SW 3 s Zeitlimit, Schrift
    blockiert nicht. Prüfungen: `robust.test.js` (Node), Waise/Rückfragen in `sicherheit.js`, Merge-Szenario mit
    gelöschter Anlage — alter Code jeweils rot.
-   Offen: Schritt 2 (Ø, Einnahmen-Basis, Budget, Reports-Vorzeichen), 3 (Archivieren, Folgejahr, Import raus),
+   **Schritt 2 ✅ `?v=20261025f` Zahlen-Konsistenz:** Reports-Ø teilt durch alle Monate des Zeitraums mit Buchung
+   (`rp2CountMonths(range)`, = Detail/Kacheln); `Calculator.householdNetIncome` = P1 + P2 bei aktivem Partner für
+   Home/Budget/Sparquote/Cashflow (Cashflow zählte P2 auch ohne Partner); Budget auf Oberkategorie zählt Kinder,
+   Gesamt ohne Doppel; Reports-Liste Ausgabe „−“, Erstattung „+“ grün. Prüfung `lib/konsistenz.js` (alter Code 6/7 rot).
+   Beobachten: 1 Prüflauf von 6 hing (331 s, ROT), danach 4× grün — tritt es wieder auf, Seite mit „keine Ausgabe“ suchen.
+   Offen: 3 (Archivieren, Folgejahr, Import raus),
    4 (Charts Drehung/Dunkel, Rente-Tab iPhone — Design-Freigabe), Azure-Lifecycle (Nutzerfrage).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).

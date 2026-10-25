@@ -2172,6 +2172,14 @@ function _simDepot(opts) {
 const Calculator = {
 
   // ── Monatszusammenfassung ──
+  // Haushalts-Netto eines Monats (MM.JJJJ) — EINE Regel für Home, Budget, Sparquote, Cashflow:
+  // Person 1 + Person 2, sobald der Partner aktiv ist (Paket 5, 25.10.2026)
+  householdNetIncome(dateStr) {
+    const store = Store.get();
+    const ids = store.settings?.partnerEnabled ? ['person_1', 'person_2'] : ['person_1'];
+    return r2(ids.reduce((s, pid) => s + (store.salary?.[pid]?.[dateStr]?.netSalary || 0), 0));
+  },
+
   getMonthSummary(month, year) {
     const dateStr = String(month).padStart(2, '0') + '.' + year;
     const store   = Store.get();
@@ -2197,8 +2205,7 @@ const Calculator = {
     });
 
     // Netto-Gehalt für diesen Monat
-    const salary   = store.salary?.person_1?.[dateStr];
-    const netSalary = salary?.netSalary || 0;
+    const netSalary = Calculator.householdNetIncome(dateStr);
     const budget   = store.budget;
     const sollFix  = r2(netSalary * budget.fixPct  / 100);
     const sollFrei = r2(netSalary * budget.freiPct / 100);
