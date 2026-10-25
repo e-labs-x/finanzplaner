@@ -91,6 +91,12 @@ if (withRec2) {
   check('Archivieren ohne Beenden: Vorlagen laufen weiter', FP.Store.get().recurring.filter(r => r.objectId === withRec2.id && !r.validUntil).length === n0);
 }
 
+// ── Home-Sparkline: Farbe aus dem Token statt fest #4F46E5 (folgt Hell/Dunkel) ──
+const appSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'app.js'), 'utf8');
+const spark = (appSrc.match(/function hmDrawSparkline[\s\S]*?\n}\r?\n/) || [''])[0];
+check('Home-Sparkline ohne feste Farbe', spark && !/#4F46E5|79,70,229/i.test(spark) && /--blue/.test(spark));
+check('Ein Hell/Dunkel-Listener zeichnet alle Diagramme', /prefers-color-scheme: dark[\s\S]{0,200}_redrawActiveCharts/.test(appSrc));
+
 // ── Service Worker: bei hängendem Netz nach Zeitlimit aus dem Cache ──
 const swSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'sw.js'), 'utf8');
 const handlers = {};

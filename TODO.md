@@ -106,8 +106,10 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    „Archivieren + beenden“ setzt `validUntil` = laufender Monat, spätere Vorlagen → Papierkorb, ein `_save`; dritte Wahl
    „weiterlaufen lassen“; Abbrechen = nichts). „Ins Folgejahr“ kopiert nur Vorlagen mit Ende 12.Y und behält `personId`
    (vorher still person_1). Excel-Import alter Ausgaben entfernt. `confirmDialog` setzt Abbrechen-Handler zurück.
-   Offen:
-   4 (Charts Drehung/Dunkel, Rente-Tab iPhone — Design-Freigabe), Azure-Lifecycle (Nutzerfrage).
+   **Schritt 4a ✅ `?v=20261025h` Diagramme:** `cfDrawChart` nach Canvas-Regel, Cashflow/Vermögen/Home in
+   `_redrawActiveCharts`, ein `matchMedia`-Listener für Hell/Dunkel → alle Charts, Home-Sparkline aus `--blue`.
+   Prüfung: konsistenz.js (alter Code: 900 px Diagramm in 420 px Bereich), robust.test.js.
+   Offen: 4b Rente-Tab iPhone abgeschnitten (Design-Freigabe), Azure-Lifecycle (Nutzerfrage).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
 Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Offen: Paket 4 (HOCH), Paket 5 (MITTEL), Reste aus 1 und 3 (siehe dort).

@@ -93,6 +93,20 @@
         check('Dritte Wahl: archiviert, Vorlagen laufen weiter', !!keep && FP.Store.Objects.getById(ob.id).status === 'archiviert' && FP.Store.Objects.openRecurring(ob.id).length > 0);
       }
 
+      // 8) Diagramme folgen der Breite (Drehung): Bereich schmaler machen, neu zeichnen, nichts ragt heraus
+      nav('cashflow');
+      var cv = document.getElementById('cf-canvas'), host = cv && cv.parentNode;
+      if (!cv) check('Cashflow-Diagramm vorhanden', false);
+      else {
+        host.style.width = '900px'; cfRender();                 // breit gezeichnet (Querformat)
+        var wide = cv.getBoundingClientRect().width;
+        host.style.width = '420px';                                  // gedreht → schmal
+        if (window._redrawActiveCharts) window._redrawActiveCharts();   // wie nach einer Drehung
+        var cw = cv.getBoundingClientRect().width, hw = host.clientWidth;
+        check('Cashflow-Diagramm passt nach Breitenwechsel in seinen Bereich', wide > 600 && cw <= hw + 1, 'breit ' + Math.round(wide) + ' px, danach ' + Math.round(cw) + ' px in ' + hw + ' px');
+        host.style.width = '';
+      }
+
       // 7) Excel-Import alter Ausgaben ist entfernt
       check('Excel-Import entfernt', typeof window.stImportAusgaben === 'undefined' && !document.querySelector('[onchange*="stImportAusgaben"]'));
     } catch (e) { errs.push('Abbruch: ' + e.message); }

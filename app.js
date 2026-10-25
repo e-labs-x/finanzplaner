@@ -753,7 +753,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if(document.getElementById('p-rente').classList.contains('active')){ rpSidebarHeight(); rpRenderMain(); }
     if(document.getElementById('p-gehalt').classList.contains('active')) ghRenderRealWage();
     if(document.getElementById('p-auswertung').classList.contains('active')) avRender();
+    if(document.getElementById('p-cashflow').classList.contains('active')) cfRender();
+    if(document.getElementById('p-vermoegen').classList.contains('active')) vmRender();
+    if(document.getElementById('p-home').classList.contains('active')) hmInit();
   }
+  // Hell/Dunkel-Wechsel: Canvas kennt keine CSS-Variablen → alle sichtbaren Diagramme neu zeichnen
+  window._redrawActiveCharts = _redrawActiveCharts;
   function _scheduleRedraw(){
     // Strukturelle Garantie: NICHT neu zeichnen während/kurz nach dem Scrollen. iPadOS/iOS
     // blenden beim Scrollen die Adressleiste ein/aus → das feuert resize, ist aber keine
@@ -994,10 +999,12 @@ function hmDrawSparkline(data) {
     };
   });
 
-  // Gradient fill
+  // Farbe aus dem Token (zur Zeichenzeit gelesen, folgt Hell/Dunkel); Transparenz per oklch(… / a)
+  var blue = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || 'oklch(52% 0.22 268)';
+  var alpha = function(c, a) { return /^oklch\(/.test(c) ? c.replace(/\)\s*$/, ' / ' + a + ')') : c; };
   var grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, 'rgba(79,70,229,0.18)');
-  grad.addColorStop(1, 'rgba(79,70,229,0)');
+  grad.addColorStop(0, alpha(blue, 0.18));
+  grad.addColorStop(1, alpha(blue, 0));
   ctx.beginPath();
   pts.forEach(function(p, i) { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
   ctx.lineTo(pts[pts.length - 1].x, H);
@@ -1008,7 +1015,7 @@ function hmDrawSparkline(data) {
 
   // Line
   ctx.beginPath();
-  ctx.strokeStyle = '#4F46E5';
+  ctx.strokeStyle = blue;
   ctx.lineWidth   = 1.8;
   ctx.lineJoin    = 'round';
   ctx.lineCap     = 'round';
@@ -1019,7 +1026,7 @@ function hmDrawSparkline(data) {
   var last = pts[pts.length - 1];
   ctx.beginPath();
   ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#4F46E5';
+  ctx.fillStyle = blue;
   ctx.fill();
 }
 
@@ -6745,12 +6752,11 @@ function vmShortMonth(mmyyyy){
   return ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][parseInt(p[0],10)-1]+' '+p[1].slice(2);
 }
 
-// Hell/Dunkel-Wechsel: Canvas kennt keine CSS-Variablen → Vermögen-Tab neu zeichnen (einmal registriert)
+// Hell/Dunkel-Wechsel: Canvas kennt keine CSS-Variablen → EIN Listener zeichnet alle sichtbaren Diagramme neu
 if(window.matchMedia){
   try{
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){
-      var p=document.getElementById('p-vermoegen');
-      if(p&&p.classList.contains('active'))vmRender();
+      if(window._redrawActiveCharts) window._redrawActiveCharts();
     });
   }catch(e){}
 }
@@ -8014,10 +8020,12 @@ function cfDrawChart(months) {
   var canvas = document.getElementById('cf-canvas');
   if (!canvas) return;
   var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentNode.getBoundingClientRect().width || canvas.parentNode.offsetWidth || 600;
+  // Canvas-Regel: Breite NIE in px fixieren — erst 100 %, dann am Canvas selbst messen, nur die Höhe setzen
+  canvas.style.width = '100%';
+  var W = Math.round(canvas.getBoundingClientRect().width) || canvas.parentNode.clientWidth || 600;
   var H = 180;
   canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  canvas.style.height = H + 'px';
   var ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);

@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025g`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025h`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -195,9 +195,10 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 - **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert
-  liefern, dann reagieren Charts nie auf iPhone-Drehung. Betrifft `ghDrawChart`, `ghDrawLineChart`,
-  `rpDrawVerlaufChart`, `rpDrawStichtagChart`, `rpDrawEntnahmeChart` (`vmDrawTrendRight` u. a. nutzen
-  `canvas.parentNode` und ist nicht betroffen).
+  liefern, dann reagieren Charts nie auf iPhone-Drehung. Gilt für alle Chart-Funktionen (`ghDrawChart`,
+  `ghDrawLineChart`, `rpDraw*Chart`, `cfDrawChart`, `vmDrawTrendRight`); Ausnahmen mit fester Größe: Donut
+  (misst die Spalte) und Home-Sparkline (180 px). **Jeder Tab mit Chart gehört in `_redrawActiveCharts`** — die
+  läuft bei Drehung UND beim Hell/Dunkel-Wechsel (ein `matchMedia`-Listener).
 
 ---
 
