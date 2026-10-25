@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025j`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025k`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -178,6 +178,10 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
   `_save()` ab — nicht erst beim nächsten Start. `Recurring._check` lehnt Ende vor Start und unbekannten Typ ab.
 - ✏️ (`update`) = Korrektur für den ganzen Zeitraum (geänderte Felder gehen in die gebuchten Buchungen);
   ↕ (`split`) = Betrag ab Monat. Kein stilles Versionieren in `update`.
+- ⏹ (`Recurring.end(id, letzterMonat)`) = Vertrag endet: spätere Buchungen gehen (auch rückwirkend), frühere bleiben,
+  die Vorlage bleibt für die Historie; ↺ `resume` hebt das Ende auf. „Beendet“ = Ende vorbei und kein Nachfolger in
+  der Serie (`successorOf`, `endedInYear`) — eine ↕-Vorversion ist nie „beendet“. Liste: eigener zugeklappter Bereich
+  „Beendet in JJJJ“. 🗑 nur für Fehleingaben (Historie geht nach 30 Tagen Papierkorb verloren).
 - `skipMonths` an der Vorlage: Monat wird nicht gebucht (gesetzt von `Transactions.edit`, wenn der Nutzer eine
   Fixkosten-Buchung in Betrag/Monat/Kategorie/Objekt ändert — sie wird dann `manual` mit `detachedFrom` —
   und von `Transactions.delete`). Waisen behalten `origRecurringId`, `Trash.restore` bindet sie wieder an.

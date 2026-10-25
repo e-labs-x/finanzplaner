@@ -107,6 +107,32 @@
         host.style.width = '';
       }
 
+      // 9) ⏹ Beenden über die Oberfläche: Dialog nennt die betroffenen Buchungen, danach steht die Vorlage
+      //    im zugeklappten Bereich „Beendet“ und nicht mehr bei den aktiven; ↺ holt sie zurück
+      if (typeof window.fkOpenEnd !== 'function') check('Fixkosten: Beenden-Knopf vorhanden', false);
+      else {
+        var cm = FP.currentMonthStr(), cy = +cm.split('.')[1], cmo = +cm.split('.')[0];
+        var prev = cmo > 1 ? String(cmo - 1).padStart(2, '0') + '.' + cy : null;
+        var fr = prev && FP.Store.Recurring.getAll().filter(function (r) { return !r.validUntil && r.type !== 'savings' && _fkToMonths(r.validFrom) < _fkToMonths(prev); })[0];
+        if (!fr) check('Fixkosten: offene Vorlage fuer den Test', false, prev);
+        else {
+          nav('fixkosten'); _fkNavYear = cy; fkRender();
+          fkOpenEnd(fr.id);
+          var inp = document.getElementById('fk-end-month');
+          inp.value = prev; inp.oninput();
+          var infoTxt = document.getElementById('fk-end-info').textContent;
+          check('Beenden-Dialog nennt die betroffene Buchung', /^1 Buchung danach/.test(infoTxt), infoTxt);
+          document.getElementById('mconf-ok').click();
+          var endedBox = document.getElementById('fk-ended');
+          var activeNames = [].map.call(document.querySelectorAll('#fk-list .fk-group:not(.fk-ended) .fk-row-name'), function (e) { return e.textContent; });
+          check('Beendete Vorlage steht im Bereich Beendet, nicht bei den aktiven', !!endedBox && /Beendet in/.test(endedBox.textContent) && activeNames.indexOf(fr.name) < 0, activeNames.length + ' aktiv');
+          fkToggleEnded();
+          var res = document.querySelector('#fk-ended button[onclick^="fkResume"]');
+          if (res) res.click();
+          check('↺ hebt das Ende auf', !!res && !FP.Store.Recurring.getAll().find(function (r) { return r.id === fr.id; }).validUntil);
+        }
+      }
+
       // 7) Excel-Import alter Ausgaben ist entfernt
       check('Excel-Import entfernt', typeof window.stImportAusgaben === 'undefined' && !document.querySelector('[onchange*="stImportAusgaben"]'));
     } catch (e) { errs.push('Abbruch: ' + e.message); }

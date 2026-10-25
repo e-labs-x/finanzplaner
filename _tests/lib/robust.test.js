@@ -97,6 +97,43 @@ const spark = (appSrc.match(/function hmDrawSparkline[\s\S]*?\n}\r?\n/) || [''])
 check('Home-Sparkline ohne feste Farbe', spark && !/#4F46E5|79,70,229/i.test(spark) && /--blue/.test(spark));
 check('Ein Hell/Dunkel-Listener zeichnet alle Diagramme', /prefers-color-scheme: dark[\s\S]{0,200}_redrawActiveCharts/.test(appSrc));
 
+// ── ⏹ Beenden: spätere Buchungen weg (auch rückwirkend), frühere bleiben, Vorlage bleibt für die Historie ──
+FP = fresh();
+{
+  const num = m => { const p = m.split('.'); return +p[1] * 12 + +p[0]; };
+  const cur = FP.currentMonthStr(), cN = num(cur);
+  const S = FP.Store.get();
+  const txOf = id => S.transactions.filter(t => t.source === 'recurring' && t.recurringId === id);
+  // offene Vorlage mit Buchungen in den letzten 3 Monaten
+  const rec = S.recurring.find(r => !r.validUntil && r.type !== 'savings' && txOf(r.id).filter(t => num(t.date) > cN - 3).length >= 3);
+  if (!rec || !FP.Store.Recurring.end) check('Beenden: Funktion und passende Vorlage', false, !!rec);
+  else {
+    const y = Math.floor((cN - 3) / 12), mo = (cN - 3) - y * 12 || 12, yy = mo === 12 && (cN - 3) % 12 === 0 ? y - 1 : y;
+    const last = String(mo).padStart(2, '0') + '.' + yy;
+    const before = txOf(rec.id).filter(t => num(t.date) <= num(last)).length, all = txOf(rec.id).length;
+    FP.Store.Recurring.end(rec.id, last);
+    const after = txOf(rec.id);
+    check('Beenden: keine Buchung nach ' + last + ' (rückwirkend)', after.every(t => num(t.date) <= num(last)), after.length + ' statt ' + before);
+    check('Beenden: frühere Buchungen bleiben', after.length === before && before > 0, before);
+    const kept = FP.Store.Recurring.getAll().find(r => r.id === rec.id);
+    check('Beenden: Vorlage bleibt mit Ende', !!kept && kept.validUntil === last);
+    check('Beenden: gilt als beendet im Jahr ' + yy, FP.Store.Recurring.endedInYear(kept, yy));
+    FP.Store.Recurring.resume(rec.id);
+    check('Fortsetzen: Buchungen bis heute wieder da', txOf(rec.id).length === all, txOf(rec.id).length + '/' + all);
+    let bad;
+    try { FP.Store.Recurring.end(rec.id, '01.1990'); } catch (e) { bad = e.message; }
+    check('Beenden vor dem Start wird abgelehnt', !!bad, bad);
+  }
+  // ↕ Betragsänderung ist kein Vertragsende
+  const rec2 = FP.Store.get().recurring.find(r => !r.validUntil && r.type !== 'savings' && num(r.validFrom) < cN - 2);
+  if (rec2) {
+    const m2 = String(((cN - 1) - 1) % 12 + 1).padStart(2, '0') + '.' + Math.floor((cN - 2) / 12);
+    FP.Store.Recurring.split(rec2.id, m2, rec2.amount + 1);
+    const old = FP.Store.Recurring.getAll().find(r => r.id === rec2.id);
+    check('Betragsänderung (↕) zählt nicht als beendet', old.validUntil && !FP.Store.Recurring.endedInYear(old, Math.floor((num(old.validUntil) - 1) / 12)), old.validUntil);
+  }
+}
+
 // ── Service Worker: bei hängendem Netz nach Zeitlimit aus dem Cache ──
 const swSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'sw.js'), 'utf8');
 const handlers = {};

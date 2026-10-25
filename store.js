@@ -1509,6 +1509,41 @@ const Store = (() => {
       return next;
     },
 
+    // ⏹ Beenden: lastMonth = letzter Monat mit Zahlung. Spätere Buchungen der Vorlage gehen — auch
+    // rückwirkend —, frühere bleiben; die Vorlage bleibt für die Historie der Jahre, in denen sie lief.
+    // Über update(): gleiche Prüfungen (_check: Ende nicht vor Start), Abgleich im selben _save.
+    end(id, lastMonth) {
+      if (!recMonthNum(lastMonth)) throw new Error('Monat ungültig (MM.JJJJ)');
+      const r = Recurring.update(id, { validUntil: lastMonth });
+      if (r) appLog('recurring_end', r.name + ' beendet zum ' + lastMonth);
+      return r;
+    },
+
+    // ↺ Ende aufheben — nur für wirklich beendete Vorlagen (eine ↕-Vorversion hat einen Nachfolger)
+    resume(id) {
+      if (Recurring.successorOf(id)) throw new Error('Für diese Vorlage gibt es schon eine neuere Version');
+      const r = Recurring.update(id, { validUntil: null });
+      if (r) appLog('recurring_resume', r.name + ' läuft wieder');
+      return r;
+    },
+
+    // Neuere Version derselben Serie (Name + Objekt), die nach dem Ende beginnt → dann war es eine
+    // Betragsänderung (↕), kein Vertragsende
+    successorOf(id) {
+      const recs = _state.recurring || [];
+      const r = recs.find(x => x.id === id);
+      if (!r || !r.validUntil) return null;
+      const end = recMonthNum(r.validUntil), key = recurringSeriesKey(r);
+      return recs.find(o => o.id !== r.id && recurringSeriesKey(o) === key && recMonthNum(o.validFrom) > end) || null;
+    },
+
+    // Beendet im Jahr: Ende liegt in diesem Jahr und vor dem laufenden Monat, ohne Nachfolger
+    endedInYear(rec, year) {
+      if (!rec || !rec.validUntil) return false;
+      const end = recMonthNum(rec.validUntil);
+      return Math.floor((end - 1) / 12) === year && end < recMonthNum(currentMonthStr()) && !Recurring.successorOf(rec.id);
+    },
+
     // ↕ Betrag ab Monat: alte Version endet im Vormonat, neue übernimmt deren ursprüngliches Ende.
     // Beide Versionen und die Buchungen gehen in EINEM _save().
     split(id, fromMonth, amount) {

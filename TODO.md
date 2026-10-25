@@ -123,7 +123,10 @@ Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
 Offen als Idee: Gesundheitscheck in der App (Doppelbuchungen, Liste ≠ gebucht, Waisen) mit Hinweis. Pakete 1–5 erledigt (Stand 25.10.2026);
 Reste aus Paket 3 in Paket 5 erledigt. **Noch offen aus Paket 1 (NIEDRIG):** Punkt 5 (Pull belegt Auto-Sicherungsplätze),
-Punkt 6 (16 direkte Store-Zugriffe aus app.js, Trennungsregel). Kleinkram: ‹-Knopf überdeckt auf dem iPhone die Kachel „Depot reicht“.
+Punkt 6 (16 direkte Store-Zugriffe aus app.js, Trennungsregel).
+**Fixkosten ⏹ Beenden ✅ `?v=20261025k`** (Nutzer-Wunsch + Freigabe 25.10.2026): letzter Monat mit Zahlung, spätere Buchungen
+weg (auch rückwirkend), Vorlage bleibt in der Historie; Bereich „Beendet in JJJJ“ zugeklappt unten mit ↺. Prüfungen in
+robust.test.js + konsistenz.js (alter Code rot). Kleinkram: ‹-Knopf überdeckt auf dem iPhone die Kachel „Depot reicht“.
 
 ## (erledigt 18.10.) App-Check — Entscheidung: B voller Audit
 

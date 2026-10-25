@@ -3839,6 +3839,9 @@ function fkRenderList(){
     return;
   }
 
+  // Beendete (Ende in diesem Jahr, vorbei, ohne Nachfolger) in eigenen Bereich ganz unten
+  var ended=items.filter(function(fc){ return FP.Store.Recurring.endedInYear(fc,year); });
+  items=items.filter(function(fc){ return ended.indexOf(fc)<0; });
   var groups={fixkosten:[],savings:[]};
   items.forEach(function(fc){
     // unbekannter Typ landet sichtbar bei den Fixkosten — nie unsichtbar weiterbuchen
@@ -3874,6 +3877,7 @@ function fkRenderList(){
         '<div class="fk-row-actions">'+
           (canSplit?'<button class="fk-row-btn" onclick="fkOpenSplit(\''+fc.id+'\')" title="Betrag ändern">↕</button>':'')+
           '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
+          '<button class="fk-row-btn" onclick="fkOpenEnd(\''+fc.id+'\')" title="Beenden (letzter Monat mit Zahlung)">⏹</button>'+
           '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
         '</div>'+
       '</div>';
@@ -3883,7 +3887,56 @@ function fkRenderList(){
         '<span class="fk-group-lbl" style="color:'+g.color+'">'+g.lbl+'</span>'+
         '<span class="fk-group-total">'+eur(total)+'/Monat</span>'+
       '</div>'+rows+'</div>';
+  }).join('')+fkEndedHtml(ended,year,catMap,objMap);
+}
+
+// Bereich „Beendet in JJJJ“ — zugeklappt, grau, je Zeile ↺ (Ende aufheben) und 🗑
+var _fkEndedOpen=false;
+function fkEndedHtml(list,year,catMap,objMap){
+  if(!list.length)return '';
+  var rows=list.map(function(fc){
+    var cat=catMap[fc.categoryId], obj=fc.objectId?objMap[fc.objectId]:null;
+    var meta=(cat?esc(cat.name):'')+(obj?' · '+esc(obj.name):'')+' · <em>bis '+esc(fc.validUntil)+'</em>';
+    return '<div class="fk-row">'+
+      '<div class="fk-row-info"><div class="fk-row-name">'+esc(fc.name)+'</div><div class="fk-row-meta">'+meta+'</div></div>'+
+      '<div class="fk-row-amt">'+eur(fc.amount)+'</div>'+
+      '<div class="fk-row-actions">'+
+        '<button class="fk-row-btn" onclick="fkResume(\x27'+fc.id+'\x27)" title="Ende aufheben">↺</button>'+
+        '<button class="fk-row-btn del" onclick="fkDelete(\x27'+fc.id+'\x27)">🗑</button>'+
+      '</div></div>';
   }).join('');
+  return '<div class="fk-group fk-ended'+(_fkEndedOpen?' open':'')+'" id="fk-ended">'+
+    '<div class="fk-group-hdr" onclick="fkToggleEnded()"><span class="fk-group-lbl"><span class="fk-ended-chev">▸</span>Beendet in '+year+' ('+list.length+')</span></div>'+
+    (_fkEndedOpen?rows:'')+'</div>';
+}
+function fkToggleEnded(){ _fkEndedOpen=!_fkEndedOpen; fkRenderList(); }
+
+// ⏹ Beenden: letzter Monat mit Zahlung wählen; zeigt, wie viele spätere Buchungen entfernt werden
+function fkOpenEnd(id){
+  var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
+  if(!fc)return;
+  var cur=FP.currentMonthStr();
+  var def=fc.validUntil||(_fkToMonths(fc.validFrom)>_fkToMonths(cur)?fc.validFrom:cur);
+  confirmDialog('„'+fc.name+'“ beenden — letzter Monat mit Zahlung (MM.JJJJ):','Beenden',function(){
+    var m=(document.getElementById('fk-end-month')||{}).value||'';
+    try{ FP.Store.Recurring.end(id,m.trim()); fkRender(); toast(fc.name+' beendet zum '+m.trim()); }
+    catch(e){ toast('Fehler: '+e.message); }
+  });
+  var extra=document.getElementById('mconf-extra');
+  extra.style.display='block';
+  extra.innerHTML='<input class="fi fk-end-inp" id="fk-end-month" type="text" inputmode="numeric" maxlength="7" value="'+esc(def)+'"><div class="fk-end-info" id="fk-end-info"></div>';
+  var inp=document.getElementById('fk-end-month'), info=document.getElementById('fk-end-info');
+  function upd(){
+    var n=_fkToMonths(inp.value.trim());
+    if(!n){info.textContent='Bitte als MM.JJJJ eingeben, z. B. 08.2026';return;}
+    var c=FP.Store.Transactions.getAll().filter(function(t){return t.source==='recurring'&&t.recurringId===id&&_fkToMonths(t.date)>n;}).length;
+    info.textContent=c?(c+' Buchung'+(c===1?'':'en')+' danach werden entfernt, frühere bleiben.'):'Keine späteren Buchungen — frühere bleiben.';
+  }
+  inp.oninput=upd; upd();
+}
+function fkResume(id){
+  try{ var r=FP.Store.Recurring.resume(id); fkRender(); toast((r?r.name:'Vorlage')+' läuft wieder'); }
+  catch(e){ toast('Fehler: '+e.message); }
 }
 
 function fkOpenNew(){
@@ -3976,7 +4029,7 @@ function fkSave(){
 function fkDelete(id){
   var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
   if(!fc)return;
-  confirmDialog('Vorlage „'+fc.name+'“ löschen? Ihre Buchungen ab diesem Monat werden entfernt, frühere bleiben. Die Vorlage liegt 30 Tage im Papierkorb.','Löschen',function(){
+  confirmDialog('Vorlage „'+fc.name+'“ löschen? Ihre Buchungen ab diesem Monat werden entfernt, frühere bleiben. Die Vorlage liegt 30 Tage im Papierkorb. Für ein Vertragsende besser ⏹ Beenden nutzen — dann bleibt sie in der Historie.','Löschen',function(){
     FP.Store.Recurring.delete(id);
     fkRender();
     toast('Gelöscht');

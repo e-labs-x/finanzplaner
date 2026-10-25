@@ -1046,6 +1046,15 @@ button { cursor: pointer; border: none; background: none; }
 .fk-row-btn{padding:4px 7px;border-radius:6px;font-size:12px;color:var(--tx3);transition:all .15s}
 .fk-row-btn:hover{background:var(--bg);color:var(--tx)}
 .fk-row-btn.del:hover{background:var(--red-lt);color:var(--red)}
+/* Beendete Vorlagen: eigener, zugeklappter Bereich unter den aktiven (Nutzer-Freigabe 25.10.2026) */
+.fk-ended .fk-group-hdr{cursor:pointer;border-bottom:none}
+.fk-ended.open .fk-group-hdr{border-bottom:1px solid var(--brd)}
+.fk-ended .fk-group-lbl{color:var(--tx3)}
+.fk-ended .fk-row{opacity:.6}
+.fk-ended-chev{display:inline-block;margin-right:6px;transition:transform .2s}
+.fk-ended.open .fk-ended-chev{transform:rotate(90deg)}
+.fk-end-inp{width:100%;margin-top:10px}
+.fk-end-info{font-size:12px;color:var(--tx3);margin-top:6px}
 .fk-year-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 #fk-nav-year{font-size:15px;font-weight:700;color:var(--tx);min-width:40px;text-align:center}
 .fk-only-badge{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-lt,oklch(from var(--purple) l c h / .12));border-radius:4px;padding:1px 5px;margin-left:6px}
