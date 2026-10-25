@@ -5299,12 +5299,12 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
   el.innerHTML=
     '<div class="rp-chart-wrap"><canvas id="rp-verlauf-canvas" style="display:block;width:100%;cursor:crosshair"></canvas></div>'+
     legendHtml+
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:8px">'+
       '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
       '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
       '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ Jahre':r.depotJahre>0?r.depotJahre.toFixed(0)+' Jahre':'< 1 Jahr')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:10px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ Jahre':r.wcDepotJahre.toFixed(0)+' Jahre')+' (−30% Schock)</div>':'')+'</div>'+
     '</div>'+
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px">'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Vorsorge-Depot (Anteil)</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:9px;color:var(--tx3)">ohne Immobilien/Sonstiges</div></div>'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Sparrate/Monat</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Ø Rendite</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
@@ -5845,7 +5845,7 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
     return '<tr class="'+(w.alter===r.targetRetirementAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
   }).join('');
   var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
-  el.innerHTML='<div style="margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+  el.innerHTML='<div style="margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'+
     '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
     '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+r.targetRetirementAge)+'</div></div>'+

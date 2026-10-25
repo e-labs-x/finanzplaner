@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025h`
+**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025i`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -192,6 +192,8 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 - **Schatten:** `--sh`, `--sh-md`, `--sh-modal`, `--sh-toast`, `--sh-popup`
 - **Radii:** `--r` 14px, `--r-sm` 9px, `--r-lg` 18px, `--r-xl` 26px
 - **Dark Mode:** automatisch via `@media (prefers-color-scheme: dark)` — kein manueller Schalter
+- **Rente-Tab unter 960 px:** eine Spalte (Umschalter → Ergebnisse → Einstellungen, Nutzer-Freigabe 25.10.2026);
+  `.rp-sidebar` ist dort `display:contents`. Darüber zwei Spalten wie gehabt. `_tests/lib/layout.js` misst 390/820 px.
 - **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert

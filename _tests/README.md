@@ -29,6 +29,7 @@ wird der Push abgebrochen.
 | Rundgang | `lib/rundgang.js` | Alle 13 Tabs öffnen sich mit echten Daten ohne Fehler |
 | Sicherheit | `lib/sicherheit.js` | Gift-Einträge (Namen, Notizen, Farben, Suchbegriff …) in allen Ansichten führen keinen Code aus; „Kurse aktualisieren“ lädt kein Script von fremden Servern; CSP sperrt Abruf an fremden Server; Excel-Bibliothek lädt als 0.20.3 mit Prüfsumme |
 | Konsistenz | `lib/konsistenz.js` | Ø/Monat Reports = Kategorie-Detail, Einnahmen Home = Budget = Cashflow (mit Partner), Budget auf Oberkategorie = Gruppensumme, Vorzeichen der Reports-Liste |
+| Layout | `lib/layout.js` + `lib/layout-app.js` | Rente-Tab bei 390 px (iPhone) und 820 px (iPad hochkant): nichts ragt sichtbar über den Rand |
 | Sync (9 Szenarien) | `lib/sync-harness.js` + `lib/sync-szenarien.js` | Zusammenführen, Server-Daten, Neu verbinden, Buchung während Download/Upload, Wiederholen, If-None-Match, Vermögen-Tab, Auto-Sync aus |
 
 ## Regel für neue Korrekturen

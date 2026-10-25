@@ -1139,8 +1139,22 @@ button { cursor: pointer; border: none; background: none; }
 .rp-completeness{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--amber-lt);border-bottom:1px solid var(--brd);font-size:12px;color:var(--amber)}
 .rp-completeness.ok{background:var(--green-lt);color:var(--green)}
 
-/* Rentenplanung — Sidebar wider */
-.rp-layout{grid-template-columns:390px 1fr !important}
+/* Rentenplanung — Sidebar wider (nur ab 960 px; minmax(0,…) lässt den Ergebnisbereich schrumpfen) */
+@media(min-width:960px){.rp-layout{grid-template-columns:390px minmax(0,1fr) !important}}
+/* Unter 960 px (iPhone, iPad hochkant) EINE Spalte — Nutzer-Freigabe 25.10.2026: Ergebnisse oben,
+   Einstellungen darunter. Die Einstellungs-Spalte löst sich auf (display:contents), damit der
+   Personen-Umschalter oben bleibt: Umschalter → Ergebnisse → Einstellungen. ‹ blendet die Einstellungen aus. */
+@media(max-width:959.98px){
+  .rp-layout{display:flex !important;flex-direction:column;gap:8px}
+  .rp-layout > .rp-sidebar{display:contents}
+  #rp-person-bar{order:0}
+  .rp-layout > .rp-main{order:1;min-width:0;width:100%;margin-bottom:8px}
+  .rp-sidebar > :not(#rp-person-bar){order:2;min-width:0}
+  .rp-layout.rp-collapsed .rp-sidebar > :not(#rp-person-bar){display:none}
+  .rp-sz-bar{overflow-x:auto;scrollbar-width:none}
+  /* Breite Jahres-Tabellen (Verlauf, Entnahme): seitlich wischen statt über den Rand ragen */
+  .rp-dt{display:block;max-width:100%;overflow-x:auto}
+}
 /* Rente-Tab — NUR Maus/Trackpad (html:not(.ios)): Zwei-Pane mit eigenständigem Scroll.
    Auf Touch-Geräten (iPad/iPhone) bleibt es EIN Scroll-Bereich über .page → kein iOS
    Pull-to-Refresh durch verschachtelte Scroll-Container. Zweispaltiges Raster bleibt dort. */
