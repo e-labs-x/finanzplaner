@@ -55,6 +55,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $app $name), $index.Substring(0, $cut) + $inject + "`n" + $index.Substring($cut), $utf8)
   }
   Write-Page 'rundgang.html' '<script src="data.js"></script><script src="rundgang.js"></script>'
+  Write-Page 'sicherheit.html' '<script src="data.js"></script><script src="sicherheit.js"></script>'
   Write-Page 'sync.html' '<script src="data.js"></script><script src="sync-szenarien.js"></script><script src="sync-harness.js"></script>'
   $t = [IO.File]::ReadAllText((Join-Path $app 'tests.html')).Replace('</body>', '<script>window.addEventListener("load",function(){runTests()})</script></body>')
   [IO.File]::WriteAllText((Join-Path $app 'tests-auto.html'), $t, $utf8)
@@ -72,6 +73,7 @@ try {
   }
   $runs += Start-Page 'tests' 'tests-auto.html' 10000
   $runs += Start-Page 'rundgang' 'rundgang.html' 15000
+  $runs += Start-Page 'sicherheit' 'sicherheit.html' 30000
   $szen = 'merge', 'remote', 'connect', 'pullrace', 'pushrace', 'retry', 'nonematch', 'espp', 'autosync'
   foreach ($s in $szen) { $runs += Start-Page ('sync_' + $s) ('sync.html?sc=' + $s) 90000 }
 
@@ -114,7 +116,7 @@ try {
     }
     $o = $null
     if ($html -match '<pre id="out">([^<]*)</pre>') { $o = [Net.WebUtility]::HtmlDecode($Matches[1]) | ConvertFrom-Json }
-    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
+    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } elseif ($r.Label -eq 'sicherheit') { 'Sicherheit (Gift-Eintraege, Kurse)' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
     if (-not $o) { Add-Result $name $false 'keine Ausgabe'; continue }
     $info = [string]$o.info
     if ($o.errors -and @($o.errors).Count -gt 0) { $info += ' - Fehler: ' + ((@($o.errors) | ForEach-Object { if ($_ -is [string]) { $_ } else { $_ | ConvertTo-Json -Compress } }) -join ' | ') }

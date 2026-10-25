@@ -725,6 +725,21 @@ function validateStore(data) {
   return errors;
 }
 
+// Farben landen in style-Attributen (innerHTML). Nur #hex oder var(--token) ist erlaubt,
+// alles andere wird zur Standardfarbe — geprüft in load(), replaceState() und _save(),
+// also auf jedem Weg, auf dem Daten in den Store kommen (Paket 4, 25.10.2026).
+const DEFAULT_COLOR = '#6B7280';
+function safeColor(c) {
+  return (typeof c === 'string' && (/^#[0-9a-f]{3,8}$/i.test(c) || /^var\(--[a-z0-9-]+\)$/i.test(c))) ? c : DEFAULT_COLOR;
+}
+function sanitizeColors(state) {
+  ['categories', 'objects', 'assets'].forEach(k => {
+    (Array.isArray(state?.[k]) ? state[k] : []).forEach(x => {
+      if (x && x.color != null && safeColor(x.color) !== x.color) x.color = DEFAULT_COLOR;
+    });
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // STORE — LESEN & SCHREIBEN
 // ═══════════════════════════════════════════════════════════════
@@ -786,6 +801,7 @@ const Store = (() => {
       return false;
     }
     if (!_suppressTouch) _touch();
+    sanitizeColors(_state);
     if (!_writeMain(JSON.stringify(_state))) {
       _notify('save-failed');
       return false;
@@ -804,6 +820,7 @@ const Store = (() => {
       next.log.unshift(_logEntry(logMsg[0], logMsg[1]));
       if (next.log.length > 500) next.log.length = 500;
     }
+    sanitizeColors(next);
     if (!_writeMain(JSON.stringify(next))) {
       throw new Error('Speicher voll — Daten konnten nicht übernommen werden. Bitte Browserdaten aufräumen und erneut versuchen.');
     }
@@ -855,6 +872,7 @@ const Store = (() => {
       }
       const parsed = JSON.parse(raw);
       _state = migrateStore(parsed);
+      sanitizeColors(_state);
       if (!_state.trash) _state.trash = [];
       if (!_state.categoryBudgets) _state.categoryBudgets = {};
       _suppressTouch = true;

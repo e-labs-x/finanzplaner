@@ -26,6 +26,7 @@ wird der Push abgebrochen.
 | Selbsttests | `../tests.html` | Store-Funktionen auf einem isolierten Standard-Datensatz |
 | Vorlagen-Regel | `lib/vorlagen.test.js` (Node) | Kein Hin und Her beim Start, keine Doppelbuchung, Fixkosten-Liste = gebucht, ↕ / ✏️ / Löschen / Papierkorb / Verschieben mit echten Daten, Migration wiederholbar |
 | Rundgang | `lib/rundgang.js` | Alle 13 Tabs öffnen sich mit echten Daten ohne Fehler |
+| Sicherheit | `lib/sicherheit.js` | Gift-Einträge (Namen, Notizen, Farben, Suchbegriff …) in allen Ansichten führen keinen Code aus; „Kurse aktualisieren“ lädt kein Script von fremden Servern |
 | Sync (9 Szenarien) | `lib/sync-harness.js` + `lib/sync-szenarien.js` | Zusammenführen, Server-Daten, Neu verbinden, Buchung während Download/Upload, Wiederholen, If-None-Match, Vermögen-Tab, Auto-Sync aus |
 
 ## Regel für neue Korrekturen

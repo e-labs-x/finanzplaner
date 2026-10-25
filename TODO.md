@@ -73,6 +73,12 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    Belege: 9 Szenarien mit Azure-Attrappe + echten Daten bestanden, Gegenprobe am alten Code zeigt jeden Fehler;
    tests.html 30/30; alle Tabs fehlerfrei. Hinweis: „↓ Laden" fragt jetzt bei offenen lokalen Änderungen nach.
 4. **Paket 4 — Sicherheitshärtung** (HOCH): Details nur in der Audit-Datei auf OneDrive (Repo ist öffentlich).
+   **Schritt 1 ✅ 25.10.2026 `?v=20261025a`:** Maskierung an allen Anzeigestellen mit Nutzertext (`esc()` jetzt auch
+   für `'` und 0), Farben nur `#hex`/`var(--token)` — geprüft im Store bei load/replaceState/_save (`safeColor`),
+   Kursabruf ohne JSONP über fremde Proxys (nur noch fetch; iOS-PWA darf jetzt auch). Neue Prüfung
+   `_tests/lib/sicherheit.js`: ~900 Gift-Einträge in echten Daten, 75 Ansichten — am alten Code 18 Felder + 3 fremde
+   Scripte, jetzt 0. **Offen Schritt 2:** CSP, SW nur eigene Dateien cachen, XLSX 0.20.x selbst hosten,
+   Alpha-Vantage-Key aus dem Backup, SAS-Feld nach Verbinden leeren.
 5. Paket 5 — Einzelfehler (MITTEL).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).

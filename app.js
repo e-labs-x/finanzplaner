@@ -908,7 +908,7 @@ function hmInit() {
     var pct   = Math.round((c.data.total / topAmt) * 100);
     return '<div class="hm-cat-row">' +
       '<div class="hm-cat-dot" style="background:' + color + '"></div>' +
-      '<div class="hm-cat-name">' + c.data.name + '</div>' +
+      '<div class="hm-cat-name">' + esc(c.data.name) + '</div>' +
       '<div class="hm-cat-bar-wrap"><div class="hm-cat-bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
       '<div class="hm-cat-amt">' + eur(c.data.total) + '</div>' +
     '</div>';
@@ -1198,7 +1198,7 @@ function npCurrencyToggle(e) {
   var html = '<div class="np-curr-opt' + (npCur==='EUR'?' sel':'') + '" onclick="npCurrencySelect(\'EUR\')"><span class="np-curr-code">EUR</span><span class="np-curr-sym">€</span><span>Euro</span></div>';
   active.forEach(function(c) {
     html += '<div class="np-curr-opt' + (npCur===c.code?' sel':'') + '" onclick="npCurrencySelect(\''+c.code+'\')">'
-      +'<span class="np-curr-code">'+c.code+'</span><span class="np-curr-sym">'+c.symbol+'</span><span>'+c.name+'</span></div>';
+      +'<span class="np-curr-code">'+esc(c.code)+'</span><span class="np-curr-sym">'+esc(c.symbol)+'</span><span>'+esc(c.name)+'</span></div>';
   });
   picker.innerHTML = html;
   picker.classList.add('open');
@@ -1564,8 +1564,8 @@ function _renderLog(el) {
   el.innerHTML = log.slice(0,200).map(function(e){
     var col = e.level==='ERROR'?'var(--red)':e.level==='WARN'?'var(--amber)':e.level==='SYNC'?'var(--green)':e.level==='KATEGORIE'?'var(--purple)':e.level==='INFO'?'var(--tx2)':'var(--blue)';
     return '<div style="margin-bottom:4px"><span style="color:var(--tx3);font-size:11px">'+_fmtLogTs(e.ts)+'</span> '
-      +'<span style="color:'+col+';font-weight:600">'+e.level+'</span> '
-      +'<span style="word-break:break-all">'+(e.msg||'').replace(/</g,'&lt;')+'</span></div>';
+      +'<span style="color:'+col+';font-weight:600">'+esc(e.level)+'</span> '
+      +'<span style="word-break:break-all">'+esc(e.msg)+'</span></div>';
   }).join('');
 }
 function stOpenLog() {
@@ -1909,7 +1909,7 @@ function avRenderKatObjekte(){
         var cpct=(Math.abs(c.total)/Math.abs(d.total)*100).toFixed(0);
         return '<div class="av-kat-sub" onclick="avCatDetail(\''+c.cat.id+'\',\''+d.obj.id+'\')">'+
           '<div class="av-kat-dot" style="background:'+(c.cat.color||'#6B7280')+'"></div>'+
-          '<div class="av-kat-name">'+c.cat.name+'</div>'+
+          '<div class="av-kat-name">'+esc(c.cat.name)+'</div>'+
           '<div class="av-kat-pct">'+cpct+'%</div>'+
           '<div class="av-kat-amt">'+eur(Math.abs(c.total))+'</div>'+
           '</div>';
@@ -2256,7 +2256,7 @@ function obRenderDetail(id){
     var name=e[0],d=e[1];
     return '<div class="ob-row">'+
       '<div class="ob-row-dot" style="background:'+(d.color||'#6B7280')+'"></div>'+
-      '<div class="ob-row-name">'+name+'</div>'+
+      '<div class="ob-row-name">'+esc(name)+'</div>'+
       '<div class="ob-row-cnt">'+d.count+'×</div>'+
       '<div class="ob-row-amt">'+eur(d.total)+'</div>'+
       '</div>';
@@ -2301,9 +2301,9 @@ function obRenderDetail(id){
   el.innerHTML=
     '<div class="ob-back" onclick="obBack()">‹ Alle Objekte</div>'+
     '<div class="ob-detail-hdr">'+
-      '<div class="ob-detail-ico">'+(OBJ_ICONS[o.type]||o.icon||'')+'</div>'+
-      '<div class="ob-detail-name">'+o.name+'</div>'+
-      '<div class="ob-detail-type">'+(OB_TYPE_LABEL[o.type]||o.type)+(o.description?' · '+o.description:'')+(isArch?' · archiviert':'')+(isHidden?' · Eingabe ausgeblendet':'')+'</div>'+
+      '<div class="ob-detail-ico">'+(OBJ_ICONS[o.type]||esc(o.icon))+'</div>'+
+      '<div class="ob-detail-name">'+esc(o.name)+'</div>'+
+      '<div class="ob-detail-type">'+(OB_TYPE_LABEL[o.type]||esc(o.type))+(o.description?' · '+esc(o.description):'')+(isArch?' · archiviert':'')+(isHidden?' · Eingabe ausgeblendet':'')+'</div>'+
       '<div class="ob-detail-total">'+eur(s.total)+'</div>'+
       '<div class="ob-detail-sub">'+s.txCount+' Buchungen gesamt</div>'+
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
@@ -2768,7 +2768,7 @@ function stNewKat(){
   if(par){
     par.innerHTML='<option value="">— Hauptkategorie —</option>'+
       FP.Store.Categories.getMain().map(function(c){
-        return '<option value="'+c.id+'">'+c.name+'</option>';
+        return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';
       }).join('');
   }
   document.getElementById('mc-par-group').style.display='';
@@ -2795,7 +2795,7 @@ function stEditCat(id){
     var par=document.getElementById('mc-par');
     par.innerHTML='<option value="">— Keine (Hauptkategorie) —</option>'+
       FP.Store.Categories.getAll().filter(function(c){return !c.parentId&&c.id!==id;}).map(function(c){
-        return '<option value="'+c.id+'"'+(cat.parentId===c.id?' selected':'')+'>'+c.name+'</option>';
+        return '<option value="'+esc(c.id)+'"'+(cat.parentId===c.id?' selected':'')+'>'+esc(c.name)+'</option>';
       }).join('');
     parGroup.style.display='';
   }
@@ -2973,9 +2973,9 @@ function stRenderCurrencies(){
     return '<div class="st-row">'+
       '<div class="st-row-info">'+
         '<div class="st-row-name" style="opacity:'+(active?1:0.4)+'">'+
-          '<span style="font-weight:600;min-width:36px;display:inline-block">'+c.code+'</span> '+
-          '<span style="color:var(--tx2)">'+c.symbol+'</span> '+
-          '<span style="font-size:12px;color:var(--tx3)"> '+c.name+'</span>'+
+          '<span style="font-weight:600;min-width:36px;display:inline-block">'+esc(c.code)+'</span> '+
+          '<span style="color:var(--tx2)">'+esc(c.symbol)+'</span> '+
+          '<span style="font-size:12px;color:var(--tx3)"> '+esc(c.name)+'</span>'+
         '</div>'+
         (isEUR?'<div class="st-row-sub">Basiswährung</div>':
           '<div class="st-row-sub">1 EUR = '+(c.rate||'—')+' '+c.code+'</div>')+
@@ -3081,73 +3081,20 @@ function stSaveCurrency(){
   }
 }
 
-// ── Kurs-Update: JSONP (iOS-kompatibel) + fetch als Fallback ──
-//
-// iOS Safari blockiert fetch() von file://-Seiten zu externen URLs.
-// Script-Tag-Injection (JSONP) umgeht diese Einschränkung, da <script src>
-// nicht unter dieselbe Same-Origin-Policy fällt.
-
-// JSONP-Helfer: lädt URL via <script>-Tag, API muss ?callback=NAME unterstützen
-function _jsonpFetch(url, cbParam, timeoutMs){
-  return new Promise(function(resolve, reject){
-    var name='_fpCb'+Date.now();
-    var el=document.createElement('script');
-    var done=false;
-    var timer=setTimeout(function(){
-      if(done)return; done=true;
-      _jsonpCleanup(el,name); reject(new Error('timeout'));
-    }, timeoutMs||8000);
-    window[name]=function(data){
-      if(done)return; done=true;
-      clearTimeout(timer); _jsonpCleanup(el,name); resolve(data);
-    };
-    el.onerror=function(){
-      if(done)return; done=true;
-      clearTimeout(timer); _jsonpCleanup(el,name); reject(new Error('load error'));
-    };
-    el.src=url+(url.indexOf('?')>=0?'&':'?')+cbParam+'='+name;
-    document.head.appendChild(el);
-  });
-}
-function _jsonpCleanup(el,name){
-  try{ delete window[name]; }catch(e){}
-  if(el&&el.parentNode) el.parentNode.removeChild(el);
-}
-
-// Alle APIs werden PARALLEL gestartet — schnellste Antwort gewinnt.
-// JSONP via CORS-Proxy: umgeht iOS file://-Einschränkung (script-Tag statt fetch).
-// fetch: Desktop-Fallback (antwortet sofort, JSONP läuft still im Hintergrund).
-var _enc=encodeURIComponent;
+// ── Kurs-Update: nur direkter fetch (liefert JSON, kann keinen Code ausführen) ──
+// Bis 10/2026 liefen hier zusätzlich JSONP-Abrufe über fremde CORS-Proxys (<script src>) —
+// deren Antwort lief als Script mit Zugriff auf den SAS-Token. Entfernt (Audit Paket 4).
+// Alle Quellen starten PARALLEL — die schnellste Antwort gewinnt.
 var RATE_APIS=[
-  // ── JSONP-Proxies (iOS file:// kompatibel) ──
   {
-    method:'jsonp', cbParam:'callback',
-    url:'https://api.allorigins.win/get?url='+_enc('https://api.frankfurter.app/latest?from=EUR'),
-    getRates:function(w){ try{return JSON.parse(w.contents).rates||{};}catch(e){return {};} }
-  },
-  {
-    method:'jsonp', cbParam:'callback',
-    url:'https://www.whateverorigin.com/get?url='+_enc('https://api.frankfurter.app/latest?from=EUR'),
-    getRates:function(w){ try{return JSON.parse(w.contents).rates||{};}catch(e){return {};} }
-  },
-  {
-    method:'jsonp', cbParam:'callback',
-    url:'https://api.allorigins.win/get?url='+_enc('https://open.er-api.com/v6/latest/EUR'),
-    getRates:function(w){ try{return JSON.parse(w.contents).rates||{};}catch(e){return {};} }
-  },
-  // ── Direkter fetch (Desktop) ──
-  {
-    method:'fetch',
     url:'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.min.json',
     getRates:function(d){ return d.eur||{}; }
   },
   {
-    method:'fetch',
     url:'https://api.frankfurter.app/latest?from=EUR',
     getRates:function(d){ return d.rates||{}; }
   },
   {
-    method:'fetch',
     url:'https://open.er-api.com/v6/latest/EUR',
     getRates:function(d){ return d.rates||{}; }
   }
@@ -3157,11 +3104,12 @@ function stUpdateRates(onlyCode){
   var btn=document.getElementById('st-rates-btn');
   if(btn){btn.disabled=true;btn.textContent='Lädt …';}
 
-  // iOS erkennen (iPhone, iPad, auch iPad Pro das sich als Mac ausgibt)
+  // iOS erkennen (iPhone, iPad, auch iPad Pro das sich als Mac ausgibt) — nur als lokale
+  // Datei gesperrt; die PWA (https) darf fetch wie der Desktop
   var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
             (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
-  if(isIOS){
+  if(isIOS&&location.protocol==='file:'){
     if(btn){btn.disabled=false;btn.textContent='Kurse aktualisieren';}
     _showIosRatesHint();
     return;
@@ -3203,10 +3151,8 @@ function stUpdateRates(onlyCode){
   }
 
   RATE_APIS.forEach(function(api){
-    var p=api.method==='jsonp'
-      ? _jsonpFetch(api.url,api.cbParam,9000)
-      : fetch(api.url).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
-    p.then(function(data){ applyRates(api.getRates(data)); })
+    fetch(api.url).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+     .then(function(data){ applyRates(api.getRates(data)); })
      .catch(onFail);
   });
 }
@@ -3645,7 +3591,7 @@ function esppRender(){
   var apiKey=FP.Store.Settings.getApiKey('alphavantage');
   var settHtml='<div class="vm-espp-settings">'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Ticker</span>'+
-    '<input class="vm-espp-sinp wide" id="espp-ticker" type="text" value="'+(s.ticker||'')+'" placeholder="z.B. ULS" oninput="this.value=this.value.toUpperCase()" onchange="esppSaveSettings()" style="text-transform:uppercase"></div>'+
+    '<input class="vm-espp-sinp wide" id="espp-ticker" type="text" value="'+esc(s.ticker)+'" placeholder="z.B. ULS" oninput="this.value=this.value.toUpperCase()" onchange="esppSaveSettings()" style="text-transform:uppercase"></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Aktueller Kurs USD</span>'+
     '<div style="display:flex;gap:6px;align-items:center">'+
     '<input class="vm-espp-sinp" id="espp-aktkurs" type="number" step="0.01" value="'+(s.aktuellerKursUsd||'')+'" placeholder="manuell" onchange="esppSaveSettings()">'+
@@ -4070,13 +4016,13 @@ function fkFillCatSelect(selected){
   all.filter(function(c){return !c.parentId;}).forEach(function(parent){
     var subs=all.filter(function(c){return c.parentId===parent.id;});
     if(subs.length>0){
-      opts+='<optgroup label="'+parent.name+'">';
+      opts+='<optgroup label="'+esc(parent.name)+'">';
       subs.forEach(function(s){
-        opts+='<option value="'+s.id+'"'+(s.id===selected?' selected':'')+'>'+s.name+'</option>';
+        opts+='<option value="'+esc(s.id)+'"'+(s.id===selected?' selected':'')+'>'+esc(s.name)+'</option>';
       });
       opts+='</optgroup>';
     } else {
-      opts+='<option value="'+parent.id+'"'+(parent.id===selected?' selected':'')+'>'+parent.name+'</option>';
+      opts+='<option value="'+esc(parent.id)+'"'+(parent.id===selected?' selected':'')+'>'+esc(parent.name)+'</option>';
     }
   });
   sel.innerHTML=opts;
@@ -4087,7 +4033,7 @@ function fkFillObjSelect(selected){
   var objs=FP.Store.Objects.getActive();
   sel.innerHTML='<option value="">— kein Objekt —</option>'+
     objs.map(function(o){
-      return '<option value="'+o.id+'"'+(o.id===selected?' selected':'')+'>'+o.name+'</option>';
+      return '<option value="'+esc(o.id)+'"'+(o.id===selected?' selected':'')+'>'+esc(o.name)+'</option>';
     }).join('');
 }
 
@@ -4310,7 +4256,7 @@ function rpSelectPerson(id){
 
 function rpPersonName(id, store) {
   var p = store.persons && store.persons.find(function(p){return p.id===id;});
-  return p ? p.name : (id==='person_1'?'Person 1':'Partner');
+  return esc(p ? p.name : (id==='person_1'?'Person 1':'Partner'));  // HTML-sicher: nur in innerHTML verwendet
 }
 
 function rpRenderPartnerCompare(r1, r2, store) { return; // Waisenfunktion — Inhalt in rpRenderTabHaushalt
@@ -4588,7 +4534,7 @@ function rpRenderResults(r){ return; // Waisenfunktion — DOM-Element rp-result
   if(!el)return;
   var lueckeCls=r.hatLuecke?'luecke':'ok';
   var deferredNote=r.deferredSources&&r.deferredSources.length?
-    r.deferredSources.map(function(d){return d.name+' ab '+d.startAge;}).join(', '):'';
+    r.deferredSources.map(function(d){return esc(d.name)+' ab '+d.startAge;}).join(', '):'';
   var einkommenSub='Brutto: '+eur(r.gesamtBrutto)+' · Ziel: '+eur(r.ausgaben)+'/Monat';
   if(deferredNote) einkommenSub+=' · Noch nicht aktiv: '+deferredNote;
   var lueckeSub=r.hatLuecke?'pro Monat (Netto)':'Einkommen deckt Ausgaben';
@@ -4621,7 +4567,7 @@ function rpRenderIncome(r){ return; // Waisenfunktion — DOM-Element rp-income 
   ].filter(function(s){return s.val>0;});
   // Weitere Rentenversicherungen einzeln
   (r.weitereQuellennetto||[]).forEach(function(w,i){
-    if(w.netto>0) sources.push({key:'weitere_'+i,lbl:w.name,val:w.netto,brutto:w.brutto,aktiv:w.aktiv,startAge:w.startAge});
+    if(w.netto>0) sources.push({key:'weitere_'+i,lbl:esc(w.name),val:w.netto,brutto:w.brutto,aktiv:w.aktiv,startAge:w.startAge});
   });
   if(!sources.length){
     el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:13px">Noch keine Renteneinkommen erfasst.</div>';
@@ -4858,7 +4804,7 @@ function rpRenderWeitere(){
     var inpSt='background:var(--surf);border-color:var(--brd);';
     return '<div class="rp-w-row" style="padding:10px 12px;background:var(--surf2);border:1px solid var(--brd);border-radius:10px;margin-bottom:8px">'+
       // Zeile 1: Name (volle Breite)
-      '<input class="fi rp-w-name" type="text" placeholder="z.B. Allianz Private Rentenversicherung" value="'+(w.name||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;margin-bottom:6px;'+inpSt+'">'+
+      '<input class="fi rp-w-name" type="text" placeholder="z.B. Allianz Private Rentenversicherung" value="'+esc(w.name)+'" style="width:100%;box-sizing:border-box;margin-bottom:6px;'+inpSt+'">'+
       // Zeile 2: Betrag | Ab Alter | Typ | Modus | ×
       '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'+
         (isE
@@ -5867,7 +5813,7 @@ function rpRenderTabRente(r1,r2,store,el) {
     if(r.direktzusageBrutto>0)rows.push({l:'Betriebsrente Netto'+(r.direktzusageAktiv?'':' (ab '+r.direktzusageStartAge+')'),v:eur(r.direktzusageMonatlich)});
     if(r.ruerupBrutto>0)rows.push({l:'Rürup Netto'+(r.ruerupAktiv?'':' (ab '+r.ruerupStartAge+')'),v:eur(r.ruerupMonatlich)});
     (r.weitereQuellennetto||[]).forEach(function(w){
-      if(w.brutto>0)rows.push({l:(w.name||'Weitere Rentenversicherung')+(w.aktiv?'':' (ab '+w.startAge+')')+' Netto',v:eur(w.netto)});
+      if(w.brutto>0)rows.push({l:esc(w.name||'Weitere Rentenversicherung')+(w.aktiv?'':' (ab '+w.startAge+')')+' Netto',v:eur(w.netto)});
     });
     if(r.erbMieteMonatlich>0)rows.push({l:'Erbimmobilie Miete',v:eur(r.erbMieteMonatlich)});
     rows.push({l:'Ausgaben/Monat (heute)',v:eur(r.ausgaben)});
@@ -5896,7 +5842,7 @@ function rpRenderTabRente(r1,r2,store,el) {
     }
     var deferredHtml='';
     if(r.hatLuecke&&!r.hatLueckeVoll&&r.deferredSources&&r.deferredSources.length){
-      var deferredNote=r.deferredSources.map(function(d){return d.name+' ab '+d.startAge;}).join(', ');
+      var deferredNote=r.deferredSources.map(function(d){return esc(d.name)+' ab '+d.startAge;}).join(', ');
       deferredHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:11px;color:var(--tx2)">'+
         '<span style="color:var(--green);font-weight:600">Kein Defizit</span> sobald aktiv: '+deferredNote+'</div>';
     }
@@ -5956,7 +5902,7 @@ function rpRenderIncomeHtml(r) {
     {key:'direkt',lbl:'Betriebsrente',val:r.direktzusageMonatlich,aktiv:r.direktzusageAktiv},
     {key:'ruerup',lbl:'Rürup',val:r.ruerupMonatlich,aktiv:r.ruerupAktiv},
   ].filter(function(s){return s.val>0;});
-  (r.weitereQuellennetto||[]).forEach(function(w,i){if(w.netto>0)sources.push({key:'w'+i,lbl:w.name,val:w.netto,aktiv:w.aktiv});});
+  (r.weitereQuellennetto||[]).forEach(function(w,i){if(w.netto>0)sources.push({key:'w'+i,lbl:esc(w.name),val:w.netto,aktiv:w.aktiv});});
   if(!sources.length)return'';
   var total=r.gesamtEinkommenVoll||1;
   var barHtml=sources.map(function(s){var c=colors[s.key]||colors.weitere;return '<div class="rp-income-seg" style="width:'+(s.val/total*100).toFixed(1)+'%;background:'+c+';opacity:'+(s.aktiv?1:.35)+'"></div>';}).join('');
@@ -6224,8 +6170,8 @@ function vmFillOwnerSelects(){
     if(!sel)return;
     var cur=sel.value;
     sel.innerHTML=
-      '<option value="person_1">'+VM_OWNER_LABEL.person_1+'</option>'+
-      '<option value="person_2">'+VM_OWNER_LABEL.person_2+'</option>'+
+      '<option value="person_1">'+esc(VM_OWNER_LABEL.person_1)+'</option>'+
+      '<option value="person_2">'+esc(VM_OWNER_LABEL.person_2)+'</option>'+
       '<option value="joint">Gemeinsam</option>';
     sel.value=cur||'person_1';
   });
@@ -6485,7 +6431,7 @@ function vmRenderCharts(){
     var color=VM_TYPE_COLOR[item.type]||'#94A3B8';
     var pct=(item.value/total*100).toFixed(1);
     return '<div class="vm-bar-row">'+
-      '<div class="vm-bar-lbl" title="'+item.name+'">'+item.name+'</div>'+
+      '<div class="vm-bar-lbl" title="'+esc(item.name)+'">'+esc(item.name)+'</div>'+
       '<div class="vm-bar-track"><div class="vm-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
       '<div class="vm-bar-val">'+eur(item.value)+'</div>'+
     '</div>';
@@ -6920,7 +6866,7 @@ function vmRenderAssets(){
       : '<div class="vm-asset-val" style="color:var(--tx3);font-size:15px">–</div>'+
         '<div class="vm-asset-meta">Noch keine Zyklen erfasst</div>')+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
-      '<div class="vm-asset-owner">'+(VM_OWNER_LABEL['person_1']||'Person 1')+'</div>'+
+      '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL['person_1']||'Person 1')+'</div>'+
       '<button onclick="event.stopPropagation();document.getElementById(\'vm-espp\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="background:var(--surf2);border:1px solid var(--brd);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--tx2);cursor:pointer">Details ↓</button>'+
     '</div>'+
   '</div>';
@@ -6929,7 +6875,7 @@ function vmRenderAssets(){
     var alpha=color+'22';
     var hasVal=item.value>0;
     var asset=FP.Store.Assets.getById(item.id);
-    var isinHint=asset&&asset.isin?'<span style="font-size:10px;color:var(--tx3);font-family:var(--mono)">'+asset.isin+'</span>':'';
+    var isinHint=asset&&asset.isin?'<span style="font-size:10px;color:var(--tx3);font-family:var(--mono)">'+esc(asset.isin)+'</span>':'';
 
     // Performance badge
     var perfHtml='';
@@ -6985,7 +6931,7 @@ function vmRenderAssets(){
       sparkHtml+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
         '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
-          '<div class="vm-asset-owner">'+(VM_OWNER_LABEL[item.ownerId]||item.ownerId)+'</div>'+
+          '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL[item.ownerId]||item.ownerId)+'</div>'+
           (asset&&asset.monthlyPlan
             ?'<div onclick="vmEditAsset(\''+item.id+'\')" style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;background:rgba(124,58,237,0.12);color:var(--purple);cursor:pointer" title="Sparplan bearbeiten">€'+asset.monthlyPlan+'/Mo</div>'
             :'')+
@@ -7017,8 +6963,8 @@ function vmRenderFsa(){
   var listHtml=s.items.length?'<div class="vm-fsa-list">'+s.items.map(function(f){
     var pl=VM_OWNER_LABEL[f.personId]||f.personId;
     return '<div class="vm-fsa-row">'+
-      '<div class="vm-fsa-inst">'+f.institution+
-        '<span style="font-size:10px;color:var(--tx3);margin-left:6px">'+pl+'</span>'+
+      '<div class="vm-fsa-inst">'+esc(f.institution)+
+        '<span style="font-size:10px;color:var(--tx3);margin-left:6px">'+esc(pl)+'</span>'+
       '</div>'+
       '<div class="vm-fsa-amt">'+eur(f.betrag)+'</div>'+
       '<button class="vm-fsa-del" onclick="vmDelFsa(event,\''+f.id+'\')">🗑</button>'+
@@ -7790,8 +7736,8 @@ function srSearch(q){
       var amtColor=tx.amount<0?'var(--green)':'inherit';
       return '<button class="sr-item" onclick="srGoDate(\''+tx.date+'\')">'
         +'<div class="sr-item-dot" style="background:'+color+'"></div>'
-        +'<div class="sr-item-info"><div class="sr-item-title">'+title+'</div>'
-        +'<div class="sr-item-sub">'+sub+'</div></div>'
+        +'<div class="sr-item-info"><div class="sr-item-title">'+esc(title)+'</div>'
+        +'<div class="sr-item-sub">'+esc(sub)+'</div></div>'
         +'<div class="sr-item-right" style="color:'+amtColor+'">'+(tx.amount<0?'↩\u2009':'')+eur(Math.abs(tx.amount))+'</div>'
         +'</button>';
     }).join('');
@@ -7809,7 +7755,7 @@ function srSearch(q){
       var status=fc.validUntil?'bis '+fc.validUntil:'aktiv';
       return '<button class="sr-item" onclick="closeSearch();nav(\'fixkosten\')">'
         +'<div class="sr-item-dot" style="background:'+color+'"></div>'
-        +'<div class="sr-item-info"><div class="sr-item-title">'+fc.name+'</div>'
+        +'<div class="sr-item-info"><div class="sr-item-title">'+esc(fc.name)+'</div>'
         +'<div class="sr-item-sub">ab '+fc.validFrom+' · '+status+'</div></div>'
         +'<div class="sr-item-right">'+eur(fc.amount)+'/Mo</div>'
         +'</button>';
@@ -7830,8 +7776,8 @@ function srSearch(q){
       var meta=[a.wkn,a.isin].filter(Boolean).join(' · ');
       return '<button class="sr-item" onclick="closeSearch();nav(\'vermoegen\')">'
         +'<div class="sr-item-dot" style="background:'+color+'"></div>'
-        +'<div class="sr-item-info"><div class="sr-item-title">'+a.name+'</div>'
-        +(meta?'<div class="sr-item-sub">'+meta+'</div>':'')
+        +'<div class="sr-item-info"><div class="sr-item-title">'+esc(a.name)+'</div>'
+        +(meta?'<div class="sr-item-sub">'+esc(meta)+'</div>':'')
         +'</div>'
         +(snap?'<div class="sr-item-right">'+eur(snap.value)+'</div>':'')
         +'</button>';
@@ -7848,7 +7794,7 @@ function srSearch(q){
     html+=objHits.map(function(o){
       return '<button class="sr-item" onclick="srGoObj(\''+o.id+'\')">'
         +'<div class="sr-item-dot" style="background:'+(o.color||'#6B7280')+'"></div>'
-        +'<div class="sr-item-info"><div class="sr-item-title">'+(OBJ_ICONS[o.type]||'')+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+o.name+'</span></div>'
+        +'<div class="sr-item-info"><div class="sr-item-title">'+(OBJ_ICONS[o.type]||'')+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.name)+'</span></div>'
         +(o.description?'<div class="sr-item-sub">'+esc(o.description)+'</div>':'')
         +'</div></button>';
     }).join('');
@@ -7863,13 +7809,13 @@ function srSearch(q){
     html+=catHits.map(function(c){
       return '<button class="sr-item" onclick="srGoCat(\''+c.id+'\')">'
         +'<div class="sr-item-dot" style="background:'+c.color+'"></div>'
-        +'<div class="sr-item-info"><div class="sr-item-title">'+(ICONS[c.id]||'')+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.name+'</span></div>'
+        +'<div class="sr-item-info"><div class="sr-item-title">'+(ICONS[c.id]||'')+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name)+'</span></div>'
         +'<div class="sr-item-sub">'+(c.group==='fixkosten'?'Fixkosten':'Freizeit')+(c.parentId?' · Unterkategorie':'')+'</div>'
         +'</div></button>';
     }).join('');
   }
 
-  el.innerHTML=html||'<div class="sr-empty">Keine Ergebnisse für „'+q+'"</div>';
+  el.innerHTML=html||'<div class="sr-empty">Keine Ergebnisse für „'+esc(q)+'"</div>';
 }
 
 // Transaktion: Auswertung auf den passenden Monat setzen
@@ -7979,7 +7925,7 @@ function bgtRender() {
       html += '<div class="bgt-item">' +
         '<div class="bgt-item-top">' +
           '<div class="bgt-item-dot" style="background:' + b.color + '"></div>' +
-          '<div class="bgt-item-name">' + b.name + '</div>' +
+          '<div class="bgt-item-name">' + esc(b.name) + '</div>' +
           '<div class="bgt-item-amounts"><span>' + eur(b.spent) + '</span> / ' + eur(b.limit) + '</div>' +
           '<button class="bgt-item-edit" onclick="bgtStartEdit(\'' + b.catId + '\')">' + (bgtState.editingCat === b.catId ? 'Schließen' : 'Bearbeiten') + '</button>' +
         '</div>' +
@@ -8002,7 +7948,7 @@ function bgtRender() {
     unbudgetedWithSpend.forEach(function(u) {
       html += '<div class="bgt-unb-item">' +
         '<div class="bgt-item-dot" style="background:' + u.color + '"></div>' +
-        '<div class="bgt-unb-name">' + u.name + '</div>' +
+        '<div class="bgt-unb-name">' + esc(u.name) + '</div>' +
         '<div class="bgt-unb-amt">' + eur(u.spent) + '</div>' +
         '<button class="bgt-unb-add" onclick="bgtQuickAdd(\'' + u.catId + '\')">+ Budget</button>' +
         '</div>';
@@ -8282,7 +8228,7 @@ function cfRenderTable(months) {
 }
 
 // ── Reports ──
-function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s == null || s === false ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 var _rp2 = { period: 'all', offset: 0, cats: [] };
 var RP2_MLAB = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
