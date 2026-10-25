@@ -69,6 +69,28 @@ const bad = FP.Calculator.calcRente('person_1');
 check('Falsches Geburtsdatum + Entgeltpunkte keine Zahl → zwei Hinweise', bad.warnings && bad.warnings.length >= 2, JSON.stringify(bad.warnings));
 check('Rürup und Rente: eine Geburtsdatum-Regel', FP.Calculator.birthInfo && FP.Calculator.birthInfo({ birthDate: '' }).year === 1988);
 
+// ── Objekt archivieren: Vorlagen auf Wunsch zum laufenden Monat beenden (ein _save, Buchungen abgeglichen) ──
+FP = fresh();
+const withRec = FP.Store.Objects.getAll().find(x => FP.Store.get().recurring.some(r => r.objectId === x.id && !r.validUntil));
+if (!withRec) check('Testdaten: Objekt mit offener Vorlage', false);
+else {
+  const cur = FP.currentMonthStr(), num = m => { const p = m.split('.'); return +p[1] * 100 + +p[0]; };
+  const open = FP.Store.Objects.openRecurring ? FP.Store.Objects.openRecurring(withRec.id) : [];
+  check('openRecurring findet die offenen Vorlagen', open.length > 0, open.length);
+  FP.Store.Objects.archive(withRec.id, true);
+  const still = FP.Store.get().recurring.filter(r => r.objectId === withRec.id && (!r.validUntil || num(r.validUntil) > num(cur)));
+  const later = FP.Store.get().transactions.filter(t => t.objectId === withRec.id && t.source === 'recurring' && num(t.date) > num(cur));
+  check('Archivieren + beenden: keine Vorlage bucht über ' + cur + ' hinaus', still.length === 0 && later.length === 0, still.length + ' Vorlagen, ' + later.length + ' Buchungen');
+  check('Archivieren + beenden: Objekt archiviert', FP.Store.Objects.getById(withRec.id).status === 'archiviert');
+}
+FP = fresh();
+const withRec2 = FP.Store.Objects.getAll().find(x => FP.Store.get().recurring.some(r => r.objectId === x.id && !r.validUntil));
+if (withRec2) {
+  const n0 = FP.Store.get().recurring.filter(r => r.objectId === withRec2.id && !r.validUntil).length;
+  FP.Store.Objects.archive(withRec2.id, false);
+  check('Archivieren ohne Beenden: Vorlagen laufen weiter', FP.Store.get().recurring.filter(r => r.objectId === withRec2.id && !r.validUntil).length === n0);
+}
+
 // ── Service Worker: bei hängendem Netz nach Zeitlimit aus dem Cache ──
 const swSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'sw.js'), 'utf8');
 const handlers = {};

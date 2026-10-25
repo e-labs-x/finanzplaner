@@ -1525,7 +1525,8 @@ function confirmDialog(msg, label, onOk){
   var extra=document.getElementById('mconf-extra');
   if(extra){extra.style.display='none';extra.innerHTML='';}
   var cancel=document.getElementById('mconf-cancel');
-  if(cancel){cancel.style.display='';cancel.textContent='Abbrechen';}
+  // onclick zurücksetzen — ein Aufrufer (obArchive) belegt Abbrechen mit eigener Aktion
+  if(cancel){cancel.style.display='';cancel.textContent='Abbrechen';cancel.onclick=function(){ closeM('m-confirm'); };}
   var okBtn=document.getElementById('mconf-ok');
   okBtn.style.display='';   // stCatActions blendet ihn aus
   okBtn.style.background='var(--red)';okBtn.style.borderColor='var(--red)';
@@ -2174,10 +2175,24 @@ function obNew(){
 }
 
 function obArchive(id){
-  FP.Store.Objects.archive(id);
-  obS.selectedId=null;
-  obRenderGrid();
-  toast('Archiviert');
+  var open=FP.Store.Objects.openRecurring(id);
+  function done(end){
+    FP.Store.Objects.archive(id,end);
+    obS.selectedId=null;
+    obRenderGrid();
+    toast(end?'Archiviert · '+open.length+' Vorlage'+(open.length===1?'':'n')+' beendet':'Archiviert');
+  }
+  if(!open.length){done(false);return;}
+  // Nutzer-Entscheid 25.10.2026: nachfragen statt still weiterbuchen
+  var m=FP.currentMonthStr();
+  confirmDialog(open.length+' Fixkosten-Vorlage'+(open.length===1?'':'n')+' dieses Objekts buchen weiter ('+open.map(function(r){return r.name;}).join(', ')+'). Zum '+m+' beenden?','Archivieren + beenden',function(){done(true);});
+  // Dritte Wahl im Zusatzbereich (confirmDialog leert ihn beim nächsten Aufruf selbst); Abbrechen = nichts tun
+  var extra=document.getElementById('mconf-extra');
+  if(extra){
+    extra.style.display='block';
+    extra.innerHTML='<button class="btn" id="mconf-keep" style="width:100%">Archivieren, Vorlagen weiterlaufen lassen</button>';
+    document.getElementById('mconf-keep').onclick=function(){closeM('m-confirm');done(false);};
+  }
 }
 
 function obRestore(id){
@@ -3365,174 +3380,8 @@ function stImport(input){
   previewReader.readAsText(file);
 }
 
-/* ── Ausgaben-Import aus ausgaben_flat_v2.xlsx ── */
-var _XLSX_CAT_MAP = {
-  'Lebensmittel':'cat_lebensmittel','Ausgehen':'cat_restaurant','Kaffee':'cat_kaffee',
-  'Tanken':'cat_tanken','Autowäsche':'cat_autowaesche','Auto-Teile':'cat_autoteile',
-  'Parken':'cat_parken','Reinigung':'cat_reinigung','Wohnung':'cat_wohnung',
-  'Steuer':'cat_steuer','Kleidung':'cat_kleidung','Urlaub':'cat_urlaub',
-  'Gesundheit':'cat_gesundheit','Geschenke':'cat_geschenke','Friseur':'cat_friseur',
-  'Weiterbildung':'cat_weiterbildung','Lotto':'cat_lotto','Amazon Prime':'cat_amazon',
-  'Netflix':'cat_netflix','YouTube Premium':'cat_youtube','Apple TV':'cat_appletv',
-  'iCloud':'cat_icloud','Sonstiges':'cat_sonstiges','SIM GPS':'cat_sim_gps',
-};
-
-function _xlsxParseAmount(v){
-  if(v==null||v==='') return 0;
-  if(typeof v==='number') return Math.abs(v);
-  var s=String(v).replace(/[€\s]/g,'').replace(/\./g,'').replace(',','.');
-  return Math.abs(parseFloat(s)||0);
-}
-
-function _xlsxGetOrCreateObject(name){
-  if(!name||!name.trim()) return null;
-  var found=(FP.Store.Objects.getAll()||[]).find(function(o){return o.name===name;});
-  if(found) return found.id;
-  return FP.Store.Objects.add({name:name,type:'sonstiges',description:'',icon:'📦',color:'var(--cat-slate)'}).id;
-}
-
-function stImportAusgaben(input){
-  var file=input.files[0];
-  if(!file){ input.value=''; return; }
-
-  var txCount=(FP.Store.Transactions.getAll()||[]).length;
-  confirmDialog(
-    'Beim Import werden alle bestehenden '+txCount+' Transaktionen gelöscht und durch die Excel-Daten ersetzt. Ein Backup wird automatisch gespeichert.',
-    'Importieren & ersetzen',
-    function(){
-      var lbl=document.getElementById('st-import-xlsx-lbl');
-      if(lbl){lbl.style.opacity='0.6';lbl.textContent='Lädt…';}
-
-      function doImport(XLSX){
-        var reader=new FileReader();
-        reader.onerror=function(){ toast('Fehler: Datei konnte nicht gelesen werden'); if(lbl){lbl.style.opacity='';lbl.innerHTML='📥 Importieren<input type="file" accept=".xlsx" style="display:none" onchange="stImportAusgaben(this)">';} };
-        reader.onload=function(e){
-          try{
-            var wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
-            var ws=wb.Sheets['Ausgaben_Flat'];
-            if(!ws){toast('Sheet "Ausgaben_Flat" nicht gefunden');return;}
-
-            var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-            if(rows.length<2){toast('Keine Daten gefunden');return;}
-
-            // Header-Zeile analysieren: Spalten I (idx 8) und J (idx 9) optional
-            var hasColI=rows[0][8]!=null;
-            var hasColJ=rows[0][9]!=null;
-
-            // Backup erstellen bevor Transaktionen unwiderruflich gelöscht werden
-            FP.BackupManager._saveAutoBackup(FP.BackupManager.create('Vor Excel-Import'));
-
-            // H4: nur zuvor importierte Excel-Buchungen ersetzen (source:'import') —
-            // manuell erfasste Buchungen und generierte Fixkosten bleiben erhalten.
-            var store=FP.Store.get();
-            store.transactions=store.transactions.filter(function(t){return t.source!=='import';});
-            FP.Store.save();
-
-        var imported=0,skipped=0,nocat=0,flaggedSkip=0,badData=0;
-        var nocatNames={};  // {katName: count} für WARN-Log
-        // Gültige Kategorie-IDs aus Store für Spalte-I-Validierung
-        var validCatIds={};
-        (store.categories||[]).forEach(function(c){ validCatIds[c.id]=true; });
-
-        rows.slice(1).forEach(function(row,rowIdx){
-          if(!row||row.every(function(c){return c==null||c===''})) return;
-
-          // Spalte J: Import?
-          if(hasColJ){
-            var flag=String(row[9]||'').trim().toUpperCase();
-            if(flag==='NEIN'||flag==='NO'){skipped++;flaggedSkip++;return;}
-          }
-
-          var jahr  =parseInt(row[0])||0;
-          var monat =parseInt(row[2])||0;
-          var roh   =String(row[3]||'').trim();
-          var katRaw=String(row[4]||'').trim();
-          var objRaw=String(row[6]||'').trim();
-          // Betrag in H (col 7) wenn Objekt vorhanden, sonst in F (col 5)
-          var betrag=_xlsxParseAmount(row[7])||_xlsxParseAmount(row[5]);
-
-          if(!jahr||!monat||!betrag){badData++;skipped++;return;}
-
-          var date=String(monat).padStart(2,'0')+'.'+jahr;
-
-          // categoryId: Spalte I bevorzugt, sonst Mapping-Tabelle
-          var catId=null;
-          if(hasColI&&row[8]&&String(row[8]).trim()&&!String(row[8]).startsWith('FEHLT_')){
-            var colI=String(row[8]).trim();
-            if(validCatIds[colI]){
-              catId=colI;
-            } else {
-              // Spalte I gesetzt, aber ID existiert nicht im Store
-              nocat++;skipped++;
-              nocatNames['[Spalte I] '+colI]=(nocatNames['[Spalte I] '+colI]||0)+1;
-              return;
-            }
-          } else {
-            catId=_XLSX_CAT_MAP[katRaw]||null;
-          }
-
-          if(!catId){
-            nocat++;skipped++;
-            if(katRaw) nocatNames[katRaw]=(nocatNames[katRaw]||0)+1;
-            return;
-          }
-
-          // Objekt
-          var objId=_xlsxGetOrCreateObject(objRaw||null);
-
-          FP.Store.Transactions.add({
-            date:      date,
-            categoryId:catId,
-            rawName:   roh,
-            amount:    betrag,
-            objectId:  objId,
-            source:    'import',
-            sourceRef: 'xlsx_'+file.name,
-          });
-          imported++;
-        });
-
-        FP.Store.save();
-
-        // ── Import-Log: Zusammenfassung ──
-        var parts=['✓ '+imported+' importiert'];
-        if(flaggedSkip) parts.push(flaggedSkip+' via Spalte-J übersprungen');
-        if(badData)     parts.push(badData+' ohne Datum/Betrag');
-        if(nocat)       parts.push(nocat+' ohne Kategorie-Mapping');
-        appLog('INFO','Excel-Import abgeschlossen · '+parts.join(' · '));
-
-        // Je unbekanntem Kategorie-Name eine WARN-Zeile
-        Object.keys(nocatNames).sort().forEach(function(name){
-          appLog('WARN','Import übersprungen: Kategorie "'+name+'" ('+nocatNames[name]+'x) — kein Mapping vorhanden');
-        });
-        if(badData){
-          appLog('WARN','Import: '+badData+' Zeile(n) mit fehlendem Datum oder Betrag übersprungen');
-        }
-
-        // UI aktualisieren
-        if(typeof auInit==='function') auInit();
-        if(typeof npRebuildPicker==='function') npRebuildPicker();
-
-        if(lbl){lbl.style.opacity='';lbl.innerHTML='📥 Importieren<input type="file" accept=".xlsx" style="display:none" onchange="stImportAusgaben(this)">';}
-        toast('✓ '+imported+' Transaktionen importiert'+(skipped?' · '+skipped+' übersprungen':''));
-      } catch(err){
-        appLog('ERROR','Excel-Import Fehler: '+err.message);
-        toast('Import fehlgeschlagen: '+err.message);
-        if(lbl){lbl.style.opacity='';lbl.innerHTML='📥 Importieren<input type="file" accept=".xlsx" style="display:none" onchange="stImportAusgaben(this)">';}
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-      if(typeof XLSX==='undefined'){
-        _loadXLSX(function(){doImport(XLSX);},function(){toast('Fehler: SheetJS konnte nicht geladen werden');if(lbl){lbl.style.opacity='';lbl.textContent='📥 Importieren';}});
-      } else {
-        doImport(XLSX);
-      }
-    }
-  );
-  input.value='';
-}
+// Ausgaben-Import aus Excel (ausgaben_flat_v2.xlsx) am 25.10.2026 entfernt (Nutzer-Entscheid): Daten seit
+// 2017 sind übernommen, der Import addierte statt zu ersetzen und machte Erstattungen zu Ausgaben.
 
 function stReset(){
   confirmDialog('Wirklich alle Daten löschen? Ein Backup wird heruntergeladen.','Alles löschen',function(){
@@ -3872,18 +3721,18 @@ function fkCopyToNextYear(){
   var curYear=new Date().getFullYear();
   if(nextYear>curYear){toast('Kann nicht über '+curYear+' hinaus kopieren');return;}
   var allEntries=FP.Store.Recurring.getAll();
-  var activeNow=allEntries.filter(function(r){return _fkCoversYear(r,_fkNavYear);});
+  // Nur Vorlagen, die bis Dezember laufen und dort enden. Offene laufen ohnehin weiter; im Jahr
+  // beendete (Vertrag gekündigt) dürfen nicht wiederbelebt werden (Audit Paket 5)
+  var activeNow=allEntries.filter(function(r){return r.validUntil==='12.'+_fkNavYear&&_fkCoversYear(r,_fkNavYear);});
   var copied=0;
   activeNow.forEach(function(r){
     // objectId einbeziehen — TRV-Hausgeld und MIM-Hausgeld sind verschiedene Serien (M1)
     var alreadyCovered=allEntries.some(function(o){return o.name===r.name&&(o.objectId||null)===(r.objectId||null)&&_fkCoversYear(o,nextYear);});
     if(alreadyCovered)return;
-    // Quell-Eintrag schließen damit er nicht ins Folgejahr durchsickert
-    if(!r.validUntil) FP.Store.Recurring.update(r.id,{validUntil:'12.'+_fkNavYear});
     // Neuen Eintrag anlegen; in historischen Jahren ebenfalls begrenzen
     var newUntil=(nextYear<curYear)?('12.'+nextYear):null;
     FP.Store.Recurring.add({name:r.name,amount:r.amount,type:r.type,
-      categoryId:r.categoryId,objectId:r.objectId,
+      categoryId:r.categoryId,objectId:r.objectId,personId:r.personId,
       validFrom:'01.'+nextYear,validUntil:newUntil});
     copied++;
   });

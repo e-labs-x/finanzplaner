@@ -71,6 +71,30 @@
       var nRef = rp2Filter().filter(function (t) { return t.amount < 0; }).length;
       check('Reports: Ausgaben mit Minus', exp > 0 && exp === nExp, exp + ' statt ' + nExp);
       check('Reports: Erstattungen mit Plus und grün', ref.length === nRef && ref.every(function (e) { return e.classList.contains('rp2-pos'); }), ref.length + ' / ' + nRef);
+      // 5) Ins Folgejahr kopieren: nur Vorlagen, die im Dezember enden; Person bleibt erhalten
+      var Y = y - 2;
+      FP.Store.Recurring.add({ name: 'Testvertrag gekuendigt', amount: 10, type: 'fixed', categoryId: 'cat_sonstiges', personId: 'person_1', validFrom: '01.' + Y, validUntil: '05.' + Y });
+      FP.Store.Recurring.add({ name: 'Testvertrag Jahresende', amount: 11, type: 'fixed', categoryId: 'cat_sonstiges', personId: 'person_2', validFrom: '01.' + Y, validUntil: '12.' + Y });
+      nav('fixkosten'); _fkNavYear = Y; fkCopyToNextYear();
+      var nx = FP.Store.Recurring.getAll().filter(function (r) { return r.validFrom === '01.' + (Y + 1); });
+      check('Folgejahr: gekuendigter Vertrag wird nicht wiederbelebt', !nx.some(function (r) { return r.name === 'Testvertrag gekuendigt'; }));
+      var jj = nx.filter(function (r) { return r.name === 'Testvertrag Jahresende'; })[0];
+      check('Folgejahr: Vorlage mit Jahresende kopiert, Person erhalten', !!jj && jj.personId === 'person_2', jj ? jj.personId : 'nicht kopiert');
+
+      // 6) Archivieren fragt nach; Abbrechen tut nichts, dritte Wahl archiviert ohne Beenden
+      var ob = FP.Store.Objects.getAll().filter(function (o) { return o.status !== 'archiviert' && FP.Store.Objects.openRecurring && FP.Store.Objects.openRecurring(o.id).length; })[0];
+      if (!ob) check('Archivieren: Objekt mit offener Vorlage in den Daten', false);
+      else {
+        nav('objekte'); obArchive(ob.id);
+        var asked = document.getElementById('m-confirm').classList.contains('open');
+        document.getElementById('mconf-cancel').click();
+        check('Archivieren fragt, Abbrechen laesst das Objekt aktiv', asked && FP.Store.Objects.getById(ob.id).status !== 'archiviert');
+        obArchive(ob.id); var keep = document.getElementById('mconf-keep'); if (keep) keep.click();
+        check('Dritte Wahl: archiviert, Vorlagen laufen weiter', !!keep && FP.Store.Objects.getById(ob.id).status === 'archiviert' && FP.Store.Objects.openRecurring(ob.id).length > 0);
+      }
+
+      // 7) Excel-Import alter Ausgaben ist entfernt
+      check('Excel-Import entfernt', typeof window.stImportAusgaben === 'undefined' && !document.querySelector('[onchange*="stImportAusgaben"]'));
     } catch (e) { errs.push('Abbruch: ' + e.message); }
     var pre = document.createElement('pre'); pre.id = 'out';
     pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join(', '), errors: errs });

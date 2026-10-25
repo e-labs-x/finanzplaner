@@ -1235,13 +1235,30 @@ const Store = (() => {
       return full;
     },
 
-    archive(id) {
+    // Vorlagen des Objekts, die nach dem Monat noch buchen würden (offen oder späteres Ende)
+    openRecurring(id, month) {
+      const m = _mmyyyyToNum(month || currentMonthStr());
+      return (_state.recurring || []).filter(r => r.objectId === id && (!r.validUntil || _mmyyyyToNum(r.validUntil) > m));
+    },
+
+    // endRecurring: Vorlagen zum laufenden Monat beenden (Nutzer bestätigt in der UI). Vorlagen, die erst
+    // später beginnen würden, wandern in den Papierkorb. Alles in EINEM _save inkl. Abgleich der Buchungen.
+    archive(id, endRecurring) {
       const obj = _state.objects.find(o => o.id === id);
-      if (obj) {
-        obj.status  = 'archiviert';
-        obj.endDate = obj.endDate || currentMonthStr();
-        _save();
+      if (!obj) return;
+      obj.status  = 'archiviert';
+      obj.endDate = obj.endDate || currentMonthStr();
+      if (endRecurring) {
+        const cur = currentMonthStr(), m = _mmyyyyToNum(cur);
+        Objects.openRecurring(id, cur).forEach(r => {
+          if (_mmyyyyToNum(r.validFrom) > m) {
+            Trash._add('recurring', r);
+            _state.recurring = _state.recurring.filter(x => x.id !== r.id);
+          } else r.validUntil = cur;
+        });
+        _reconcileRecurring();
       }
+      _save();
     },
 
     update(id, changes) {

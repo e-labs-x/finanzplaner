@@ -102,7 +102,11 @@ aller Ansichten auf den Cent **ok**. Reihenfolge (Nutzer-Freigabe pro Paket nöt
    Home/Budget/Sparquote/Cashflow (Cashflow zählte P2 auch ohne Partner); Budget auf Oberkategorie zählt Kinder,
    Gesamt ohne Doppel; Reports-Liste Ausgabe „−“, Erstattung „+“ grün. Prüfung `lib/konsistenz.js` (alter Code 6/7 rot).
    Beobachten: 1 Prüflauf von 6 hing (331 s, ROT), danach 4× grün — tritt es wieder auf, Seite mit „keine Ausgabe“ suchen.
-   Offen: 3 (Archivieren, Folgejahr, Import raus),
+   **Schritt 3 ✅ `?v=20261025g` Fixkosten + Import:** Objekt archivieren fragt (`Objects.openRecurring`;
+   „Archivieren + beenden“ setzt `validUntil` = laufender Monat, spätere Vorlagen → Papierkorb, ein `_save`; dritte Wahl
+   „weiterlaufen lassen“; Abbrechen = nichts). „Ins Folgejahr“ kopiert nur Vorlagen mit Ende 12.Y und behält `personId`
+   (vorher still person_1). Excel-Import alter Ausgaben entfernt. `confirmDialog` setzt Abbrechen-Handler zurück.
+   Offen:
    4 (Charts Drehung/Dunkel, Rente-Tab iPhone — Design-Freigabe), Azure-Lifecycle (Nutzerfrage).
 Alle KRITISCH-Pakete erledigt (1018a–c). **Seit 18.10. dauerhafte Prüfung** `_tests\pruefen.ps1` (12 Prüfungen mit
 echten Daten, ~30 s, `pre-push`-Hook bricht bei ROT ab; Gegenprobe gegen Stand `sitzung-2026-10-18`: 10 von 12 rot).
