@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <!-- Schrift blockiert den Start nicht (media=print → all nach dem Laden); ohne Netz gilt die Systemschrift -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=20261025k">
+<link rel="stylesheet" href="style.css?v=20261101a">
 </head>
 <body>
 
@@ -596,7 +596,12 @@
               <span id="fk-nav-year">2026</span>
               <button class="cf-nav-btn" onclick="fkYearShift(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div class="fk-bar-right">
+              <select class="ob-sort-sel" id="fk-sort" onchange="fkSetSort(this.value)" aria-label="Sortieren">
+                <option value="default">Reihenfolge</option>
+                <option value="name">Name A–Z</option>
+                <option value="amount">Kosten ↓</option>
+              </select>
               <button class="av-heute" onclick="fkCopyToNextYear()" style="font-size:12px;padding:5px 10px">Kopieren →</button>
               <button class="av-heute" onclick="fkOpenNew()" style="font-size:12px;padding:5px 10px">+ Hinzufügen</button>
             </div>
@@ -1474,8 +1479,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261025k"></script>
-<script src="app.js?v=20261025k"></script>
+<script src="store.js?v=20261101a"></script>
+<script src="app.js?v=20261101a"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

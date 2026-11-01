@@ -1,6 +1,17 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-10-25 — Audit-Pakete 1–5 alle erledigt, Excel-Export vollständig (`?v=20261025j`)
+Letzte Aktualisierung: 2026-11-01 — Fixkosten-Liste: Fassungen zusammen + Sortierung (`?v=20261101a`)
+
+---
+
+## 👀 Sichtkontrolle offen — Fixkosten-Liste sortieren (01.11.2026, `?v=20261101a`)
+Anlass: Nach ↕ (Rechtsschutz ab 03.2026 20,60 €) stand die neue Fassung ganz unten in der Liste, die alte
+„bis 02.2026“ an alter Stelle → sah aus wie „Änderung nicht übernommen“. Daten waren korrekt.
+- [x] Fassungen einer Serie (Name + Objekt) stehen immer zusammen, ältere oben — `Recurring.sortForList` (store.js)
+- [x] Auswahl Reihenfolge / Name A–Z / Kosten ↓ (Betrag der im Bezugsmonat geltenden Fassung), je Gerät in
+      `localStorage('fp_fk_sort')`, nicht im Sync; gilt auch für „Beendet in JJJJ“
+- [x] Prüfungen in `vorlagen.test.js` (Gegenprobe: scheitert am alten Code)
+- [ ] Nutzer schaut live auf iPhone/PC
 
 ---
 

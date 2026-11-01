@@ -3692,6 +3692,10 @@ var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--pu
 function fkInit(){ fkRender(); }
 
 var _fkNavYear = new Date().getFullYear();
+// Sortierung der Liste — nur Ansicht, je Gerät gemerkt, nicht im Store/Sync
+var FK_SORTS=['default','name','amount'];
+function fkSortBy(){ var s='default'; try{ s=localStorage.getItem('fp_fk_sort')||'default'; }catch(e){} return FK_SORTS.indexOf(s)>=0?s:'default'; }
+function fkSetSort(by){ try{ localStorage.setItem('fp_fk_sort', by); }catch(e){} fkRenderList(); }
 
 function _fkYearFromStr(mmyyyy){
   if(!mmyyyy)return null;
@@ -3827,6 +3831,10 @@ function fkRenderList(){
   var items=all.filter(function(r){ return FP.Store.Recurring.ownsInYear(r,year); });
   // Summe „/Monat" = was im Bezugsmonat gilt (laufender Monat bzw. Dezember vergangener Jahre)
   var refMonth=(year===new Date().getFullYear())?FP.currentMonthStr():'12.'+year;
+  // Fassungen einer Serie bleiben zusammen; Reihenfolge laut Auswahl (gilt auch für „Beendet“)
+  var sortBy=fkSortBy();
+  var sel=document.getElementById('fk-sort'); if(sel) sel.value=sortBy;
+  items=FP.Store.Recurring.sortForList(items,sortBy,refMonth);
   var refIds={};FP.Store.Recurring.ownersInMonth(refMonth).forEach(function(r){refIds[r.id]=true;});
 
   var cats=FP.Store.Categories.getAll();

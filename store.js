@@ -1544,6 +1544,30 @@ const Store = (() => {
       return Math.floor((end - 1) / 12) === year && end < recMonthNum(currentMonthStr()) && !Recurring.successorOf(rec.id);
     },
 
+    // Reihenfolge für die Fixkosten-Liste: Fassungen einer Serie (Name + Objekt) stehen immer
+    // zusammen, die ältere oben. sortBy: 'default' (Position der ersten Fassung), 'name' (A–Z),
+    // 'amount' (teuerste zuerst — Betrag der Fassung, die in refMonth gilt, sonst der neuesten)
+    sortForList(list, sortBy, refMonth) {
+      const owner = recurringOwnerIndex(_state.recurring || []);
+      const refN = recMonthNum(refMonth || currentMonthStr());
+      const groups = [], byKey = {};
+      (list || []).forEach((r, i) => {
+        const k = recurringSeriesKey(r);
+        if (!byKey[k]) { byKey[k] = { first: i, items: [] }; groups.push(byKey[k]); }
+        byKey[k].items.push(r);
+      });
+      groups.forEach(g => {
+        g.items.sort((a, b) => recMonthNum(a.validFrom) - recMonthNum(b.validFrom));
+        const cur = g.items.find(r => owner(r, refN) === r) || g.items[g.items.length - 1];
+        g.name = String(cur.name || ''); g.amount = Math.abs(cur.amount || 0);
+      });
+      const byName = (a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }) || a.first - b.first;
+      if (sortBy === 'name')        groups.sort(byName);
+      else if (sortBy === 'amount') groups.sort((a, b) => (b.amount - a.amount) || byName(a, b));
+      else                          groups.sort((a, b) => a.first - b.first);
+      return groups.reduce((out, g) => out.concat(g.items), []);
+    },
+
     // ↕ Betrag ab Monat: alte Version endet im Vormonat, neue übernimmt deren ursprüngliches Ende.
     // Beide Versionen und die Buchungen gehen in EINEM _save().
     split(id, fromMonth, amount) {

@@ -143,6 +143,33 @@ if (T) {
     seriesTx(FP, T, year - 1).filter(x => x.date === '06.' + (year - 1)).length === 1 && dupCount(FP) === 0);
 }
 
+// ── 5b. Fixkosten-Liste: Fassungen einer Serie stehen zusammen, Sortierung A–Z / Kosten ──
+{
+  FP = fresh();
+  const all = FP.Store.Recurring.getAll();
+  const key = r => r.name + '\u0001' + (r.objectId || '');
+  const together = arr => { const seen = {}; let last = null;
+    return arr.every(r => { const k = key(r); if (k !== last && seen[k]) return false; seen[k] = true; last = k; return true; }); };
+  const sameSet = arr => arr.length === all.length && arr.every(r => all.includes(r));
+  const multi = Object.values(all.reduce((m, r) => { (m[key(r)] = m[key(r)] || []).push(r); return m; }, {})).filter(a => a.length > 1).length;
+  ['default', 'name', 'amount'].forEach(mode => {
+    const out = FP.Store.Recurring.sortForList(all, mode, cm);
+    check('Fixkosten-Liste „' + mode + '“: alle Einträge, Fassungen einer Serie zusammen', sameSet(out) && together(out), multi + ' Serien mit mehreren Fassungen');
+  });
+  const firsts = arr => arr.filter((r, i) => i === 0 || key(arr[i - 1]) !== key(r));
+  const n = firsts(FP.Store.Recurring.sortForList(all, 'name', cm)).map(r => r.name);
+  check('Fixkosten-Liste A–Z ist alphabetisch', n.every((x, i) => i === 0 || n[i - 1].localeCompare(x, 'de', { sensitivity: 'base' }) <= 0));
+  const owners = FP.Store.Recurring.ownersInMonth(cm);
+  const amt = FP.Store.Recurring.sortForList(owners, 'amount', cm).map(r => Math.abs(r.amount));
+  check('Fixkosten-Liste Kosten: teuerste zuerst', amt.every((x, i) => i === 0 || amt[i - 1] >= x));
+  if (T) {   // nach ↕ steht die neue Fassung direkt unter der alten
+    FP.Store.Recurring.split(T.id, '01.' + year, r2(T.amount + 1));
+    const out = FP.Store.Recurring.sortForList(FP.Store.Recurring.getAll(), 'default', cm);
+    const i = out.findIndex(r => r.id === T.id);
+    check('↕: neue Fassung steht direkt unter der alten', i >= 0 && key(out[i + 1] || {}) === key(T) && out[i + 1].validFrom === '01.' + year);
+  }
+}
+
 // ── 6. Migration ein zweites Mal ──
 FP = fresh(st => { Object.assign(st, JSON.parse(JSON.stringify(m1))); st.meta.version = 2; });
 const m2 = FP.Store.get();
