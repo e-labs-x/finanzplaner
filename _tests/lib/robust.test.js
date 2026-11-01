@@ -134,8 +134,20 @@ FP = fresh();
   }
 }
 
-// ── Service Worker: bei hängendem Netz nach Zeitlimit aus dem Cache ──
+// ── Deploy-Version: ?v= an CSS/JS, CACHE_NAME und sichtbares „build“ zeigen dieselbe Fassung ──
 const swSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'sw.js'), 'utf8');
+{
+  const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
+  const vs = [...html.matchAll(/(?:style\.css|store\.js|app\.js)\?v=(\d{8}[a-z]?)/g)].map(m => m[1]);
+  const cache = (swSrc.match(/CACHE_NAME\s*=\s*'fp-(\d{8}[a-z]?)'/) || [])[1];
+  const build = (html.match(/class="sb-ver">[^<]*build (\w+)/) || [])[1];
+  const v = vs[0] || '';
+  check('Deploy-Version einheitlich (?v=, CACHE_NAME, build-Anzeige)',
+    vs.length === 3 && vs.every(x => x === v) && cache === v && build === v.slice(4),
+    '?v=' + vs.join('/') + ' cache=' + cache + ' build=' + build);
+}
+
+// ── Service Worker: bei hängendem Netz nach Zeitlimit aus dem Cache ──
 const handlers = {};
 const cached = { tag: 'aus-cache' };
 const swCtx = {

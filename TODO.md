@@ -11,6 +11,8 @@ Anlass: Nach ↕ (Rechtsschutz ab 03.2026 20,60 €) stand die neue Fassung ganz
 - [x] Auswahl Reihenfolge / Name A–Z / Kosten ↓ (Betrag der im Bezugsmonat geltenden Fassung), je Gerät in
       `localStorage('fp_fk_sort')`, nicht im Sync; gilt auch für „Beendet in JJJJ“
 - [x] Prüfungen in `vorlagen.test.js` (Gegenprobe: scheitert am alten Code)
+- [x] `?v=20261101b`: build-Anzeige war beim ersten Deploy auf „1025k“ stehen geblieben → neue Prüfung in
+      `robust.test.js`: ?v=, CACHE_NAME und „build“ müssen übereinstimmen
 - [ ] Nutzer schaut live auf iPhone/PC
 
 ---
