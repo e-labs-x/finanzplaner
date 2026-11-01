@@ -152,16 +152,21 @@ if (T) {
     return arr.every(r => { const k = key(r); if (k !== last && seen[k]) return false; seen[k] = true; last = k; return true; }); };
   const sameSet = arr => arr.length === all.length && arr.every(r => all.includes(r));
   const multi = Object.values(all.reduce((m, r) => { (m[key(r)] = m[key(r)] || []).push(r); return m; }, {})).filter(a => a.length > 1).length;
-  ['default', 'name', 'amount'].forEach(mode => {
-    const out = FP.Store.Recurring.sortForList(all, mode, cm);
-    check('Fixkosten-Liste „' + mode + '“: alle Einträge, Fassungen einer Serie zusammen', sameSet(out) && together(out), multi + ' Serien mit mehreren Fassungen');
+  [['default'], ['name', 'asc'], ['name', 'desc'], ['amount', 'desc'], ['amount', 'asc']].forEach(([mode, dir]) => {
+    const out = FP.Store.Recurring.sortForList(all, mode, cm, dir);
+    check('Fixkosten-Liste „' + mode + (dir ? ' ' + dir : '') + '“: alle Einträge, Fassungen einer Serie zusammen', sameSet(out) && together(out), multi + ' Serien mit mehreren Fassungen');
   });
   const firsts = arr => arr.filter((r, i) => i === 0 || key(arr[i - 1]) !== key(r));
-  const n = firsts(FP.Store.Recurring.sortForList(all, 'name', cm)).map(r => r.name);
-  check('Fixkosten-Liste A–Z ist alphabetisch', n.every((x, i) => i === 0 || n[i - 1].localeCompare(x, 'de', { sensitivity: 'base' }) <= 0));
+  const cmpDe = (a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' });
+  const n = firsts(FP.Store.Recurring.sortForList(all, 'name', cm, 'asc')).map(r => r.name);
+  check('Fixkosten-Liste Name A–Z', n.every((x, i) => i === 0 || cmpDe(n[i - 1], x) <= 0));
+  const nz = firsts(FP.Store.Recurring.sortForList(all, 'name', cm, 'desc')).map(r => r.name);
+  check('Fixkosten-Liste Name Z–A', nz.every((x, i) => i === 0 || cmpDe(nz[i - 1], x) >= 0));
   const owners = FP.Store.Recurring.ownersInMonth(cm);
-  const amt = FP.Store.Recurring.sortForList(owners, 'amount', cm).map(r => Math.abs(r.amount));
-  check('Fixkosten-Liste Kosten: teuerste zuerst', amt.every((x, i) => i === 0 || amt[i - 1] >= x));
+  const amt = FP.Store.Recurring.sortForList(owners, 'amount', cm, 'desc').map(r => Math.abs(r.amount));
+  check('Fixkosten-Liste Betrag: teuerste zuerst', amt.every((x, i) => i === 0 || amt[i - 1] >= x));
+  const amtUp = FP.Store.Recurring.sortForList(owners, 'amount', cm, 'asc').map(r => Math.abs(r.amount));
+  check('Fixkosten-Liste Betrag: günstigste zuerst', amtUp.every((x, i) => i === 0 || amtUp[i - 1] <= x));
   if (T) {   // nach ↕ steht die neue Fassung direkt unter der alten
     FP.Store.Recurring.split(T.id, '01.' + year, r2(T.amount + 1));
     const out = FP.Store.Recurring.sortForList(FP.Store.Recurring.getAll(), 'default', cm);

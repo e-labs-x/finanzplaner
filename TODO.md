@@ -13,6 +13,9 @@ Anlass: Nach ↕ (Rechtsschutz ab 03.2026 20,60 €) stand die neue Fassung ganz
 - [x] Prüfungen in `vorlagen.test.js` (Gegenprobe: scheitert am alten Code)
 - [x] `?v=20261101b`: build-Anzeige war beim ersten Deploy auf „1025k“ stehen geblieben → neue Prüfung in
       `robust.test.js`: ?v=, CACHE_NAME und „build“ müssen übereinstimmen
+- [x] `?v=20261101c` (Nutzer-Wunsch): Auswahlmenü ersetzt durch klickbare Kopfzeile **Name | Betrag** je Gruppe wie
+      in der Übersicht (`av-tbl-h`); zweiter Klick dreht die Richtung, kein dritter Klick (Nutzer-Entscheid). Ohne Wahl:
+      Betrag, teuerste zuerst. Gespeichert als `fp_fk_sort` = `name|amount:asc|desc`
 - [ ] Nutzer schaut live auf iPhone/PC
 
 ---

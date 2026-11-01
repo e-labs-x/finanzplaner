@@ -3692,10 +3692,26 @@ var FK_TYPE_COLOR={fixed:'var(--blue)',variable:'var(--amber)',savings:'var(--pu
 function fkInit(){ fkRender(); }
 
 var _fkNavYear = new Date().getFullYear();
-// Sortierung der Liste — nur Ansicht, je Gerät gemerkt, nicht im Store/Sync
-var FK_SORTS=['default','name','amount'];
-function fkSortBy(){ var s='default'; try{ s=localStorage.getItem('fp_fk_sort')||'default'; }catch(e){} return FK_SORTS.indexOf(s)>=0?s:'default'; }
-function fkSetSort(by){ try{ localStorage.setItem('fp_fk_sort', by); }catch(e){} fkRenderList(); }
+// Sortierung per Klick auf die Spaltenköpfe wie in der Übersicht — nur Ansicht, je Gerät gemerkt
+// ('spalte:richtung'), nicht im Store/Sync. Ohne Wahl: Betrag, teuerste zuerst.
+function fkSortState(){
+  var s=''; try{ s=localStorage.getItem('fp_fk_sort')||''; }catch(e){}
+  var p=s.split(':');
+  if((p[0]==='name'||p[0]==='amount')&&(p[1]==='asc'||p[1]==='desc')) return {by:p[0],dir:p[1]};
+  return {by:'amount',dir:'desc'};
+}
+function fkSort(col){
+  var s=fkSortState();
+  var dir=s.by===col?(s.dir==='asc'?'desc':'asc'):(col==='name'?'asc':'desc');
+  try{ localStorage.setItem('fp_fk_sort', col+':'+dir); }catch(e){}
+  fkRenderList();
+}
+function fkSortHdrHtml(s){
+  function h(col,lbl){ return '<div class="av-tbl-h h-'+(col==='name'?'name':'amt')+(s.by===col?' '+s.dir:'')+'" onclick="fkSort(\''+col+'\')">'+lbl+'</div>'; }
+  // unsichtbare Knopfleiste hält „Betrag“ genau über der Betragsspalte
+  return '<div class="fk-row fk-tbl-hdr">'+h('name','Name')+h('amount','Betrag')+
+    '<div class="fk-row-actions" aria-hidden="true" style="visibility:hidden"><span class="fk-row-btn">↕</span><span class="fk-row-btn">✏️</span><span class="fk-row-btn">⏹</span><span class="fk-row-btn">🗑</span></div></div>';
+}
 
 function _fkYearFromStr(mmyyyy){
   if(!mmyyyy)return null;
@@ -3832,9 +3848,8 @@ function fkRenderList(){
   // Summe „/Monat" = was im Bezugsmonat gilt (laufender Monat bzw. Dezember vergangener Jahre)
   var refMonth=(year===new Date().getFullYear())?FP.currentMonthStr():'12.'+year;
   // Fassungen einer Serie bleiben zusammen; Reihenfolge laut Auswahl (gilt auch für „Beendet“)
-  var sortBy=fkSortBy();
-  var sel=document.getElementById('fk-sort'); if(sel) sel.value=sortBy;
-  items=FP.Store.Recurring.sortForList(items,sortBy,refMonth);
+  var sort=fkSortState();
+  items=FP.Store.Recurring.sortForList(items,sort.by,refMonth,sort.dir);
   var refIds={};FP.Store.Recurring.ownersInMonth(refMonth).forEach(function(r){refIds[r.id]=true;});
 
   var cats=FP.Store.Categories.getAll();
@@ -3894,7 +3909,7 @@ function fkRenderList(){
       '<div class="fk-group-hdr">'+
         '<span class="fk-group-lbl" style="color:'+g.color+'">'+g.lbl+'</span>'+
         '<span class="fk-group-total">'+eur(total)+'/Monat</span>'+
-      '</div>'+rows+'</div>';
+      '</div>'+fkSortHdrHtml(sort)+rows+'</div>';
   }).join('')+fkEndedHtml(ended,year,catMap,objMap);
 }
 
