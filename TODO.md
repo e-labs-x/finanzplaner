@@ -1,6 +1,23 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-01 — Fixkosten-Liste: Fassungen zusammen + Sortierung (`?v=20261101a`)
+Letzte Aktualisierung: 2026-11-08 — Weitere Einnahmen (Kindergeld, Steuererstattung), Store v5 (`?v=20261108a`)
+
+---
+
+## 👀 Weitere Einnahmen (08.11.2026, `?v=20261108a`, v12.1, STORE_VERSION 5) — Sichtkontrolle offen
+Anlass: Nutzer fragte, wo Kindergeld/Steuererstattungen hingehören — es gab keinen Platz (nur Netto-Gehalt zählte).
+- [x] Store `incomes` (Migration v4→v5 legt leere Liste an): `{id, name, amount, personId: gemeinsam|person_1|person_2,
+      kind: monatlich|einmalig, validFrom, validUntil|null, note}`; API `FP.Store.Incomes` (add/update/changeFrom/end/delete,
+      inMonth/inYear/sumInYear), Papierkorb-Typ `income`
+- [x] `Calculator.householdNetIncome` = `householdSalary` + `otherIncome` → Home, Übersicht-Sparquote, Cashflow, Budget-Soll
+      rechnen automatisch mit. Einnahmen von Person 2 zählen auch bei ausgeschaltetem Partner (Nutzer-Entwurf).
+      Gehalts-Kennzahlen und Reallohn bleiben reines Gehalt.
+- [x] Sync-Merge per id (`mergeById('incomes')`) + Löschvermerk über Papierkorb; altes Gerät lehnt v5-Backup ab
+- [x] UI: Gehalt-Tab Karte „Weitere Einnahmen“ (alle Personen mit Schild, Jahressumme, + Einnahme), Dialog mit Art/Person/
+      Ab/Bis/Notiz, „Betrag ab Monat“ (alter Eintrag endet im Vormonat), Löschen fragt; Excel-Blatt „Einnahmen“
+- [x] Prüfungen: `einnahmen.test.js` (25, scheitert am alten Code), Sicherheit (Gift in Name/Notiz, 4 Ansichten),
+      Rundgang (Excel-Blatt Zeilen/Summe)
+- [ ] Nutzer: auf jedem Gerät build 1108a öffnen, dann Kindergeld/Erstattung eintragen und Optik abnehmen
 
 ---
 

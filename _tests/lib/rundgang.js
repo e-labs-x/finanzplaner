@@ -73,6 +73,10 @@
           Object.keys(S.salary || {}).forEach(function (pid) { Object.keys(S.salary[pid] || {}).forEach(function (m) { gSoll++; gNetto += S.salary[pid][m].netSalary || 0; }); });
           gleich('Gehalt Zeilen', gl.length, gSoll);
           gleich('Gehalt Netto (Cent)', summe(gl, 3), Math.round(gNetto * 100));
+          // Weitere Einnahmen: jeder Eintrag, Betragssumme
+          var ein = blatt('Einnahmen') || [];
+          gleich('Einnahmen Zeilen', ein.length, (S.incomes || []).length);
+          gleich('Einnahmen Summe (Cent)', summe(ein, 3), Math.round((S.incomes || []).reduce(function (a, e) { return a + (e.amount || 0); }, 0) * 100));
           // ESPP: jeder Zyklus
           var es = blatt('ESPP') || [];
           gleich('ESPP Zeilen', es.length, ((S.espp && S.espp.zyklen) || []).length);

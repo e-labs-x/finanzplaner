@@ -27,6 +27,13 @@
   });
   (st.assets || []).forEach(function (a) { vergiften(a, 'name', 'Anlage.name'); vergiften(a, 'isin', 'Anlage.isin'); vergiften(a, 'wkn', 'Anlage.wkn'); vergiften(a, 'ticker', 'Anlage.ticker'); });
   (st.freistellungsauftraege || []).forEach(function (f) { vergiften(f, 'institution', 'FSA.institution'); vergiften(f, 'note', 'FSA.note'); });
+  // Weitere Einnahmen (v5): Gift in Name und Notiz, eine laufende und eine einmalige im aktuellen Jahr
+  var _y = new Date().getFullYear();
+  st.incomes = (st.incomes || []).concat([
+    { id: 'inc_gift1', name: 'Kindergeld', amount: 255, personId: 'gemeinsam', kind: 'monatlich', validFrom: '01.' + _y, validUntil: null, note: 'n', createdAt: '' },
+    { id: 'inc_gift2', name: 'Steuer', amount: 1000, personId: 'person_2', kind: 'einmalig', validFrom: '05.' + _y, validUntil: '05.' + _y, note: 'n', createdAt: '' }
+  ]);
+  st.incomes.forEach(function (e) { vergiften(e, 'name', 'Einnahme.name'); vergiften(e, 'note', 'Einnahme.note'); });
   (st.currencies || []).forEach(function (c) { if (c.code !== 'EUR') { vergiften(c, 'name', 'Waehrung.name'); vergiften(c, 'symbol', 'Waehrung.symbol'); } });
   if (st.espp && st.espp.settings) vergiften(st.espp.settings, 'ticker', 'ESPP.ticker');
   Object.keys((st.retirement && st.retirement.profiles) || {}).forEach(function (k) {
@@ -81,6 +88,15 @@
       var asked = document.getElementById('m-confirm').classList.contains('open');
       closeM('m-confirm');
       if (!asked || !S.freistellungsauftraege.some(function (x) { return x.id === f.id; })) errs.push('Freistellungsauftrag loeschen ohne Rueckfrage');
+    });
+    add('Einnahme bearbeiten', function () { nav('gehalt'); ghIncOpen('inc_gift1'); });
+    add('Einnahme Betrag ab', function () { ghIncOpenSplit(); closeM('m-inc-split'); });
+    add('Einnahme neu', function () { ghIncOpen(null); closeM('m-inc'); });
+    add('Einnahme loeschen fragt', function () {
+      ghIncOpen('inc_gift2'); ghIncDelete();
+      var asked = document.getElementById('m-confirm').classList.contains('open');
+      closeM('m-confirm'); closeM('m-inc');
+      if (!asked || !FP.Store.Incomes.getById('inc_gift2')) errs.push('Einnahme loeschen ohne Rueckfrage');
     });
     if (window.ST_MENU) ST_MENU.forEach(function (g) { g.items.forEach(function (it) { add('Einstellungen ' + it.k, function () { nav('einstellungen'); stOpen(it.k); }); }); });
     add('Log', function () { stOpenLog(); });

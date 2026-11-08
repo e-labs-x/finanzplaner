@@ -309,7 +309,7 @@ var AzureSync = (function() {
     mergeById('trash');
     var gone = new Set(rStore.trash.map(function(e) { return e.type + ':' + (e.item && e.item.id); }));
     var TRASH_TYPE = { transactions: 'transaction', recurring: 'recurring', objects: 'object', categories: 'category',
-                       assets: 'asset', freistellungsauftraege: 'fsa' };
+                       assets: 'asset', freistellungsauftraege: 'fsa', incomes: 'income' };
 
     // Transaktionen: bei gleicher id gewinnt die lokal von einer Vorlage gelöste Fassung (3e) —
     // sonst würde die Server-Fassung (noch Fixkosten-Buchung) im übersprungenen Monat gelöscht
@@ -343,6 +343,7 @@ var AzureSync = (function() {
       FP.sortSnapshots(a.snapshots);   // chronologisch, nicht als Text ("01.2027" < "12.2026")
     });
     mergeById('freistellungsauftraege');
+    mergeById('incomes');   // Weitere Einnahmen (v5) — per id, Löschen über den Papierkorb
     // Löschvermerke anwenden — erst nach allen Listen, die im Papierkorb landen können
     Object.keys(TRASH_TYPE).forEach(function(key) {
       if (!Array.isArray(rStore[key])) return;
@@ -2836,7 +2837,7 @@ function stRenderTrash(){
     el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Papierkorb ist leer.</div>';
     return;
   }
-  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung',asset:'Anlage',fsa:'Freistellungsauftrag'};
+  var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung',asset:'Anlage',fsa:'Freistellungsauftrag',income:'Einnahme'};
   var now=Date.now();
   el.innerHTML=items.map(function(e){
     var daysLeft=Math.max(0,30-Math.floor((now-new Date(e.deletedAt).getTime())/86400000));
@@ -3331,6 +3332,15 @@ function stExportExcel(btn) {
   var wsGl = XLSX.utils.aoa_to_sheet(glRows);
   wsGl['!cols'] = [{wch:10},{wch:14},{wch:12},{wch:12},{wch:15},{wch:15},{wch:30}];
   XLSX.utils.book_append_sheet(wb, wsGl, 'Gehalt');
+
+  // ── Sheet 5b: Weitere Einnahmen (Kindergeld, Steuererstattung …) ──
+  var inRows = [['Name','Person','Art','Betrag (€)','Ab','Bis','Notiz']];
+  FP.Store.Incomes.getAll().slice().sort(function(a,b){ return monKey(a.validFrom) - monKey(b.validFrom); }).forEach(function(e){
+    inRows.push([e.name, ghIncPersonLabel(e.personId), e.kind, e.amount, e.validFrom, e.kind==='einmalig' ? e.validFrom : (e.validUntil||''), e.note||'']);
+  });
+  var wsIn = XLSX.utils.aoa_to_sheet(inRows);
+  wsIn['!cols'] = [{wch:24},{wch:12},{wch:10},{wch:12},{wch:9},{wch:9},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsIn, 'Einnahmen');
 
   // ── Sheet 6: ESPP — dieselbe Berechnung wie die Tabelle im Vermögen-Tab (esppZyklen) ──
   var ESPP_STATUS = {laufend:'Laufend', gekauft:'Gehalten', verkauft:'Verkauft'};
@@ -7213,7 +7223,135 @@ function ghRender(){
   if(lbl)lbl.textContent=ghS.year;
   ghRenderStats();
   ghRenderMonths();
+  ghRenderIncomes();
   ghRenderRealWage();
+}
+
+// ── Weitere Einnahmen (Kindergeld, Steuererstattung …) — zählen über Calculator.householdNetIncome
+// in Home, Übersicht, Cashflow und Budget. Liste zeigt alle Personen, unabhängig vom Umschalter.
+function ghIncPersonLabel(pid){
+  if(pid==='gemeinsam')return 'Gemeinsam';
+  var p=(FP.Store.get().persons||[]).find(function(x){return x.id===pid;});
+  return (p&&p.name)||(pid==='person_2'?'Person 2':'Person 1');
+}
+function ghIncPeriod(e,year){
+  if(e.kind==='einmalig')return 'einmalig '+e.validFrom;
+  var t='monatlich ab '+e.validFrom;
+  if(e.validUntil)t+=' bis '+e.validUntil;
+  return t;
+}
+function ghRenderIncomes(){
+  var el=document.getElementById('gh-inc');
+  if(!el)return;
+  var Inc=FP.Store.Incomes;
+  var list=Inc.inYear(ghS.year).slice().sort(function(a,b){
+    return FP.monthNum(a.validFrom)-FP.monthNum(b.validFrom)||String(a.name).localeCompare(String(b.name),'de');
+  });
+  var total=0;
+  var rows=list.map(function(e){
+    var sum=Inc.sumInYear(e,ghS.year);total+=sum;
+    return '<div class="gh-inc-row" onclick="ghIncOpen(\''+esc(e.id)+'\')">'+
+      '<div class="gh-inc-main">'+
+        '<div class="gh-inc-name">'+esc(e.name)+'<span class="gh-inc-person">'+esc(ghIncPersonLabel(e.personId))+'</span></div>'+
+        '<div class="gh-inc-sub">'+esc(ghIncPeriod(e,ghS.year))+(e.note?' · '+esc(e.note):'')+'</div>'+
+      '</div>'+
+      '<div class="gh-inc-amt">'+eur(e.amount)+(e.kind==='monatlich'?'<span class="gh-inc-amt-sub"> /Monat</span>':'')+
+        (e.kind==='monatlich'?'<div class="gh-inc-amt-sub">'+eur(sum)+' in '+ghS.year+'</div>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  el.innerHTML=(list.length?'<div class="gh-inc-list">'+rows+'</div>'
+      :'<div class="gh-inc-empty">Keine weiteren Einnahmen in '+ghS.year+'.</div>')+
+    '<div class="gh-inc-foot"><span>'+(list.length?'Summe '+ghS.year+': <b style="color:var(--tx)">'+eur(r2(total))+'</b>':'Zählen in Übersicht, Cashflow und Budget mit')+'</span>'+
+      '<button class="av-heute" onclick="ghIncOpen(null)">+ Einnahme</button></div>';
+}
+function ghIncFillPersons(sel){
+  var el=document.getElementById('mi-person');
+  el.innerHTML=['gemeinsam','person_1','person_2'].map(function(p){
+    return '<option value="'+p+'">'+esc(ghIncPersonLabel(p))+'</option>';
+  }).join('');
+  el.value=sel||'gemeinsam';
+}
+function ghIncKindChange(){
+  var once=document.getElementById('mi-kind').value==='einmalig';
+  document.getElementById('mi-until-wrap').style.display=once?'none':'';
+  document.getElementById('mi-from-lbl').textContent=once?'Monat (MM.JJJJ)':'Ab Monat (MM.JJJJ)';
+  var sb=document.getElementById('mi-split-btn');
+  if(sb)sb.style.display=once?'none':'';
+}
+function ghIncOpen(id){
+  var e=id?FP.Store.Incomes.getById(id):null;
+  document.getElementById('mi-ttl').textContent=e?'Einnahme bearbeiten':'Einnahme erfassen';
+  document.getElementById('mi-id').value=e?e.id:'';
+  document.getElementById('mi-name').value=e?e.name:'';
+  document.getElementById('mi-amount').value=e?e.amount:'';
+  document.getElementById('mi-kind').value=e?e.kind:'monatlich';
+  ghIncFillPersons(e?e.personId:'gemeinsam');
+  var cur=FP.currentMonthStr();
+  var def=(+cur.slice(3)===ghS.year)?cur:'01.'+ghS.year;
+  document.getElementById('mi-from').value=e?e.validFrom:def;
+  document.getElementById('mi-until').value=e&&e.kind==='monatlich'&&e.validUntil?e.validUntil:'';
+  document.getElementById('mi-note').value=e?(e.note||''):'';
+  document.getElementById('mi-hint').style.display=e?'':'none';
+  document.getElementById('mi-extra').style.display=e?'flex':'none';
+  ghIncKindChange();
+  openM('m-inc');
+  if(!e)setTimeout(function(){document.getElementById('mi-name').focus();},150);
+}
+function ghIncSave(){
+  var id=document.getElementById('mi-id').value;
+  var kind=document.getElementById('mi-kind').value;
+  var data={
+    name:document.getElementById('mi-name').value.trim(),
+    amount:parseFloat(document.getElementById('mi-amount').value),
+    kind:kind,
+    personId:document.getElementById('mi-person').value,
+    validFrom:document.getElementById('mi-from').value.trim(),
+    validUntil:kind==='einmalig'?null:(document.getElementById('mi-until').value.trim()||null),
+    note:document.getElementById('mi-note').value.trim()
+  };
+  try{
+    if(id)FP.Store.Incomes.update(id,data); else FP.Store.Incomes.add(data);
+  }catch(err){toast(err.message);return;}
+  appLog('GEHALT','Einnahme '+(id?'geändert':'erfasst')+': '+data.name+' '+eur(data.amount)+' ('+kind+' ab '+data.validFrom+')');
+  closeM('m-inc');
+  ghRender();
+  toast('Gespeichert');
+}
+function ghIncDelete(){
+  var id=document.getElementById('mi-id').value;
+  var e=id&&FP.Store.Incomes.getById(id);
+  if(!e)return;
+  confirmDialog('„'+e.name+'“ löschen? Die Einnahme liegt danach 30 Tage im Papierkorb. Zum Beenden stattdessen „Bis Monat“ setzen.','Löschen',function(){
+    FP.Store.Incomes.delete(id);
+    appLog('GEHALT','Einnahme gelöscht: '+e.name);
+    closeM('m-inc');
+    ghRender();
+    toast('Gelöscht');
+  });
+}
+function ghIncOpenSplit(){
+  var id=document.getElementById('mi-id').value;
+  var e=id&&FP.Store.Incomes.getById(id);
+  if(!e||e.kind!=='monatlich')return;
+  closeM('m-inc');
+  document.getElementById('mis-id').value=e.id;
+  document.getElementById('mis-info').textContent='„'+e.name+'“ bisher '+eur(e.amount)+' im Monat. Die Monate davor behalten den alten Betrag.';
+  var y=new Date().getFullYear();
+  document.getElementById('mis-from').value='01.'+(Math.max(ghS.year,y)+(ghS.year<=y?1:0));
+  document.getElementById('mis-amount').value='';
+  openM('m-inc-split');
+  setTimeout(function(){document.getElementById('mis-amount').focus();},150);
+}
+function ghIncSaveSplit(){
+  var id=document.getElementById('mis-id').value;
+  var from=document.getElementById('mis-from').value.trim();
+  var amount=parseFloat(document.getElementById('mis-amount').value);
+  try{ FP.Store.Incomes.changeFrom(id,from,amount); }catch(err){toast(err.message);return;}
+  appLog('GEHALT','Einnahme neuer Betrag ab '+from+': '+eur(amount));
+  closeM('m-inc-split');
+  ghRender();
+  toast('Gespeichert');
 }
 
 function ghRenderStats(){

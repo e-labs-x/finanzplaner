@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.0 (`FP_VERSION = '12.0.0'`, `STORE_VERSION = 4`) | **Cache-Stand:** `?v=20261025k`
+**Aktuelle Version:** v12.1 (`FP_VERSION = '12.1.0'`, `STORE_VERSION = 5`) | **Cache-Stand:** `?v=20261108a`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -186,6 +186,10 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
   Fixkosten-Buchung in Betrag/Monat/Kategorie/Objekt ändert — sie wird dann `manual` mit `detachedFrom` —
   und von `Transactions.delete`). Waisen behalten `origRecurringId`, `Trash.restore` bindet sie wieder an.
 
+**Weitere Einnahmen (seit 08.11.2026, Store v5):** Liste `incomes`, API `FP.Store.Incomes`. Einnahmen des Haushalts
+kommen **nur** aus `Calculator.householdNetIncome` (= `householdSalary` + `otherIncome`) — nie eigene Summen in der UI.
+Gehalts-Kennzahlen/Reallohn nutzen bewusst nur das Gehalt. Merge per id, Löschen über Papierkorb (`income`).
+
 ---
 
 ## Design-System (niemals brechen)
@@ -229,7 +233,7 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
   Gleichstand, sonst wird nachgeschoben. `clearPending()` (Auto-Sync aus) löscht ihn NICHT.
 - **Wiederholen:** fehlgeschlagener Push → 30 s / 2 min / 5 min; `_checkRemote` (Poll, online, Vordergrund) ruft bei
   unverändertem Server `flush()`. `_kickPush()` stößt an, ohne den Zähler zu erhöhen.
-- **Merge** (`_mergeBackups`): Listen per id (+ Freistellungsaufträge, Sparpläne, ESPP-Zyklen), Gehalt pro Monat,
+- **Merge** (`_mergeBackups`): Listen per id (+ Freistellungsaufträge, Sparpläne, ESPP-Zyklen, weitere Einnahmen), Gehalt pro Monat,
   Budgets, Anlagen-Wertstände pro Monat, `skipMonths` vereinigt; **Papierkorb beider Seiten = Löschvermerk**.
 - **Ein Schreibweg (seit 18.10.2026):** Nur `Store._save()` und `Store.replaceState()` schreiben `finanzplaner_v3`.
   Import, Auto-Sicherung, Pull und „Server-Daten laden" gehen über `BackupManager.import(file, {azureSync, log})` /

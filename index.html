@@ -16,11 +16,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
-<title>Finanzplaner v12.0</title>
+<title>Finanzplaner v12.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <!-- Schrift blockiert den Start nicht (media=print → all nach dem Laden); ohne Netz gilt die Systemschrift -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=20261101c">
+<link rel="stylesheet" href="style.css?v=20261108a">
 </head>
 <body>
 
@@ -40,7 +40,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.0 · build 1101c</div>
+      <div class="sb-ver">v12.1 · build 1108a</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -201,6 +201,13 @@
               <span style="font-size:11px;color:var(--tx3)">Monat antippen zum Bearbeiten</span>
             </div>
             <div class="gh-months" id="gh-months"></div>
+          </div>
+          <div class="gh-card">
+            <div class="gh-card-hdr">
+              <span class="gh-card-title">Weitere Einnahmen</span>
+              <span style="font-size:11px;color:var(--tx3)">Kindergeld, Steuererstattung …</span>
+            </div>
+            <div id="gh-inc"></div>
           </div>
           <div class="gh-card">
             <div class="gh-card-hdr">
@@ -838,7 +845,7 @@
                 <label class="st-btn primary" style="cursor:pointer">⬆ Import<input type="file" accept=".fpbackup,.json" style="display:none" onchange="stImport(this)"></label>
               </div>
               <div class="st-backup-row">
-                <span class="st-backup-lbl">Excel-Export (.xlsx) — Buchungen, Vorlagen, Vermögen, Sparpläne, Gehalt, ESPP</span>
+                <span class="st-backup-lbl">Excel-Export (.xlsx) — Buchungen, Vorlagen, Vermögen, Sparpläne, Gehalt, Einnahmen, ESPP</span>
                 <button class="st-btn primary" onclick="stExportExcel(this)">📊 Excel</button>
               </div>
             </div>
@@ -871,7 +878,7 @@
               <div class="me-item-ico" style="color:var(--tx2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg></div>
               <div class="me-item-info">
                 <div class="me-item-name">Gehalt</div>
-                <div class="me-item-sub">Brutto / Netto / Sparplan</div>
+                <div class="me-item-sub">Gehalt · weitere Einnahmen</div>
               </div>
               <div class="me-item-arr">›</div>
             </div>
@@ -1311,6 +1318,52 @@
   </div>
 </div>
 
+<!-- Modal: Weitere Einnahme -->
+<div class="modal-bg" id="m-inc">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl" id="mi-ttl">Einnahme</div>
+    <input type="hidden" id="mi-id">
+    <div class="fg"><label class="fl">Name</label><input class="fi" id="mi-name" type="text" placeholder="z.B. Kindergeld" autocomplete="off" maxlength="60"></div>
+    <div class="fg"><label class="fl">Betrag (€)</label><input class="fi" id="mi-amount" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Art</label>
+      <select class="fs" id="mi-kind" onchange="ghIncKindChange()">
+        <option value="monatlich">monatlich</option>
+        <option value="einmalig">einmalig</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Person</label><select class="fs" id="mi-person"></select></div>
+    <div class="fg"><label class="fl" id="mi-from-lbl">Ab Monat (MM.JJJJ)</label><input class="fi" id="mi-from" type="text" placeholder="z.B. 01.2026" maxlength="7" inputmode="decimal"></div>
+    <div class="fg" id="mi-until-wrap"><label class="fl">Bis Monat (MM.JJJJ, leer = offen)</label><input class="fi" id="mi-until" type="text" placeholder="leer lassen, wenn offen" maxlength="7" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Notiz</label><input class="fi" id="mi-note" type="text" placeholder="optional" autocomplete="off"></div>
+    <div id="mi-hint" style="display:none;padding:0 16px 12px;font-size:12px;line-height:1.5;color:var(--tx3)">Änderungen gelten für den ganzen Zeitraum. Für einen neuen Betrag ab einem bestimmten Monat „Betrag ab Monat“ benutzen.</div>
+    <div id="mi-extra" class="gh-inc-acts" style="display:none">
+      <button class="btn" id="mi-split-btn" onclick="ghIncOpenSplit()">Betrag ab Monat</button>
+      <button class="btn" onclick="ghIncDelete()" style="color:var(--red)">Löschen</button>
+    </div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeM('m-inc')">Abbrechen</button>
+      <button class="btn btn-p" onclick="ghIncSave()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Weitere Einnahme — Betrag ab Monat -->
+<div class="modal-bg" id="m-inc-split">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Neuer Betrag ab Monat</div>
+    <input type="hidden" id="mis-id">
+    <div style="padding:0 16px 12px;font-size:12px;line-height:1.5;color:var(--tx3)" id="mis-info"></div>
+    <div class="fg"><label class="fl">Ab Monat (MM.JJJJ)</label><input class="fi" id="mis-from" type="text" placeholder="z.B. 01.2027" maxlength="7" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Neuer Betrag (€)</label><input class="fi" id="mis-amount" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal"></div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeM('m-inc-split')">Abbrechen</button>
+      <button class="btn btn-p" onclick="ghIncSaveSplit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Freistellungsauftrag -->
 <div class="modal-bg" id="m-fsa">
   <div class="modal-box">
@@ -1474,8 +1527,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261101c"></script>
-<script src="app.js?v=20261101c"></script>
+<script src="store.js?v=20261108a"></script>
+<script src="app.js?v=20261108a"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

@@ -13,8 +13,8 @@
 // KONSTANTEN
 // ═══════════════════════════════════════════════════════════════
 
-const FP_VERSION = '12.0.0';
-const STORE_VERSION    = 4;
+const FP_VERSION = '12.1.0';
+const STORE_VERSION    = 5;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
 const MAX_AUTO_BACKUPS = 5;
@@ -134,6 +134,11 @@ function createDefaultStore() {
 
     // ── Freistellungsaufträge ──
     freistellungsauftraege: [],
+
+    // ── Weitere Einnahmen (v5): Kindergeld, Steuererstattung … — zählen zum Haushaltseinkommen ──
+    // { id, name, amount, personId:'gemeinsam'|'person_1'|'person_2', kind:'monatlich'|'einmalig',
+    //   validFrom:'MM.JJJJ', validUntil:'MM.JJJJ'|null (einmalig: = validFrom), note, createdAt }
+    incomes: [],
 
     // ── Rentenplanung ──
     retirement: {
@@ -370,6 +375,19 @@ function recMonthNum(mmyyyy) {
   const m = /^(\d{1,2})\.(\d{4})$/.exec(String(mmyyyy || ''));
   if (!m || +m[1] < 1 || +m[1] > 12) return 0;   // 0 = ungültig (z. B. Monat 13)
   return parseInt(m[2]) * 12 + parseInt(m[1]);
+}
+function monthStrFromNum(n) {
+  const y = Math.floor((n - 1) / 12), m = ((n - 1) % 12) + 1;
+  return String(m).padStart(2, '0') + '.' + y;
+}
+// Weitere Einnahmen: gilt der Eintrag im Monat mit der Nummer n?
+const INCOME_KINDS   = ['monatlich', 'einmalig'];
+const INCOME_PERSONS = ['gemeinsam', 'person_1', 'person_2'];
+function incomeActiveIn(e, n) {
+  const from = recMonthNum(e && e.validFrom);
+  if (!from || n < from) return false;
+  const to = e.kind === 'einmalig' ? from : (e.validUntil ? recMonthNum(e.validUntil) : Infinity);
+  return n <= to;
 }
 // Monatsstände einer Anlage chronologisch (nicht als Text: "01.2027" < "12.2026" wäre falsch).
 // Überall gilt „letzter Eintrag = aktueller Stand" — das hält nur, wenn diese Sortierung immer gilt:
@@ -677,6 +695,11 @@ const MIGRATIONS = {
       data.trash.push({ id: generateId('tr'), type: 'category', item: JSON.parse(JSON.stringify(c)), deletedAt: at });
     });
     data.categories = cats.filter(c => !dupes.includes(c));
+    return data;
+  },
+  // v4 → v5: Liste „Weitere Einnahmen“ anlegen. Bestehende Daten bleiben unberührt. Idempotent.
+  4: (data) => {
+    if (!Array.isArray(data.incomes)) data.incomes = [];
     return data;
   },
 };
@@ -1422,6 +1445,94 @@ const Store = (() => {
     },
   };
 
+  // ── Weitere Einnahmen (v5) ──
+  // Eigene Liste mit fester id je Eintrag → Sync führt per id zusammen, Löschen geht über den Papierkorb.
+  // Betrag ab Monat ändern = alter Eintrag endet im Vormonat, neuer Eintrag ab dem Monat (wie ↕ bei Vorlagen).
+  const Incomes = {
+    getAll()   { return _state.incomes || []; },
+    getById(id){ return (_state.incomes || []).find(e => e.id === id); },
+    inMonth(mmyyyy) { const n = recMonthNum(mmyyyy); return (_state.incomes || []).filter(e => incomeActiveIn(e, n)); },
+    inYear(year) {
+      const a = +year * 12 + 1;
+      return (_state.incomes || []).filter(e => { for (let n = a; n < a + 12; n++) if (incomeActiveIn(e, n)) return true; return false; });
+    },
+    // Summe eines Eintrags im Jahr (Anzahl Monate × Betrag)
+    sumInYear(e, year) {
+      const a = +year * 12 + 1;
+      let k = 0; for (let n = a; n < a + 12; n++) if (incomeActiveIn(e, n)) k++;
+      return r2(k * (Number(e.amount) || 0));
+    },
+    // Wirft bei ungültigem Eintrag — die UI zeigt die Meldung
+    _check(e) {
+      if (!String(e.name || '').trim()) throw new Error('Bitte einen Namen eingeben.');
+      if (!(Number.isFinite(e.amount) && e.amount > 0)) throw new Error('Bitte einen Betrag über 0 eingeben.');
+      if (!INCOME_KINDS.includes(e.kind)) throw new Error('Unbekannte Art: ' + e.kind);
+      if (!INCOME_PERSONS.includes(e.personId)) throw new Error('Unbekannte Person: ' + e.personId);
+      if (!recMonthNum(e.validFrom)) throw new Error('Bitte einen gültigen Monat eingeben (MM.JJJJ).');
+      if (e.validUntil && !recMonthNum(e.validUntil)) throw new Error('Bitte einen gültigen Bis-Monat eingeben (MM.JJJJ).');
+      if (e.validUntil && recMonthNum(e.validUntil) < recMonthNum(e.validFrom)) throw new Error('Der Bis-Monat liegt vor dem Start.');
+    },
+    _norm(e) {
+      e.name = String(e.name || '').trim();
+      e.amount = r2(Number(e.amount));
+      e.note = String(e.note || '');
+      if (e.kind === 'einmalig') e.validUntil = e.validFrom;
+      if (!e.validUntil) e.validUntil = null;
+      return e;
+    },
+    add(data) {
+      const e = Incomes._norm({
+        id: generateId('inc'), name: data.name, amount: data.amount, personId: data.personId || 'gemeinsam',
+        kind: data.kind || 'monatlich', validFrom: data.validFrom, validUntil: data.validUntil || null,
+        note: data.note, createdAt: new Date().toISOString(),
+      });
+      Incomes._check(e);
+      if (!Array.isArray(_state.incomes)) _state.incomes = [];
+      _state.incomes.push(e);
+      _save();
+      return e;
+    },
+    // Korrektur für den ganzen Zeitraum
+    update(id, changes) {
+      const e = Incomes.getById(id);
+      if (!e) return null;
+      const next = Incomes._norm(Object.assign({}, e, changes, { id: e.id, createdAt: e.createdAt }));
+      Incomes._check(next);
+      Object.assign(e, next);
+      _save();
+      return e;
+    },
+    // Neuer Betrag ab Monat (nur monatlich). Ab dem Startmonat = einfache Korrektur.
+    changeFrom(id, mmyyyy, amount) {
+      const e = Incomes.getById(id);
+      if (!e) return null;
+      if (e.kind !== 'monatlich') throw new Error('Nur bei monatlichen Einnahmen möglich.');
+      const n = recMonthNum(mmyyyy), from = recMonthNum(e.validFrom);
+      if (!n) throw new Error('Bitte einen gültigen Monat eingeben (MM.JJJJ).');
+      if (n < from) throw new Error('Der Monat liegt vor dem Start dieser Einnahme.');
+      if (e.validUntil && n > recMonthNum(e.validUntil)) throw new Error('Der Monat liegt nach dem Ende dieser Einnahme.');
+      if (n === from) return Incomes.update(id, { amount });
+      const neu = Incomes._norm({
+        id: generateId('inc'), name: e.name, amount, personId: e.personId, kind: 'monatlich',
+        validFrom: monthStrFromNum(n), validUntil: e.validUntil, note: e.note, createdAt: new Date().toISOString(),
+      });
+      Incomes._check(neu);
+      e.validUntil = monthStrFromNum(n - 1);
+      _state.incomes.push(neu);
+      _save();
+      return neu;
+    },
+    // Letzter Monat, in dem die Einnahme fließt (null = wieder offen)
+    end(id, lastMonth) { return Incomes.update(id, { validUntil: lastMonth || null }); },
+    delete(id) {
+      const e = Incomes.getById(id);
+      if (!e) return;
+      Trash._add('income', e);
+      _state.incomes = _state.incomes.filter(x => x.id !== id);
+      _save();
+    },
+  };
+
   // ── Wiederkehrende Ausgaben (v2.0) ──
   // Ersetzt fixedCosts. Kein autoGenerate-Flag mehr.
   // type: 'fixed' | 'variable' | 'savings'
@@ -1648,7 +1759,7 @@ const Store = (() => {
       const entry = _state.trash.find(e => e.id === trashId);
       if (!entry) return;
       // Einfache Typen: zurücklegen, sofern die id nicht schon wieder da ist (Sync-Merge)
-      const LIST = { category: 'categories', object: 'objects', asset: 'assets', fsa: 'freistellungsauftraege' };
+      const LIST = { category: 'categories', object: 'objects', asset: 'assets', fsa: 'freistellungsauftraege', income: 'incomes' };
       const key = LIST[entry.type];
       if (key) {
         if (!Array.isArray(_state[key])) _state[key] = [];
@@ -1835,6 +1946,7 @@ const Store = (() => {
     Salary,
     Assets,
     Freistellung,
+    Incomes,
     Recurring,
     FixedCosts,   // backward compat alias
     Settings,
@@ -2251,10 +2363,20 @@ const Calculator = {
   // ── Monatszusammenfassung ──
   // Haushalts-Netto eines Monats (MM.JJJJ) — EINE Regel für Home, Budget, Sparquote, Cashflow:
   // Person 1 + Person 2, sobald der Partner aktiv ist (Paket 5, 25.10.2026)
+  // Einnahmen des Haushalts im Monat = Netto-Gehalt + weitere Einnahmen. Die eine Stelle, aus der Home,
+  // Übersicht (Sparquote), Cashflow und Budget-Soll rechnen. Weitere Einnahmen zählen immer mit, auch
+  // die von Person 2 bei ausgeschaltetem Partner — ein eingetragener Betrag fällt nie still heraus.
   householdNetIncome(dateStr) {
+    return r2(Calculator.householdSalary(dateStr) + Calculator.otherIncome(dateStr));
+  },
+  householdSalary(dateStr) {
     const store = Store.get();
     const ids = store.settings?.partnerEnabled ? ['person_1', 'person_2'] : ['person_1'];
     return r2(ids.reduce((s, pid) => s + (store.salary?.[pid]?.[dateStr]?.netSalary || 0), 0));
+  },
+  otherIncome(dateStr) {
+    const n = recMonthNum(dateStr);
+    return r2((Store.get().incomes || []).reduce((s, e) => s + (incomeActiveIn(e, n) ? Number(e.amount) || 0 : 0), 0));
   },
 
   getMonthSummary(month, year) {
