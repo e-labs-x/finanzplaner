@@ -21,6 +21,25 @@ Anlass: Nutzer fragte, wo Kindergeld/Steuererstattungen hingehören — es gab k
 
 ---
 
+## ⏭️ Nächste Sitzung — Kontoauszug-Import (ING-CSV) für Person 2 (Plan vom 08.11.2026, im Grundsatz angenommen)
+Anlass: Person 2 nutzt die App nicht; ihre Ausgaben sollen regelmäßig per CSV-Export ihres ING-Girokontos rein,
+**mit Prüfschritt, nie automatisch übernommen**. Ziel: getrennt sehen, wer was ausgibt.
+- [ ] **Wartet auf Nutzer:** CSV-Export (Wunsch 01.01.2026 bis heute) in den lokalen Ordner `Finanzen App` legen + Dateinamen
+      nennen. Datei **nie ins Repo**, nur lokal lesen. Hinweis: laut Sekundärquelle reicht der ING-Export nur 180 Tage zurück
+      (ungeprüft) → ggf. Rest aus PDF-Kontoauszügen der Post-Box. Format (Trenner, Kopfzeilen, Zahlen) erst an echter Datei festlegen.
+- [ ] Architektur vorher aufschreiben (Persistenz/Sync!): Migration v5→v6 — neues Feld `personId` an Buchungen,
+      **alle bestehenden Buchungen + Fixkosten → `person_1`** (Nutzerangabe), neue Handbuchungen `person_1` (im Dialog änderbar),
+      Importe `person_2`. Fingerabdruck je Buchung (Datum, Betrag, Text, Zählung bei Gleichen) gegen Doppelungen bei überlappenden Exporten.
+- [ ] Schritt 1: Eingabe → „Kontoauszug importieren“; Prüfliste nach Empfänger gruppiert; Kategorie-Vorschlag aus früheren
+      Importen, sonst aus eigenen Buchungen; ohne Treffer gelb/offen; Geldeingänge ausgeklammert; Umbuchungen zwischen den
+      Partnern (am Namen erkannt) markiert + ausgeklammert (**Geld zwischen den Konten ist keine Ausgabe**); mögliche Doppelung
+      mit Fixkosten markiert; gespeichert nur über „Übernehmen“. Prüfungen mit Gegenprobe, `pruefen.ps1`, Deploy, Abnahme.
+- [ ] Schritt 2: Umschalter Alle | Person 1 | Person 2 in Übersicht und Reports, Person im Excel-Export.
+- Automatischer CSV-Versand per Mail: **bei der ING nicht belegt** (Recherche 08.11.2026, Export nur manuell im Web-Banking).
+  Echte Automatisierung = Backlog **I** (PSD2/Enable Banking + Azure Function), nutzt dann dieselbe Prüfliste.
+
+---
+
 ## ✅ Fixkosten-Liste sortieren (01.11.2026, `?v=20261101a`–`c`) — vom Nutzer abgenommen („passt so, sieht gut aus“)
 Anlass: Nach ↕ (Rechtsschutz ab 03.2026 20,60 €) stand die neue Fassung ganz unten in der Liste, die alte
 „bis 02.2026“ an alter Stelle → sah aus wie „Änderung nicht übernommen“. Daten waren korrekt.
