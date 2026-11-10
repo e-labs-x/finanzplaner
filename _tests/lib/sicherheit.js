@@ -43,7 +43,18 @@
   // Waise: Buchung, deren Kategorie gelöscht wurde (entsteht über Sync-Merge oder Papierkorb)
   var _d = new Date(), _m = ('0' + (_d.getMonth() + 1)).slice(-2) + '.' + _d.getFullYear();
   st.transactions.push({ id: 'tx_waise', date: _m, categoryId: 'cat_geloescht', objectId: null, amount: 123.45, rawName: 'Waisenbuchung', note: '', source: 'manual', recurringId: null, createdAt: _d.toISOString() });
+  // Kontoauszug-Import (v6): vergiftete Import-Buchung von Person 2 (Bankname, Zweck)
+  st.transactions.push({ id: 'tx_inggift', date: _m, dateISO: null, categoryId: st.categories[0].id, objectId: null, amount: 9.99,
+    rawName: 'Laden' + gift('Import.rawName'), note: 'z' + gift('Import.note'), source: 'import', personId: 'person_2', createdAt: _d.toISOString() });
   localStorage.setItem('finanzplaner_v3', JSON.stringify(st));
+  // Erfundener ING-Export mit Gift in Kunde, Kontoname, Zeitraum, Empfänger und Zweck (Felder in Anführungszeichen)
+  function qq(s) { return '"' + String(s).replace(/"/g, '""') + '"'; }
+  window.__impCsv = ['Umsatzanzeige;x', '', 'IBAN;DE00 1111 2222 3333 4444 99', 'Kontoname;' + qq('Giro' + gift('Import.Kontoname')),
+    'Bank;ING', 'Kunde;' + qq('K' + gift('Import.Kunde')), 'Zeitraum;' + qq('Z' + gift('Import.Zeitraum')), '',
+    'Buchung;Wertstellungsdatum;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Referenz;Saldo;Währung;Betrag;Währung',
+    '03.01.2026;03.01.2026;' + qq('Geber' + gift('Import.Geldeingang')) + ';Gutschrift;' + qq('g' + gift('Import.Zweck2')) + ';;95,00;EUR;5,00;EUR',
+    '02.01.2026;02.01.2026;' + qq('Shop' + gift('Import.Empfaenger')) + ';Lastschrift;' + qq('p' + gift('Import.Zweck')) + ';;90,00;EUR;-10,00;EUR'
+  ].join('\n');
 
   // fremde Scripte beobachten (eigene Dateien und das SRI-gesicherte jsdelivr sind erlaubt)
   new MutationObserver(function (ms) {
@@ -98,6 +109,17 @@
       closeM('m-confirm'); closeM('m-inc');
       if (!asked || !FP.Store.Incomes.getById('inc_gift2')) errs.push('Einnahme loeschen ohne Rueckfrage');
     });
+    add('Import Pruefliste', function () { nav('eingabe'); impFile({ files: [new File([window.__impCsv], 'x.csv')] }); });
+    add('Import Datei lesen (wartet)', function () {});
+    add('Import einzeln', function () {
+      if (!_imp) { errs.push('Import: Pruefliste oeffnet nicht'); return; }
+      impToggle(_imp.groups.findIndex(function (g) { return !g.other; }));
+      _imp.otherOpen = true; impRender();
+    });
+    add('Import neue Kategorie', function () { var g = _imp && _imp.groups.find(function (x) { return !x.other; }); if (g) impSetCat(g.idx, '__new'); });
+    add('Import schliessen', function () { impClose(); });
+    add('Uebersicht Import-Buchung', function () { nav('auswertung'); avS.detail = { id: S.categories[0].id, objId: null }; avRender(); avS.detail = null; });
+    add('Import-Buchung bearbeiten', function () { editTx('tx_inggift'); closeM('m-tx-edit'); });
     if (window.ST_MENU) ST_MENU.forEach(function (g) { g.items.forEach(function (it) { add('Einstellungen ' + it.k, function () { nav('einstellungen'); stOpen(it.k); }); }); });
     add('Log', function () { stOpenLog(); });
     add('Kategorie bearbeiten', function () { stEditCat(S.categories[0].id); });

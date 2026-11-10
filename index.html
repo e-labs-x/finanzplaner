@@ -16,11 +16,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
-<title>Finanzplaner v12.1</title>
+<title>Finanzplaner v12.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <!-- Schrift blockiert den Start nicht (media=print → all nach dem Laden); ohne Netz gilt die Systemschrift -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=20261108a">
+<link rel="stylesheet" href="style.css?v=20261110a">
 </head>
 <body>
 
@@ -40,7 +40,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.1 · build 1108a</div>
+      <div class="sb-ver">v12.2 · build 1110a</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -156,6 +156,13 @@
           </div>
 
         </div><!-- /ei-wrap -->
+
+        <!-- Kontoauszug-Import -->
+        <button class="imp-start" onclick="impStart()">
+          <span class="imp-start-ico">⤓</span>
+          <span><b>Kontoauszug importieren</b><span class="imp-start-sub">CSV der ING prüfen und übernehmen</span></span>
+        </button>
+        <input type="file" id="imp-file" accept=".csv,text/csv,text/plain" style="display:none" onchange="impFile(this)">
 
         <!-- Letzte Einträge -->
         <div class="entries">
@@ -1135,9 +1142,30 @@
       <label class="fl">Notiz</label>
       <input class="fi" id="etx-note" type="text" maxlength="500" placeholder="Notiz…">
     </div>
+    <div class="fg">
+      <label class="fl">Person</label>
+      <select class="fi" id="etx-person" style="appearance:auto"></select>
+    </div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-tx-edit')">Abbrechen</button>
       <button class="btn btn-p" onclick="etxSave()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kontoauszug prüfen (v12.2) -->
+<div class="modal-bg" id="m-imp">
+  <div class="modal-box imp-box">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Kontoauszug prüfen</div>
+    <div id="imp-head" class="imp-head"></div>
+    <div id="imp-body"></div>
+    <div class="imp-foot">
+      <div class="imp-sum" id="imp-sum"></div>
+      <div class="modal-acts">
+        <button class="btn" onclick="impClose()">Abbrechen</button>
+        <button class="btn btn-p" id="imp-ok" onclick="impCommit()">Übernehmen</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1527,8 +1555,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261108a"></script>
-<script src="app.js?v=20261108a"></script>
+<script src="store.js?v=20261110a"></script>
+<script src="app.js?v=20261110a"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

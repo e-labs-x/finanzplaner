@@ -1681,3 +1681,52 @@ button { cursor: pointer; border: none; background: none; }
 /* Rente: Eingaben, mit denen nicht sinnvoll gerechnet werden kann (calcRente.warnings) */
 .rp-warn{margin:0 0 12px;padding:10px 14px;border-radius:var(--r-sm);font-size:13px;line-height:1.5;background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber)}
 .rp-warn[hidden]{display:none}
+
+/* ── Kontoauszug-Import (v12.2) ── */
+.imp-start{display:flex;align-items:center;gap:12px;width:100%;margin:14px 0 0;padding:12px 16px;border-radius:var(--r);border:1px dashed var(--brd);background:var(--surf);color:var(--tx);font:inherit;text-align:left;cursor:pointer}
+.imp-start:hover{background:var(--surf2)}
+.imp-start-ico{font-size:20px;color:var(--blue)}
+.imp-start b{display:block;font-size:13px}
+.imp-start-sub{display:block;font-size:11px;color:var(--tx3);margin-top:1px}
+.modal-box.imp-box{max-width:640px;padding-bottom:0}
+.imp-head{margin-bottom:10px}
+.imp-acct{font-size:13px;font-weight:600;color:var(--tx)}
+.imp-meta{font-size:11px;color:var(--tx3);margin-top:2px}
+.imp-warn{font-size:12px;color:var(--amber);background:var(--amber-lt);border-radius:var(--r-sm);padding:8px 10px;margin-top:8px}
+.imp-person{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx2);margin-top:10px}
+.imp-person .fi{width:auto;flex:0 0 auto;padding:6px 10px;appearance:auto}
+.imp-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tx3);margin:14px 0 6px}
+.imp-sec-o{display:flex;justify-content:space-between;text-transform:none;letter-spacing:0;font-size:12px;color:var(--tx2);border-bottom:1px solid var(--brd);padding-bottom:4px}
+.imp-grp{border:1px solid var(--brd);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:var(--surf)}
+.imp-grp.need{border-color:var(--amber);background:var(--amber-lt)}
+.imp-grp.off{opacity:.55}
+.imp-grp-row,.imp-row{display:flex;align-items:flex-start;gap:10px}
+.imp-chk{width:18px;height:18px;margin:1px 0 0;flex:0 0 auto;accent-color:var(--blue)}
+.imp-grp-main{flex:1;min-width:0;cursor:pointer}
+.imp-grp-name{font-size:13px;font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-grp-sub{font-size:11px;color:var(--tx3);margin-top:2px}
+.imp-more{color:var(--blue)}
+.imp-tag{font-size:10px;font-weight:600;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-radius:6px;padding:0 5px;vertical-align:1px}
+.imp-grp-amt,.imp-row-amt{font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap}
+.imp-grp-amt.ref,.imp-row-amt.ref{color:var(--green)}
+.imp-cat{margin-top:8px;padding:7px 10px;appearance:auto}
+.imp-cat-sm{margin-top:6px;font-size:12px}
+.imp-rows{margin-top:8px;border-top:1px solid var(--brd)}
+.imp-row{padding:8px 0;border-bottom:1px solid var(--brd)}
+.imp-row:last-child{border-bottom:none}
+.imp-row.off{opacity:.55}
+.imp-row-main{flex:1;min-width:0}
+.imp-row-txt{font-size:12px;color:var(--tx)}
+.imp-row-sub{font-size:11px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-other{margin-top:14px}
+.imp-other summary{font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;padding:6px 0}
+.imp-new{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.imp-new .fi{flex:1 1 160px}
+#imp-new-grp{appearance:auto}
+.imp-new-acts{display:flex;gap:8px;flex:1 1 100%}
+.imp-foot{position:sticky;bottom:0;background:var(--surf);border-top:1px solid var(--brd);margin:12px -20px 0;padding:10px 20px calc(14px + env(safe-area-inset-bottom))}
+.imp-foot .modal-acts{margin-top:8px}
+.imp-sum{font-size:13px;color:var(--tx2)}
+.imp-miss{font-size:12px;color:var(--amber);font-weight:600;margin-top:2px}
+#imp-ok:disabled{opacity:.5;cursor:not-allowed}
+.tx-person{font-size:10px;font-weight:600;color:var(--purple);background:var(--surf2);border:1px solid var(--brd);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:1px}

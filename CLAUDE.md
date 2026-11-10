@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.1 (`FP_VERSION = '12.1.0'`, `STORE_VERSION = 5`) | **Cache-Stand:** `?v=20261108a`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261110a`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -189,6 +189,12 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 **Weitere Einnahmen (seit 08.11.2026, Store v5):** Liste `incomes`, API `FP.Store.Incomes`. Einnahmen des Haushalts
 kommen **nur** aus `Calculator.householdNetIncome` (= `householdSalary` + `otherIncome`) — nie eigene Summen in der UI.
 Gehalts-Kennzahlen/Reallohn nutzen bewusst nur das Gehalt. Merge per id, Löschen über Papierkorb (`income`).
+**Kontoauszug-Import (seit 10.11.2026, Store v6):** Jede Buchung hat `personId` (`person_1`|`person_2`); fehlt es, gilt
+**immer** `FP.txPerson(tx)` = person_1 — nie direkt `tx.personId` auswerten. Import nur über `FP.Store.Imports.prepare(text)`
+(speichert nichts) und `commit(items, personId)` (ein `_save()`). **Doppel-Schutz:** Buchungs-id = `tx_` + Fingerabdruck
+(Konto-Hash + Buchungsdatum + Betrag + Saldo + Zählung) — nie eine zufällige id für Importzeilen vergeben, sonst entstehen
+bei zwei Geräten Doppel. `importLog` (Merge per id) merkt jede geprüfte Zeile. Die CSV-Datei des Nutzers nie ins Repo;
+Tests nutzen erfundene Bankzeilen.
 
 ---
 
@@ -233,7 +239,7 @@ Code: `AzureSync`-IIFE in `app.js`. **Hosting bleibt GitHub Pages** — nur die 
   Gleichstand, sonst wird nachgeschoben. `clearPending()` (Auto-Sync aus) löscht ihn NICHT.
 - **Wiederholen:** fehlgeschlagener Push → 30 s / 2 min / 5 min; `_checkRemote` (Poll, online, Vordergrund) ruft bei
   unverändertem Server `flush()`. `_kickPush()` stößt an, ohne den Zähler zu erhöhen.
-- **Merge** (`_mergeBackups`): Listen per id (+ Freistellungsaufträge, Sparpläne, ESPP-Zyklen, weitere Einnahmen), Gehalt pro Monat,
+- **Merge** (`_mergeBackups`): Listen per id (+ Freistellungsaufträge, Sparpläne, ESPP-Zyklen, weitere Einnahmen, Import-Protokoll), Gehalt pro Monat,
   Budgets, Anlagen-Wertstände pro Monat, `skipMonths` vereinigt; **Papierkorb beider Seiten = Löschvermerk**.
 - **Ein Schreibweg (seit 18.10.2026):** Nur `Store._save()` und `Store.replaceState()` schreiben `finanzplaner_v3`.
   Import, Auto-Sicherung, Pull und „Server-Daten laden" gehen über `BackupManager.import(file, {azureSync, log})` /

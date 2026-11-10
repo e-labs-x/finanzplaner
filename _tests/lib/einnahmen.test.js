@@ -32,7 +32,7 @@ const r2 = x => Math.round(x * 100) / 100;
 // ── 1. Migration v4 → v5 ──
 let FP = fresh();
 let S = FP.Store.get();
-check('Store ist Version 5 mit leerer Einnahmen-Liste', S.meta.version === 5 && Array.isArray(S.incomes), S.meta.version);
+check('Store ist Version 5+ mit leerer Einnahmen-Liste', S.meta.version >= 5 && Array.isArray(S.incomes), S.meta.version);
 check('Buchungen und Gehalt durch die Migration unverändert',
   S.transactions.length === rawStore.transactions.length && JSON.stringify(S.salary) === JSON.stringify(rawStore.salary),
   S.transactions.length + ' Buchungen');
@@ -104,7 +104,7 @@ check('Wiederherstellen holt sie zurück', !!FP2.Store.Incomes.getById(st.id) &&
 
 // ── 8. Backup zu neu für alte App: Version 5 im Backup ──
 const bk = FP2.BackupManager.create('t');
-check('Backup trägt Version 5 (alte App lehnt es ab, statt die Liste zu verlieren)', bk._backup.storeVersion === 5 && Array.isArray(bk.store.incomes));
+check('Backup trägt Version 5 (alte App lehnt es ab, statt die Liste zu verlieren)', bk._backup.storeVersion >= 5 && Array.isArray(bk.store.incomes));
 
 // ── 9. Sync-Merge (_mergeBackups aus app.js) ──
 const app = fs.readFileSync(path.join(path.dirname(storePath), 'app.js'), 'utf8');

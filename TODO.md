@@ -1,6 +1,6 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-08 — Weitere Einnahmen (Kindergeld, Steuererstattung), Store v5 (`?v=20261108a`)
+Letzte Aktualisierung: 2026-11-10 — Kontoauszug-Import (ING-CSV) mit Prüfliste, Person je Buchung, Store v6 (`?v=20261110a`)
 
 ---
 
@@ -21,23 +21,31 @@ Anlass: Nutzer fragte, wo Kindergeld/Steuererstattungen hingehören — es gab k
 
 ---
 
-## ⏭️ Nächste Sitzung — Kontoauszug-Import (ING-CSV) für Person 2 (Plan vom 08.11.2026, im Grundsatz angenommen)
-Anlass: Person 2 nutzt die App nicht; ihre Ausgaben sollen regelmäßig per CSV-Export ihres ING-Girokontos rein,
-**mit Prüfschritt, nie automatisch übernommen**. Ziel: getrennt sehen, wer was ausgibt.
-- [ ] **Wartet auf Nutzer:** CSV-Export (Wunsch 01.01.2026 bis heute) in den lokalen Ordner `Finanzen App` legen + Dateinamen
-      nennen. Datei **nie ins Repo**, nur lokal lesen. Hinweis: laut Sekundärquelle reicht der ING-Export nur 180 Tage zurück
-      (ungeprüft) → ggf. Rest aus PDF-Kontoauszügen der Post-Box. Format (Trenner, Kopfzeilen, Zahlen) erst an echter Datei festlegen.
-- [ ] Architektur vorher aufschreiben (Persistenz/Sync!): Migration v5→v6 — neues Feld `personId` an Buchungen,
-      **alle bestehenden Buchungen + Fixkosten → `person_1`** (Nutzerangabe), neue Handbuchungen `person_1` (im Dialog änderbar),
-      Importe `person_2`. Fingerabdruck je Buchung (Datum, Betrag, Text, Zählung bei Gleichen) gegen Doppelungen bei überlappenden Exporten.
-- [ ] Schritt 1: Eingabe → „Kontoauszug importieren“; Prüfliste nach Empfänger gruppiert; Kategorie-Vorschlag aus früheren
-      Importen, sonst aus eigenen Buchungen; ohne Treffer gelb/offen; Geldeingänge ausgeklammert; Umbuchungen zwischen den
-      Partnern (am Namen erkannt) markiert + ausgeklammert (**Geld zwischen den Konten ist keine Ausgabe**); mögliche Doppelung
-      mit Fixkosten markiert; gespeichert nur über „Übernehmen“. Prüfungen mit Gegenprobe, `pruefen.ps1`, Deploy, Abnahme.
+## 👀 Kontoauszug-Import ING-CSV, Schritt 1 (10.11.2026, `?v=20261110a`, v12.2, STORE_VERSION 6) — Abnahme offen
+Anlass: Person 2 nutzt die App nicht; ihre Ausgaben kommen regelmäßig per CSV-Export ihres ING-Girokontos rein,
+**mit Prüfliste, nie automatisch übernommen**. Ziel: getrennt sehen, wer was ausgibt.
+- [x] Echte Datei geprüft (nur lokal, nie im Repo): Windows-1252, `;`, 13 Kopfzeilen, Spalten Buchung/Wertstellung/Auftraggeber/
+      Buchungstext/Verwendungszweck/Referenz/Saldo/Währung/Betrag/Währung, neueste zuerst. Export reichte bis 01.01. zurück
+      (die „180 Tage“ der Sekundärquelle stimmen nicht).
+- [x] Store v6: `personId` an jeder Buchung (Migration: alle bisherigen → `person_1`; fehlt das Feld → `FP.txPerson` = person_1),
+      Liste `importLog` (id = Fingerabdruck, key, status taken|skipped, categoryId, at). API `FP.Store.Imports.prepare/commit`,
+      `FP.bankDecode`, `FP.parseIngCsv`.
+- [x] **Doppel-Schutz strukturell:** Fingerabdruck = Konto + Buchungsdatum + Betrag + Saldo danach (+ Zählung); Buchungs-id
+      = `tx_` + Fingerabdruck → gleicher Umsatz = gleiche id auf jedem Gerät, Sync führt per id zusammen. Geprüfte Zeilen (auch
+      ausgelassene, auch gelöschte Buchungen im Papierkorb) erscheinen nie wieder. Kontostand-Kette meldet fehlende Zeilen.
+- [x] Prüfliste (Eingabe → „Kontoauszug importieren“): Gruppen je Empfänger, eine Kategorie je Gruppe, „einzeln“ aufklappbar,
+      ohne Kategorie gelb, „＋ Neue Kategorie …“ inline. Erstattungen desselben Händlers verrechnet. Nicht übernommen:
+      Wertpapierkauf, Dividende, Gehalt, Bareinzahlung, Kindergeld, Umbuchung zwischen den Partnern (Vorname), sonstige
+      Geldeingänge. Vorschläge: zuerst wie letztes Mal (gelernt), sonst Stichwort (Drogerie = Lebensmittel, Nutzerangabe).
+      Person im Bearbeiten-Dialog, Schild an Buchungen von Person 2 (Eingabe-Liste, Übersicht-Detail); Bankname bleibt beim Bearbeiten.
+- [x] Prüfungen: `import.test.js` (35, erfundene Bankzeilen, scheitert am alten Code), Sicherheit (Gift in Kopf/Empfänger/Zweck,
+      6 Ansichten — fand echten Fehler: Kontoname war nicht maskiert), Einnahmen-Test auf v5+.
+- Bewusst NICHT gebaut: Abgleich mit Fixkosten — die Fixkosten laufen alle über das Konto von Person 1, Doppelungen sind daher
+  nicht zu erwarten. Bei Bedarf nachrüsten.
+- [ ] Nutzer: alle Geräte auf build 1110a öffnen (altes Gerät lehnt v6 ab), dann Import am PC durchführen und abnehmen.
 - [ ] Schritt 2: Umschalter Alle | Person 1 | Person 2 in Übersicht und Reports, Person im Excel-Export.
 - Automatischer CSV-Versand per Mail: **bei der ING nicht belegt** (Recherche 08.11.2026, Export nur manuell im Web-Banking).
   Echte Automatisierung = Backlog **I** (PSD2/Enable Banking + Azure Function), nutzt dann dieselbe Prüfliste.
-
 ---
 
 ## ✅ Fixkosten-Liste sortieren (01.11.2026, `?v=20261101a`–`c`) — vom Nutzer abgenommen („passt so, sieht gut aus“)

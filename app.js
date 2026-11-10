@@ -344,6 +344,7 @@ var AzureSync = (function() {
     });
     mergeById('freistellungsauftraege');
     mergeById('incomes');   // Weitere Einnahmen (v5) — per id, Löschen über den Papierkorb
+    mergeById('importLog'); // Kontoauszug-Import (v6) — id = Fingerabdruck der Bankzeile, gleiche Zeile = gleiche id
     // Löschvermerke anwenden — erst nach allen Listen, die im Papierkorb landen können
     Object.keys(TRASH_TYPE).forEach(function(key) {
       if (!Array.isArray(rStore[key])) return;
@@ -1381,7 +1382,7 @@ function renderEntries() {
     return '<div class="e-row" style="cursor:pointer" onclick="editTx(\'' + tx.id + '\')">'
       + '<div class="e-bar" style="background:' + (cat ? cat.color : '#6B7280') + '"></div>'
       + '<div class="e-info">'
-      + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + '</div>'
+      + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + txPersonTag(tx) + '</div>'
       + (tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
       + '<div class="e-meta"><span style="font-size:11px;color:var(--tx3)">' + dateTx + '</span>'
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
@@ -1426,6 +1427,9 @@ function editTx(id) {
   }).join('');
   document.getElementById('etx-date').value = tx.dateISO || myToISO(tx.date);
   document.getElementById('etx-note').value = tx.note || '';
+  document.getElementById('etx-person').innerHTML = ['person_1', 'person_2'].map(function(p) {
+    return '<option value="' + p + '"' + (p === FP.txPerson(tx) ? ' selected' : '') + '>' + esc(ghIncPersonLabel(p)) + '</option>';
+  }).join('');
   openM('m-tx-edit');
 }
 function etxSave() {
@@ -1439,6 +1443,7 @@ function etxSave() {
   var note  = document.getElementById('etx-note').value.trim();
   var cat   = FP.Store.Categories.getAll().find(function(c) { return c.id === catId; });
   var signed = typ === 'erstattung' ? -val : val;
+  var old   = FP.Store.Transactions.getById(_etxId);
   // edit(): löst eine Fixkosten-Buchung von ihrer Vorlage, wenn Betrag/Monat/Kategorie/Objekt sich ändern
   FP.Store.Transactions.edit(_etxId, {
     amount:     signed,
@@ -1447,7 +1452,8 @@ function etxSave() {
     date:       isoToMY(isoVal),
     dateISO:    isoVal,
     note:       note,
-    rawName:    cat ? cat.name : ''
+    personId:   document.getElementById('etx-person').value === 'person_2' ? 'person_2' : 'person_1',
+    rawName:    (old && old.source === 'import') ? old.rawName : (cat ? cat.name : '')   // Bankname bleibt
   });
   appLog('TX', 'Bearbeitet: ' + (cat ? cat.name : catId) + ' ' + eur(signed));
   closeM('m-tx-edit');
@@ -1455,6 +1461,162 @@ function etxSave() {
   _etxId = null;
   renderEntries();
   if (document.getElementById('p-auswertung') && document.getElementById('p-auswertung').classList.contains('active')) avRender();
+}
+
+/* ── Kontoauszug-Import (v12.2) ──
+   Prüfliste: nichts wird gespeichert, bevor „Übernehmen“ gedrückt ist. Alle Regeln (Fingerabdruck, Doppel-Schutz,
+   Vorschläge) liegen im Store (FP.Store.Imports) — hier nur Anzeige und Auswahl. */
+var _imp = null;
+function impStart() { var f = document.getElementById('imp-file'); f.value = ''; f.click(); }
+function impFile(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  file.arrayBuffer().then(function(buf) {
+    var prep;
+    try { prep = FP.Store.Imports.prepare(FP.bankDecode(buf)); }
+    catch (e) { toast(e.message || 'Datei nicht lesbar'); return; }
+    if (!prep.items.length) { toast('Alle ' + prep.total + ' Umsätze sind schon geprüft – nichts Neues.'); return; }
+    var groups = [], byKey = {};
+    prep.items.forEach(function(it, i) {
+      var gk = it.kind === 'other' ? 'other:' + it.reason : 'k:' + it.key;
+      if (!byKey[gk]) { byKey[gk] = { key: gk, other: it.kind === 'other', label: it.kind === 'other' ? it.reason : it.label, idx: [] }; groups.push(byKey[gk]); }
+      byKey[gk].idx.push(i);
+    });
+    _imp = { prep: prep, items: prep.items, groups: groups, open: {}, person: 'person_2', newFor: null };
+    impRender();
+    openM('m-imp');
+  }, function() { toast('Datei nicht lesbar'); });
+}
+function impClose() { closeM('m-imp'); _imp = null; }
+function impCatOptions(sel) {
+  var all = FP.Store.Categories.getAll().filter(function(c) { return !c.hidden; });
+  var mains = all.filter(function(c) { return !c.parentId; }).sort(function(a, b) { return (a.sortOrder || 0) - (b.sortOrder || 0); });
+  var h = '<option value=""' + (sel ? '' : ' selected') + '>— Kategorie wählen —</option>';
+  mains.forEach(function(m) {
+    h += '<option value="' + m.id + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.name) + '</option>';
+    all.filter(function(c) { return c.parentId === m.id; }).forEach(function(c) {
+      h += '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>  › ' + esc(c.name) + '</option>';
+    });
+  });
+  return h + '<option value="__new">＋ Neue Kategorie …</option>';
+}
+function impFmtDay(iso) { return iso.substring(8) + '.' + iso.substring(5, 7) + '.'; }
+function impGroupCat(g) {
+  var c = null, mixed = false;
+  g.idx.forEach(function(i) { var x = _imp.items[i].categoryId || null; if (c === null && x) c = x; else if (x && x !== c) mixed = true; });
+  return mixed ? '' : (c || '');
+}
+function impRender() {
+  if (!_imp) return;
+  var P = _imp.prep, items = _imp.items;
+  var acct = esc(P.account.name || 'Konto') + ' ··' + esc(P.account.last4) + (P.account.period ? ' · ' + esc(P.account.period) : '');
+  var pOpt = ['person_1', 'person_2'].map(function(p) { return '<option value="' + p + '"' + (p === _imp.person ? ' selected' : '') + '>' + esc(ghIncPersonLabel(p)) + '</option>'; }).join('');
+  document.getElementById('imp-head').innerHTML =
+    '<div class="imp-acct">' + esc(P.account.owner || '') + ' · ' + acct + '</div>' +
+    '<div class="imp-meta">' + P.total + ' Umsätze' + (P.known ? ' · ' + P.known + ' schon geprüft (ausgeblendet)' : '') + '</div>' +
+    (P.gaps ? '<div class="imp-warn">Achtung: Der Kontostand springt an ' + P.gaps + ' Stelle(n) – die Datei ist evtl. unvollständig.</div>' : '') +
+    '<label class="imp-person">Buchungen gehören zu <select class="fi" onchange="_imp.person=this.value">' + pOpt + '</select></label>';
+  var main = _imp.groups.filter(function(g) { return !g.other; }), other = _imp.groups.filter(function(g) { return g.other; });
+  function gNet(g) { return g.idx.reduce(function(s, i) { return s + (items[i].take ? -items[i].amount : 0); }, 0); }
+  main.sort(function(a, b) {
+    var ca = impGroupCat(a) ? 1 : 0, cb = impGroupCat(b) ? 1 : 0;
+    if (ca !== cb) return ca - cb;                               // ohne Kategorie zuerst
+    return Math.abs(gNet(b)) - Math.abs(gNet(a));
+  });
+  function rowHtml(i, withCat) {
+    var it = items[i], ref = it.amount > 0;
+    return '<div class="imp-row' + (it.take ? '' : ' off') + '">' +
+      '<input type="checkbox" class="imp-chk" ' + (it.take ? 'checked ' : '') + 'onchange="impTake(' + i + ',this.checked)">' +
+      '<div class="imp-row-main"><div class="imp-row-txt">' + impFmtDay(it.date) + ' · ' + esc(it.label) + '</div>' +
+      '<div class="imp-row-sub">' + esc((it.purpose || it.text || '').slice(0, 90)) + '</div>' +
+      (withCat && it.take ? '<select class="fi imp-cat imp-cat-sm" onchange="impSetCat([' + i + '],this.value)">' + impCatOptions(it.categoryId) + '</select>' : '') +
+      '</div><div class="imp-row-amt' + (ref ? ' ref' : '') + '">' + (ref ? '↩ ' : '') + eur(Math.abs(it.amount)) + '</div></div>';
+  }
+  var gi = 0;
+  var html = '<div class="imp-sec">Ausgaben und Erstattungen</div>' + main.map(function(g) {
+    var id = _imp.groups.indexOf(g), cat = impGroupCat(g);
+    var nOn = g.idx.filter(function(i) { return items[i].take; }).length, nRef = g.idx.filter(function(i) { return items[i].amount > 0; }).length;
+    var need = nOn && g.idx.some(function(i) { return items[i].take && !items[i].categoryId; });
+    var hint = g.idx.map(function(i) { return items[i].hint; }).filter(Boolean)[0];
+    var reason = g.idx.map(function(i) { return items[i].reason; }).filter(Boolean)[0];
+    var net = gNet(g), open = !!_imp.open[id];
+    return '<div class="imp-grp' + (need ? ' need' : '') + (nOn ? '' : ' off') + '">' +
+      '<div class="imp-grp-row">' +
+        '<input type="checkbox" class="imp-chk" ' + (nOn ? 'checked ' : '') + 'onchange="impTakeGroup(' + id + ',this.checked)"' + (nOn && nOn < g.idx.length ? ' data-mixed="1"' : '') + '>' +
+        '<div class="imp-grp-main" onclick="impToggle(' + id + ')">' +
+          '<div class="imp-grp-name">' + esc(g.label) + (hint && cat ? ' <span class="imp-tag">' + (hint === 'gelernt' ? 'wie letztes Mal' : 'Vorschlag') + '</span>' : '') + '</div>' +
+          '<div class="imp-grp-sub">' + g.idx.length + (g.idx.length === 1 ? ' Buchung' : ' Buchungen') + (nRef ? ' · ' + nRef + ' Erstattung' + (nRef > 1 ? 'en' : '') : '') +
+            (nOn < g.idx.length ? ' · ' + (g.idx.length - nOn) + ' abgewählt' : '') + (reason ? ' · ' + esc(reason) : '') + ' · <span class="imp-more">' + (open ? 'zuklappen' : 'einzeln') + '</span></div>' +
+        '</div>' +
+        '<div class="imp-grp-amt' + (net < 0 ? ' ref' : '') + '">' + (net < 0 ? '↩ ' : '') + eur(Math.abs(net)) + '</div>' +
+      '</div>' +
+      (nOn ? '<select class="fi imp-cat" onchange="impSetCat([' + g.idx.join(',') + '],this.value)">' + impCatOptions(cat) + '</select>' : '') +
+      (_imp.newFor && _imp.newFor.join(',') === g.idx.join(',') ? impNewCatForm() : '') +
+      (open ? '<div class="imp-rows">' + g.idx.map(function(i) { return rowHtml(i, true); }).join('') + '</div>' : '') +
+    '</div>';
+  }).join('');
+  var oCount = other.reduce(function(s, g) { return s + g.idx.length; }, 0);
+  html += '<details class="imp-other"' + (_imp.otherOpen ? ' open' : '') + ' ontoggle="if(_imp)_imp.otherOpen=this.open"><summary>Nicht übernommen (' + oCount + ') – Sparen, Einnahmen, Kindergeld …</summary>' +
+    other.map(function(g) {
+      var sum = g.idx.reduce(function(s, i) { return s + items[i].amount; }, 0);
+      return '<div class="imp-sec imp-sec-o"><span>' + esc(g.label) + ' · ' + g.idx.length + '</span><span>' + (sum < 0 ? '−' : '+') + eur(Math.abs(sum)) + '</span></div>' +
+        g.idx.map(function(i) {
+          var h = rowHtml(i, true);
+          if (_imp.newFor && _imp.newFor.length === 1 && _imp.newFor[0] === i) h += impNewCatForm();
+          return h;
+        }).join('');
+    }).join('') + '</details>';
+  document.getElementById('imp-body').innerHTML = html;
+  document.querySelectorAll('#imp-body input[data-mixed]').forEach(function(c) { c.indeterminate = true; });
+  impSum();
+}
+function impSum() {
+  var on = _imp.items.filter(function(it) { return it.take; });
+  var miss = on.filter(function(it) { return !it.categoryId; }).length;
+  var sum = on.reduce(function(s, it) { return s - it.amount; }, 0);
+  document.getElementById('imp-sum').innerHTML = '<b>' + on.length + '</b> Buchungen übernehmen · ' + eur(sum) +
+    (miss ? '<div class="imp-miss">' + miss + ' noch ohne Kategorie</div>' : '');
+  var b = document.getElementById('imp-ok');
+  b.disabled = !!miss;
+  b.textContent = on.length ? 'Übernehmen' : 'Als geprüft merken';
+}
+function impToggle(id) { _imp.open[id] = !_imp.open[id]; impRender(); }
+function impTake(i, on) { _imp.items[i].take = on; impRender(); }
+function impTakeGroup(id, on) { _imp.groups[id].idx.forEach(function(i) { _imp.items[i].take = on; }); impRender(); }
+function impSetCat(idx, val) {
+  if (val === '__new') { _imp.newFor = idx; impRender(); var n = document.getElementById('imp-new-name'); if (n) n.focus(); return; }
+  idx.forEach(function(i) { _imp.items[i].categoryId = val || null; _imp.items[i].hint = null; });
+  _imp.newFor = null;
+  impRender();
+}
+function impNewCatForm() {
+  return '<div class="imp-new"><input class="fi" id="imp-new-name" maxlength="40" placeholder="Name der neuen Kategorie">' +
+    '<select class="fi" id="imp-new-grp"><option value="freizeit">Freizeit</option><option value="fixkosten">Fixkosten</option></select>' +
+    '<div class="imp-new-acts"><button class="btn" onclick="_imp.newFor=null;impRender()">Abbrechen</button>' +
+    '<button class="btn btn-p" onclick="impNewCatSave()">Anlegen</button></div></div>';
+}
+function impNewCatSave() {
+  var name = (document.getElementById('imp-new-name').value || '').trim();
+  if (!name) { toast('Bitte einen Namen eingeben'); return; }
+  var dup = FP.Store.Categories.getAll().find(function(c) { return !c.hidden && c.name.toLowerCase() === name.toLowerCase(); });
+  var cat = dup || FP.Store.Categories.add({ name: name, group: document.getElementById('imp-new-grp').value, parentId: null });
+  var idx = _imp.newFor; _imp.newFor = null;
+  impSetCat(idx, cat.id);
+  buildCats();
+  toast(dup ? '„' + name + '“ gibt es schon – zugeordnet' : '✓ Kategorie „' + name + '“ angelegt');
+}
+function impCommit() {
+  if (!_imp) return;
+  var res;
+  try { res = FP.Store.Imports.commit(_imp.items, _imp.person); }
+  catch (e) { toast(e.message || 'Import fehlgeschlagen'); return; }
+  closeM('m-imp'); _imp = null;
+  toast('✓ ' + res.taken + ' Buchungen übernommen (' + eur(res.sum) + ')' + (res.skipped ? ', ' + res.skipped + ' ausgelassen' : ''));
+  renderEntries();
+  if (document.getElementById('p-auswertung') && document.getElementById('p-auswertung').classList.contains('active')) avRender();
+}
+function txPersonTag(tx) {
+  return FP.txPerson(tx) === 'person_2' ? '<span class="tx-person">' + esc(ghIncPersonLabel('person_2')) + '</span>' : '';
 }
 
 /* ── Neue Kategorie ── */
@@ -2062,7 +2224,7 @@ function avRenderDetail(){
       return '<div class="av-cd-tx" onclick="editTx(\''+tx.id+'\')">'+
         '<div class="av-cd-tx-day">'+day+'</div>'+
         '<div class="av-cd-tx-lbl">'+
-          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+'</div>'+
+          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+txPersonTag(tx)+'</div>'+
           (noteParts.length?'<div class="av-cd-tx-note">'+esc(noteParts.join(' · '))+'</div>':'')+
         '</div>'+
         '<div class="av-cd-tx-amt" style="color:'+(isRefund?'var(--green)':'var(--tx)')+'">'+(isRefund?'+ ':'')+eur(Math.abs(tx.amount))+'</div>'+

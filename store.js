@@ -13,8 +13,8 @@
 // KONSTANTEN
 // ═══════════════════════════════════════════════════════════════
 
-const FP_VERSION = '12.1.0';
-const STORE_VERSION    = 5;
+const FP_VERSION = '12.2.0';
+const STORE_VERSION    = 6;
 const LS_KEY           = 'finanzplaner_v3';
 const BACKUP_KEY       = 'finanzplaner_v3_backups';
 const MAX_AUTO_BACKUPS = 5;
@@ -139,6 +139,11 @@ function createDefaultStore() {
     // { id, name, amount, personId:'gemeinsam'|'person_1'|'person_2', kind:'monatlich'|'einmalig',
     //   validFrom:'MM.JJJJ', validUntil:'MM.JJJJ'|null (einmalig: = validFrom), note, createdAt }
     incomes: [],
+
+    // ── Kontoauszug-Import (v6): jede geprüfte Bankzeile, übernommen oder ausgelassen ──
+    // { id: Fingerabdruck, key: Empfänger-Schlüssel, status:'taken'|'skipped', categoryId|null, at, date }
+    // Merkt sich die Entscheidung → eine Zeile erscheint nie zweimal in der Prüfliste.
+    importLog: [],
 
     // ── Rentenplanung ──
     retirement: {
@@ -389,6 +394,121 @@ function incomeActiveIn(e, n) {
   const to = e.kind === 'einmalig' ? from : (e.validUntil ? recMonthNum(e.validUntil) : Infinity);
   return n <= to;
 }
+// ── Buchung → Person (v6). Fehlt das Feld (Altstand, Fixkosten-Generierung), ist es Person 1. ──
+const TX_PERSONS = ['person_1', 'person_2'];
+function txPerson(t) { return (t && t.personId === 'person_2') ? 'person_2' : 'person_1'; }
+
+// ── Kontoauszug-Import (v6): reine Funktionen ohne Zustand ──
+// 64-Bit-Hash (cyrb53) → stabiler Fingerabdruck einer Bankzeile. Gleiche Zeile = gleiche id auf jedem Gerät.
+function cyrb53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+}
+// Bytes → Text. ING liefert Windows-1252 („Ums\xe4tze“); UTF-8 wird erkannt, falls die Bank umstellt.
+function bankDecode(bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s;
+  try { s = new TextDecoder('utf-8', { fatal: true }).decode(u8); }
+  catch (e) { s = new TextDecoder('windows-1252').decode(u8); }
+  return s.replace(/^﻿/, '');
+}
+function csvSplit(line, sep) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === sep) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+function deNum(s) {
+  const t = String(s == null ? '' : s).trim().replace(/\./g, '').replace(',', '.');
+  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
+}
+function deDateToISO(s) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(s || '').trim());
+  if (!m || +m[2] < 1 || +m[2] > 12 || +m[1] < 1 || +m[1] > 31) return null;
+  return m[3] + '-' + m[2] + '-' + m[1];
+}
+// ING-CSV („Umsätze“ → Export) lesen. Wirft bei fremdem Format — nie halb lesen.
+function parseIngCsv(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  const meta = {};
+  let hi = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const c = csvSplit(lines[i], ';').map(x => x.trim());
+    if (c[0] === 'Buchung' && c.includes('Betrag')) { hi = i; break; }
+    if (c.length >= 2 && c[0]) meta[c[0]] = c[1];
+  }
+  if (hi < 0 || !meta.IBAN) throw new Error('Das ist kein ING-Kontoauszug. Erwartet wird die CSV-Datei aus „Umsätze → Exportieren“.');
+  const head = csvSplit(lines[hi], ';').map(x => x.trim());
+  const iB = head.indexOf('Buchung'), iP = head.findIndex(h => /^Auftraggeber/.test(h)), iT = head.indexOf('Buchungstext'),
+        iV = head.indexOf('Verwendungszweck'), iS = head.indexOf('Saldo'), iA = head.indexOf('Betrag');
+  if ([iB, iP, iT, iV, iS, iA].some(i => i < 0)) throw new Error('Unbekannter Spaltenaufbau der CSV-Datei – hat die ING das Format geändert?');
+  const rows = [];
+  for (let i = hi + 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const c = csvSplit(lines[i], ';');
+    if (c.length !== head.length) throw new Error('Zeile ' + (i + 1) + ' hat ' + c.length + ' statt ' + head.length + ' Spalten.');
+    const date = deDateToISO(c[iB]), amount = deNum(c[iA]), saldo = deNum(c[iS]);
+    if (!date || !Number.isFinite(amount) || !Number.isFinite(saldo)) throw new Error('Zeile ' + (i + 1) + ': Datum oder Betrag nicht lesbar.');
+    rows.push({ line: i + 1, date, party: c[iP].trim(), text: c[iT].trim(), purpose: c[iV].trim(), saldo, amount });
+  }
+  if (!rows.length) throw new Error('Die Datei enthält keine Umsätze.');
+  // Kontostand-Kette: Saldo nach Zeile i minus Betrag = Saldo nach der älteren Zeile (Sortierung: neueste zuerst)
+  let gaps = 0;
+  for (let i = 0; i < rows.length - 1; i++) if (Math.abs(r2(rows[i].saldo - rows[i].amount) - rows[i + 1].saldo) > 0.005) gaps++;
+  const iban = String(meta.IBAN || '').replace(/\s/g, '').toUpperCase();
+  const acctKey = cyrb53('iban|' + iban);
+  // Fingerabdruck: Konto + Buchungsdatum + Betrag + Saldo danach (+ Zählung bei exakt gleichen Zeilen).
+  // Ändert sich bei keinem späteren Export → derselbe Umsatz bekommt immer dieselbe id.
+  const seen = {};
+  rows.forEach(r => {
+    const base = acctKey + '|' + r.date + '|' + r.amount.toFixed(2) + '|' + r.saldo.toFixed(2);
+    seen[base] = (seen[base] || 0) + 1;
+    r.fp = 'ing' + cyrb53(base + '|' + seen[base]);
+  });
+  return { bank: 'ING', account: { key: acctKey, last4: iban.slice(-4), name: meta.Kontoname || '', owner: meta.Kunde || '', period: meta.Zeitraum || '' }, rows, gaps };
+}
+// Empfänger-Schlüssel: gleiche Firma = gleicher Schlüssel, auch wenn ING den Namen leicht anders schreibt
+// („PayPal Europe S.a.r.l.“ / „PayPal (Europe) S.a r.l.“). Bei Zahlungsdienstleistern (Adyen) steht der Händler im Zweck.
+const BANK_STOP = new Set(['GMBH', 'MBH', 'CO', 'KG', 'AG', 'SE', 'UG', 'EUROPE', 'DEUTSCHLAND', 'GERMANY', 'PAYMENTS', 'SAGT',
+  'DANKE', 'DANK', 'VIELEN', 'DER', 'DIE', 'DAS', 'FUR', 'FUER', 'THE', 'CIE', 'SCA', 'SARL', 'VISA', 'TREUHAND',
+  'SERVICEGESELLSCHAFT', 'HAFTUNGSBESCHRANKT', 'AKTIENGESELLSCHAFT']);
+function bankWords(s) { return String(s || '').toUpperCase().split(/[^A-ZÄÖÜß]+/).filter(w => w.length >= 3 && !BANK_STOP.has(w)); }
+function bankPartyKey(r) {
+  const P = String(r.party || r.text || '').toUpperCase().replace(/^VISA\s+/, '').split('*')[0];
+  let w = bankWords(P);
+  if (/^ADYEN/.test(P)) { const v = bankWords(r.purpose); if (v.length) w = v; }
+  return w.slice(0, 2).join(' ') || P.trim() || String(r.text || '').toUpperCase();
+}
+function bankPartyLabel(r) {
+  const P = String(r.party || '').replace(/^VISA\s+/i, '').split('*')[0].trim();
+  if (/^adyen/i.test(P) && r.purpose) return r.purpose.split('/')[0].trim().slice(0, 40);
+  return P || r.text || 'Unbekannt';
+}
+// Stichwort-Vorschläge für die ERSTE Zuordnung (danach lernt der Import aus den eigenen Entscheidungen).
+// Drogerie zählt bei uns als Lebensmittel (Nutzerangabe 10.11.2026).
+const BANK_HINTS = [
+  [/DROGERIE|ROSSMANN|\bDM\b|MUELLER DROG|REWE|EDEKA|ALDI|LIDL|PENNY|NETTO|KAUFLAND|TEGUT|KONZUM|BINGO/, 'Lebensmittel'],
+  [/LUFTHANSA|EUROWINGS|RYANAIR|CONDOR|WIZZ|EASYJET/, 'Flug'],
+  [/APOTHEKE|ZAHN|PRAXIS|ARZT|KLINIK/, 'Gesundheit'],
+  [/MCDONALD|BURGER KING|KFC|RESTAURANT|PIZZ/, 'Essen & Trinken'],
+  [/H\+M|ZARA|SHEIN|LIMANGO|DEICHMANN|SHOE4YOU|DECATHLON|PRIMARK|ESCHUHE|SPORTDEAL/, 'Kleidung'],
+  [/ARAL|SHELL|ESSO|\bJET\b|TOTALENERGIES/, 'Tanken'],
+  [/FRISEUR/, 'Friseur'],
+];
+
 // Monatsstände einer Anlage chronologisch (nicht als Text: "01.2027" < "12.2026" wäre falsch).
 // Überall gilt „letzter Eintrag = aktueller Stand" — das hält nur, wenn diese Sortierung immer gilt:
 // beim Laden, bei addSnapshot und beim Sync-Merge.
@@ -700,6 +820,13 @@ const MIGRATIONS = {
   // v4 → v5: Liste „Weitere Einnahmen“ anlegen. Bestehende Daten bleiben unberührt. Idempotent.
   4: (data) => {
     if (!Array.isArray(data.incomes)) data.incomes = [];
+    return data;
+  },
+  // v5 → v6: Jede Buchung gehört einer Person. Alle bisherigen Buchungen = Person 1 (Nutzerangabe 08.11.2026:
+  // „alles meine Buchungen, die Fixkosten zahle ich“). Import-Protokoll anlegen. Idempotent.
+  5: (data) => {
+    (data.transactions || []).forEach(t => { if (!TX_PERSONS.includes(t.personId)) t.personId = 'person_1'; });
+    if (!Array.isArray(data.importLog)) data.importLog = [];
     return data;
   },
 };
@@ -1093,6 +1220,7 @@ const Store = (() => {
         note:          tx.note         || '',
         source:        tx.source       || 'manual',
         sourceRef:     tx.sourceRef    || null,
+        personId:      TX_PERSONS.includes(tx.personId) ? tx.personId : 'person_1',
         createdAt:     new Date().toISOString(),
       };
       _state.transactions.push(full);
@@ -1533,6 +1661,118 @@ const Store = (() => {
     },
   };
 
+  // ── Kontoauszug-Import (v6) ──
+  // Strukturelle Garantie gegen Doppelungen: Buchungs-id = 'tx_' + Fingerabdruck der Bankzeile. Dieselbe Zeile aus einem
+  // zweiten Export oder von einem zweiten Gerät ergibt dieselbe id → der Sync führt per id zusammen, commit() legt sie
+  // nie ein zweites Mal an. Jede geprüfte Zeile (übernommen ODER ausgelassen) steht im importLog → kommt nie wieder hoch.
+  const Imports = {
+    log() { return _state.importLog || []; },
+    // Gelernte Entscheidung je Empfänger: letzte Prüfung zählt (taken, wenn dort mind. eine Zeile übernommen wurde)
+    _learned() {
+      const by = {};
+      (_state.importLog || []).forEach(e => {
+        if (!e || !e.key) return;
+        const cur = by[e.key];
+        if (!cur || e.at > cur.at) by[e.key] = { at: e.at, taken: e.status === 'taken', categoryId: e.status === 'taken' ? e.categoryId : null };
+        else if (e.at === cur.at && e.status === 'taken') { cur.taken = true; cur.categoryId = cur.categoryId || e.categoryId; }
+      });
+      // Kategorie: letzte übernommene Zuordnung, auch wenn die letzte Prüfung ausgelassen hat
+      (_state.importLog || []).slice().sort((a, b) => (a.at < b.at ? -1 : 1)).forEach(e => {
+        if (e && e.key && e.status === 'taken' && e.categoryId && by[e.key]) by[e.key].lastCat = e.categoryId;
+      });
+      return by;
+    },
+    // CSV-Text → Prüfliste. Speichert NICHTS.
+    prepare(text) {
+      const parsed = parseIngCsv(text);
+      const catOk = id => (_state.categories || []).some(c => c.id === id && !c.hidden);
+      const catByName = n => (_state.categories || []).find(c => !c.hidden && c.name.toLowerCase() === n.toLowerCase());
+      const learned = Imports._learned();
+      const logged = new Set((_state.importLog || []).map(e => e.id));
+      const txIds = new Set((_state.transactions || []).map(t => t.id));
+      (_state.trash || []).forEach(e => { if (e && e.type === 'transaction' && e.item) txIds.add(e.item.id); });
+      const names = (_state.persons || []).map(p => String(p.name || '').trim().split(/\s+/)[0].toUpperCase())
+        .filter(n => n.length >= 3 && !/^PERSON$/.test(n));
+      const isPartner = r => { const P = ' ' + String(r.party || '').toUpperCase() + ' ';
+        return names.some(n => new RegExp('[^A-ZÄÖÜ]' + n + '[^A-ZÄÖÜ]').test(P)); };
+      const expenseKeys = new Set();
+      parsed.rows.forEach(r => { if (r.amount < 0 && r.text !== 'Wertpapierkauf') expenseKeys.add(bankPartyKey(r)); });
+      let known = 0;
+      const items = [];
+      parsed.rows.forEach(r => {
+        const txId = 'tx_' + r.fp;
+        if (logged.has(r.fp) || txIds.has(txId)) { known++; return; }
+        const key = bankPartyKey(r);
+        const L = learned[key];
+        let kind = 'other', reason = '';
+        if (r.amount < 0) {
+          if (r.text === 'Wertpapierkauf') reason = 'Wertpapierkauf (Sparen)';
+          else if (isPartner(r)) reason = 'Umbuchung zwischen euch';
+          else kind = 'expense';
+        } else if (r.amount > 0) {
+          if (/Zins|Dividende/i.test(r.text)) reason = 'Dividende';
+          else if (/Gehalt|Rente/i.test(r.text)) reason = 'Gehalt';
+          else if (/Bareinzahlung/i.test(r.text)) reason = 'Bareinzahlung';
+          else if (/FAMILIENKASSE/i.test(r.party)) reason = 'Kindergeld → Gehalt › Weitere Einnahmen';
+          else if (isPartner(r)) reason = 'Umbuchung zwischen euch';
+          else if (expenseKeys.has(key) || (L && L.lastCat)) kind = 'refund';
+          else reason = 'Geldeingang';
+        } else reason = 'Betrag 0';
+        let categoryId = null, hint = null;
+        if (kind !== 'other') {
+          if (L && L.lastCat && catOk(L.lastCat)) { categoryId = L.lastCat; hint = 'gelernt'; }
+          else {
+            const hay = (key + ' ' + String(r.party || '') + ' ' + String(r.purpose || '')).toUpperCase();
+            const h = BANK_HINTS.find(x => x[0].test(hay));
+            const c = h && catByName(h[1]);
+            if (c) { categoryId = c.id; hint = 'Stichwort'; }
+          }
+        }
+        const take = kind !== 'other' && !(L && !L.taken);
+        items.push({ fp: r.fp, txId, key, label: bankPartyLabel(r), kind, reason: kind === 'other' ? reason : (L && !L.taken ? 'Beim letzten Import ausgelassen' : ''),
+                     take, categoryId, hint, date: r.date, amount: r.amount, purpose: r.purpose, text: r.text });
+      });
+      return { account: parsed.account, gaps: parsed.gaps, total: parsed.rows.length, known, items };
+    },
+    // Prüfliste übernehmen: angehakte Zeilen werden Buchungen, alle anderen gelten als geprüft. EIN _save().
+    commit(items, personId) {
+      const pid = TX_PERSONS.includes(personId) ? personId : 'person_2';
+      const catOk = id => (_state.categories || []).some(c => c.id === id);
+      (items || []).forEach(it => {
+        if (!it || !/^ing[0-9a-f]{16}$/.test(it.fp) || it.txId !== 'tx_' + it.fp) throw new Error('Ungültige Importzeile.');
+        if (it.take && !catOk(it.categoryId)) throw new Error('Bitte für „' + it.label + '“ eine Kategorie wählen.');
+        if (it.take && !(Number.isFinite(it.amount) && it.amount !== 0)) throw new Error('Ungültiger Betrag bei „' + it.label + '“.');
+      });
+      if (!Array.isArray(_state.importLog)) _state.importLog = [];
+      const logged = new Set(_state.importLog.map(e => e.id));
+      const txIds = new Set(_state.transactions.map(t => t.id));
+      const at = new Date().toISOString();
+      let taken = 0, skipped = 0, sum = 0;
+      (items || []).forEach(it => {
+        if (logged.has(it.fp)) return;
+        const d = String(it.date || '');
+        const my = d.slice(5, 7) + '.' + d.slice(0, 4);
+        if (it.take) {
+          if (!txIds.has(it.txId)) {
+            _state.transactions.push({
+              id: it.txId, date: my, dateISO: d, categoryId: it.categoryId, subcategoryId: null, objectId: null,
+              amount: r2(-it.amount), rawName: String(it.label || '').slice(0, 80), note: String(it.purpose || '').slice(0, 200),
+              source: 'import', sourceRef: it.fp, personId: pid, createdAt: at,
+            });
+            txIds.add(it.txId);
+            sum = r2(sum - it.amount);
+          }
+          taken++;
+        } else skipped++;
+        _state.importLog.push({ id: it.fp, key: it.key, status: it.take ? 'taken' : 'skipped', categoryId: it.take ? it.categoryId : null, at, date: my });
+        logged.add(it.fp);
+      });
+      _save();
+      appLog('IMPORT', taken + ' übernommen, ' + skipped + ' ausgelassen, ' + sum + ' €');
+      return { taken, skipped, sum };
+    },
+  };
+
   // ── Wiederkehrende Ausgaben (v2.0) ──
   // Ersetzt fixedCosts. Kein autoGenerate-Flag mehr.
   // type: 'fixed' | 'variable' | 'savings'
@@ -1947,6 +2187,7 @@ const Store = (() => {
     Assets,
     Freistellung,
     Incomes,
+    Imports,
     Recurring,
     FixedCosts,   // backward compat alias
     Settings,
@@ -3339,6 +3580,9 @@ if (typeof window !== 'undefined') {
     r2,
     monthNum: recMonthNum,
     sortSnapshots,
+    txPerson,
+    bankDecode,
+    parseIngCsv,
   };
 }
 
