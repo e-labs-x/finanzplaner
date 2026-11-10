@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261110a`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261110b`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -193,7 +193,7 @@ Gehalts-Kennzahlen/Reallohn nutzen bewusst nur das Gehalt. Merge per id, Lösche
 **immer** `FP.txPerson(tx)` = person_1 — nie direkt `tx.personId` auswerten. Import nur über `FP.Store.Imports.prepare(text)`
 (speichert nichts) und `commit(items, personId)` (ein `_save()`). **Doppel-Schutz:** Buchungs-id = `tx_` + Fingerabdruck
 (Konto-Hash + Buchungsdatum + Betrag + Saldo + Zählung) — nie eine zufällige id für Importzeilen vergeben, sonst entstehen
-bei zwei Geräten Doppel. `importLog` (Merge per id) merkt jede geprüfte Zeile. Die CSV-Datei des Nutzers nie ins Repo;
+bei zwei Geräten Doppel. `importLog` (Merge per id) merkt jede geprüfte Zeile; angehakt ohne Kategorie bleibt **offen** (kein Eintrag). Rückgängig je Lauf über `importUndone` (Tombstone-Liste) — nie Log-Einträge löschen, ein anderes Gerät würde sie per Merge zurückbringen. Die CSV-Datei des Nutzers nie ins Repo;
 Tests nutzen erfundene Bankzeilen.
 
 ---

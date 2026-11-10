@@ -345,6 +345,7 @@ var AzureSync = (function() {
     mergeById('freistellungsauftraege');
     mergeById('incomes');   // Weitere Einnahmen (v5) — per id, Löschen über den Papierkorb
     mergeById('importLog'); // Kontoauszug-Import (v6) — id = Fingerabdruck der Bankzeile, gleiche Zeile = gleiche id
+    mergeById('importUndone'); // rückgängig gemachte Import-Läufe — Vereinigung, nie wiederbelebt
     // Löschvermerke anwenden — erst nach allen Listen, die im Papierkorb landen können
     Object.keys(TRASH_TYPE).forEach(function(key) {
       if (!Array.isArray(rStore[key])) return;
@@ -1355,6 +1356,7 @@ function txSortKey(tx) {
   return (p[1] || '0000') + '-' + (p[0] || '00') + '-00';
 }
 function renderEntries() {
+  impRenderHist();
   var all = FP.Store.Transactions.getAll().filter(function(t) { return t.source === 'manual'; });
   all.sort(function(a, b) {
     var ka = txSortKey(a), kb = txSortKey(b);
@@ -1546,7 +1548,7 @@ function impRender() {
         '<div class="imp-grp-main" onclick="impToggle(' + id + ')">' +
           '<div class="imp-grp-name">' + esc(g.label) + (hint && cat ? ' <span class="imp-tag">' + (hint === 'gelernt' ? 'wie letztes Mal' : 'Vorschlag') + '</span>' : '') + '</div>' +
           '<div class="imp-grp-sub">' + g.idx.length + (g.idx.length === 1 ? ' Buchung' : ' Buchungen') + (nRef ? ' · ' + nRef + ' Erstattung' + (nRef > 1 ? 'en' : '') : '') +
-            (nOn < g.idx.length ? ' · ' + (g.idx.length - nOn) + ' abgewählt' : '') + (reason ? ' · ' + esc(reason) : '') + ' · <span class="imp-more">' + (open ? 'zuklappen' : 'einzeln') + '</span></div>' +
+            (nOn < g.idx.length ? ' · ' + (g.idx.length - nOn) + ' abgewählt' : '') + (need ? ' · <b class="imp-open">bleibt offen</b>' : '') + (reason ? ' · ' + esc(reason) : '') + ' · <span class="imp-more">' + (open ? 'zuklappen' : 'einzeln') + '</span></div>' +
         '</div>' +
         '<div class="imp-grp-amt' + (net < 0 ? ' ref' : '') + '">' + (net < 0 ? '↩ ' : '') + eur(Math.abs(net)) + '</div>' +
       '</div>' +
@@ -1570,15 +1572,18 @@ function impRender() {
   document.querySelectorAll('#imp-body input[data-mixed]').forEach(function(c) { c.indeterminate = true; });
   impSum();
 }
+// Drei Zustände: übernehmen (angehakt + Kategorie), offen (angehakt ohne Kategorie → kommt beim nächsten Hochladen
+// wieder), ausgelassen (abgewählt → kommt nie wieder). So kann man pausieren und morgen weitermachen.
 function impSum() {
-  var on = _imp.items.filter(function(it) { return it.take; });
-  var miss = on.filter(function(it) { return !it.categoryId; }).length;
-  var sum = on.reduce(function(s, it) { return s - it.amount; }, 0);
-  document.getElementById('imp-sum').innerHTML = '<b>' + on.length + '</b> Buchungen übernehmen · ' + eur(sum) +
-    (miss ? '<div class="imp-miss">' + miss + ' noch ohne Kategorie</div>' : '');
+  var go = _imp.items.filter(function(it) { return it.take && it.categoryId; });
+  var open = _imp.items.filter(function(it) { return it.take && !it.categoryId; }).length;
+  var skip = _imp.items.filter(function(it) { return !it.take; }).length;
+  var sum = go.reduce(function(s, it) { return s - it.amount; }, 0);
+  document.getElementById('imp-sum').innerHTML = '<b>' + go.length + '</b> übernehmen · ' + eur(sum) +
+    (open ? '<div class="imp-miss">' + open + ' ohne Kategorie bleiben offen – einfach dieselbe Datei später nochmal hochladen</div>' : '');
   var b = document.getElementById('imp-ok');
-  b.disabled = !!miss;
-  b.textContent = on.length ? 'Übernehmen' : 'Als geprüft merken';
+  b.disabled = !go.length && !skip;
+  b.textContent = go.length ? 'Übernehmen' : 'Abgewählte merken';
 }
 function impToggle(id) { _imp.open[id] = !_imp.open[id]; impRender(); }
 function impTake(i, on) { _imp.items[i].take = on; impRender(); }
@@ -1611,9 +1616,33 @@ function impCommit() {
   try { res = FP.Store.Imports.commit(_imp.items, _imp.person); }
   catch (e) { toast(e.message || 'Import fehlgeschlagen'); return; }
   closeM('m-imp'); _imp = null;
-  toast('✓ ' + res.taken + ' Buchungen übernommen (' + eur(res.sum) + ')' + (res.skipped ? ', ' + res.skipped + ' ausgelassen' : ''));
+  toast('✓ ' + res.taken + ' übernommen (' + eur(res.sum) + ')' + (res.skipped ? ', ' + res.skipped + ' ausgelassen' : '') +
+    (res.open ? ', ' + res.open + ' offen' : ''));
   renderEntries();
   if (document.getElementById('p-auswertung') && document.getElementById('p-auswertung').classList.contains('active')) avRender();
+}
+// Verlauf unter dem Import-Knopf: letzte Läufe mit „Rückgängig“
+function impRenderHist() {
+  var el = document.getElementById('imp-hist');
+  if (!el) return;
+  var list = FP.Store.Imports.batches().slice(0, 3);
+  el.innerHTML = list.map(function(b) {
+    var d = new Date(b.at), when = isNaN(d) ? '' : d.toLocaleDateString('de-DE') + ', ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return '<div class="imp-hist-row"><span>Import ' + esc(when) + ' · ' + b.live + (b.live === 1 ? ' Buchung' : ' Buchungen') + ' · ' + eur(b.sum) + '</span>' +
+      '<button class="imp-hist-btn" onclick="impUndo(\'' + esc(b.id) + '\')">Rückgängig</button></div>';
+  }).join('');
+}
+function impUndo(id) {
+  var b = FP.Store.Imports.batches().find(function(x) { return x.id === id; });
+  if (!b) return;
+  confirmDialog('Diesen Import rückgängig machen? ' + b.live + ' Buchungen (' + eur(b.sum) + ') gehen in den Papierkorb, ' +
+    'auch wenn du sie seitdem bearbeitet hast. Die Zeilen sind danach wieder offen und kommen beim nächsten Hochladen erneut.',
+    'Rückgängig', function() {
+      var r = FP.Store.Imports.undo(id);
+      toast('↩ ' + r.removed + ' Buchungen in den Papierkorb');
+      renderEntries();
+      if (document.getElementById('p-auswertung') && document.getElementById('p-auswertung').classList.contains('active')) avRender();
+    });
 }
 function txPersonTag(tx) {
   return FP.txPerson(tx) === 'person_2' ? '<span class="tx-person">' + esc(ghIncPersonLabel('person_2')) + '</span>' : '';

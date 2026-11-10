@@ -21,7 +21,7 @@ Anlass: Nutzer fragte, wo Kindergeld/Steuererstattungen hingehören — es gab k
 
 ---
 
-## 👀 Kontoauszug-Import ING-CSV, Schritt 1 (10.11.2026, `?v=20261110a`, v12.2, STORE_VERSION 6) — Abnahme offen
+## 👀 Kontoauszug-Import ING-CSV, Schritt 1 (10.11.2026, `?v=20261110a`/`b`, v12.2, STORE_VERSION 6) — Abnahme offen
 Anlass: Person 2 nutzt die App nicht; ihre Ausgaben kommen regelmäßig per CSV-Export ihres ING-Girokontos rein,
 **mit Prüfliste, nie automatisch übernommen**. Ziel: getrennt sehen, wer was ausgibt.
 - [x] Echte Datei geprüft (nur lokal, nie im Repo): Windows-1252, `;`, 13 Kopfzeilen, Spalten Buchung/Wertstellung/Auftraggeber/
@@ -42,7 +42,14 @@ Anlass: Person 2 nutzt die App nicht; ihre Ausgaben kommen regelmäßig per CSV-
       6 Ansichten — fand echten Fehler: Kontoname war nicht maskiert), Einnahmen-Test auf v5+.
 - Bewusst NICHT gebaut: Abgleich mit Fixkosten — die Fixkosten laufen alle über das Konto von Person 1, Doppelungen sind daher
   nicht zu erwarten. Bei Bedarf nachrüsten.
-- [ ] Nutzer: alle Geräte auf build 1110a öffnen (altes Gerät lehnt v6 ab), dann Import am PC durchführen und abnehmen.
+- [x] Nachtrag `?v=20261110b` (Nutzerwunsch „pausieren und morgen weitermachen“ + „zurück, falls etwas schiefgeht“):
+      **Offen lassen** — angehakt ohne Kategorie wird nicht gespeichert und kommt beim nächsten Hochladen derselben Datei wieder
+      (vorher: Pflicht, alles in einem Zug; abgewählt hätte „ausgelassen für immer“ bedeutet). Jede Übernahme = Lauf (`importId`
+      an Buchung, `batch` im Log). **Rückgängig** je Lauf (Verlauf unter dem Import-Knopf, fragt vorher): Buchungen in den
+      Papierkorb, Lauf in `importUndone` (Merge per id = Vereinigung, nie wiederbelebt), Zeilen wieder offen; neue Übernahme
+      bekommt id-Suffix `_k`; `Trash.restore` holt keine Import-Buchung zurück, deren Bankzeile schon wieder gebucht ist.
+      Prüfungen: import 47 (scheitert am alten Code), Sicherheit +2 Ansichten (Verlauf, Rückgängig fragt).
+- [ ] Nutzer: alle Geräte auf build 1110b öffnen (altes Gerät lehnt v6 ab), dann Import am PC durchführen und abnehmen.
 - [ ] Schritt 2: Umschalter Alle | Person 1 | Person 2 in Übersicht und Reports, Person im Excel-Export.
 - Automatischer CSV-Versand per Mail: **bei der ING nicht belegt** (Recherche 08.11.2026, Export nur manuell im Web-Banking).
   Echte Automatisierung = Backlog **I** (PSD2/Enable Banking + Azure Function), nutzt dann dieselbe Prüfliste.

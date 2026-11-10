@@ -144,6 +144,8 @@ function createDefaultStore() {
     // { id: Fingerabdruck, key: Empfänger-Schlüssel, status:'taken'|'skipped', categoryId|null, at, date }
     // Merkt sich die Entscheidung → eine Zeile erscheint nie zweimal in der Prüfliste.
     importLog: [],
+    // Rückgängig gemachte Import-Läufe { id: batch, at, fps:[Fingerabdrücke] } — Liste, Merge per id
+    importUndone: [],
 
     // ── Rentenplanung ──
     retirement: {
@@ -1662,23 +1664,37 @@ const Store = (() => {
   };
 
   // ── Kontoauszug-Import (v6) ──
-  // Strukturelle Garantie gegen Doppelungen: Buchungs-id = 'tx_' + Fingerabdruck der Bankzeile. Dieselbe Zeile aus einem
-  // zweiten Export oder von einem zweiten Gerät ergibt dieselbe id → der Sync führt per id zusammen, commit() legt sie
-  // nie ein zweites Mal an. Jede geprüfte Zeile (übernommen ODER ausgelassen) steht im importLog → kommt nie wieder hoch.
+  // Strukturelle Garantie gegen Doppelungen: Buchungs-id = 'tx_' + Fingerabdruck der Bankzeile (+ '_k' nach k-mal
+  // rückgängig). Dieselbe Zeile aus einem zweiten Export oder von einem zweiten Gerät ergibt dieselbe id → der Sync führt
+  // per id zusammen, commit() legt sie nie ein zweites Mal an.
+  // Drei Zustände je Bankzeile: übernommen (importLog 'taken' + Buchung), ausgelassen (importLog 'skipped'),
+  // OFFEN (kein Eintrag — kommt beim nächsten Hochladen derselben Datei wieder). Jede Übernahme ist ein Lauf (batch).
+  // Rückgängig = Buchungen des Laufs in den Papierkorb + Lauf in importUndone (Liste, Merge per id = Vereinigung).
+  // Einträge eines rückgängig gemachten Laufs zählen nirgends mehr — kein Löschen im Log, das ein anderes Gerät
+  // per Merge wiederbeleben könnte.
   const Imports = {
     log() { return _state.importLog || []; },
+    _undoneSet() { return new Set((_state.importUndone || []).map(u => u && u.id)); },
+    _active() { const u = Imports._undoneSet(); return (_state.importLog || []).filter(e => e && !(e.batch && u.has(e.batch))); },
+    // Wie oft wurde diese Zeile schon rückgängig gemacht? → Suffix der Buchungs-id (alte id liegt im Papierkorb = Löschvermerk)
+    _txIdFor(fp) {
+      let k = 0;
+      (_state.importUndone || []).forEach(u => { if (u && Array.isArray(u.fps) && u.fps.includes(fp)) k++; });
+      return 'tx_' + fp + (k ? '_' + k : '');
+    },
+    _liveRefs() { return new Set((_state.transactions || []).filter(t => t.source === 'import' && t.sourceRef).map(t => t.sourceRef)); },
     // Gelernte Entscheidung je Empfänger: letzte Prüfung zählt (taken, wenn dort mind. eine Zeile übernommen wurde)
     _learned() {
-      const by = {};
-      (_state.importLog || []).forEach(e => {
-        if (!e || !e.key) return;
+      const by = {}, act = Imports._active();
+      act.forEach(e => {
+        if (!e.key) return;
         const cur = by[e.key];
-        if (!cur || e.at > cur.at) by[e.key] = { at: e.at, taken: e.status === 'taken', categoryId: e.status === 'taken' ? e.categoryId : null };
-        else if (e.at === cur.at && e.status === 'taken') { cur.taken = true; cur.categoryId = cur.categoryId || e.categoryId; }
+        if (!cur || e.at > cur.at) by[e.key] = { at: e.at, taken: e.status === 'taken' };
+        else if (e.at === cur.at && e.status === 'taken') cur.taken = true;
       });
       // Kategorie: letzte übernommene Zuordnung, auch wenn die letzte Prüfung ausgelassen hat
-      (_state.importLog || []).slice().sort((a, b) => (a.at < b.at ? -1 : 1)).forEach(e => {
-        if (e && e.key && e.status === 'taken' && e.categoryId && by[e.key]) by[e.key].lastCat = e.categoryId;
+      act.slice().sort((a, b) => (a.at < b.at ? -1 : 1)).forEach(e => {
+        if (e.key && e.status === 'taken' && e.categoryId && by[e.key]) by[e.key].lastCat = e.categoryId;
       });
       return by;
     },
@@ -1688,9 +1704,8 @@ const Store = (() => {
       const catOk = id => (_state.categories || []).some(c => c.id === id && !c.hidden);
       const catByName = n => (_state.categories || []).find(c => !c.hidden && c.name.toLowerCase() === n.toLowerCase());
       const learned = Imports._learned();
-      const logged = new Set((_state.importLog || []).map(e => e.id));
-      const txIds = new Set((_state.transactions || []).map(t => t.id));
-      (_state.trash || []).forEach(e => { if (e && e.type === 'transaction' && e.item) txIds.add(e.item.id); });
+      const logged = new Set(Imports._active().map(e => e.id));
+      const live = Imports._liveRefs();
       const names = (_state.persons || []).map(p => String(p.name || '').trim().split(/\s+/)[0].toUpperCase())
         .filter(n => n.length >= 3 && !/^PERSON$/.test(n));
       const isPartner = r => { const P = ' ' + String(r.party || '').toUpperCase() + ' ';
@@ -1700,8 +1715,7 @@ const Store = (() => {
       let known = 0;
       const items = [];
       parsed.rows.forEach(r => {
-        const txId = 'tx_' + r.fp;
-        if (logged.has(r.fp) || txIds.has(txId)) { known++; return; }
+        if (logged.has(r.fp) || live.has(r.fp)) { known++; return; }
         const key = bankPartyKey(r);
         const L = learned[key];
         let kind = 'other', reason = '';
@@ -1729,47 +1743,83 @@ const Store = (() => {
           }
         }
         const take = kind !== 'other' && !(L && !L.taken);
-        items.push({ fp: r.fp, txId, key, label: bankPartyLabel(r), kind, reason: kind === 'other' ? reason : (L && !L.taken ? 'Beim letzten Import ausgelassen' : ''),
+        items.push({ fp: r.fp, key, label: bankPartyLabel(r), kind, reason: kind === 'other' ? reason : (L && !L.taken ? 'Beim letzten Import ausgelassen' : ''),
                      take, categoryId, hint, date: r.date, amount: r.amount, purpose: r.purpose, text: r.text });
       });
       return { account: parsed.account, gaps: parsed.gaps, total: parsed.rows.length, known, items };
     },
-    // Prüfliste übernehmen: angehakte Zeilen werden Buchungen, alle anderen gelten als geprüft. EIN _save().
+    // Prüfliste übernehmen. Angehakt + Kategorie → Buchung; abgewählt → ausgelassen; angehakt ohne Kategorie → bleibt
+    // OFFEN (nichts gespeichert, kommt beim nächsten Hochladen wieder). EIN _save(), ein Lauf.
     commit(items, personId) {
       const pid = TX_PERSONS.includes(personId) ? personId : 'person_2';
       const catOk = id => (_state.categories || []).some(c => c.id === id);
       (items || []).forEach(it => {
-        if (!it || !/^ing[0-9a-f]{16}$/.test(it.fp) || it.txId !== 'tx_' + it.fp) throw new Error('Ungültige Importzeile.');
-        if (it.take && !catOk(it.categoryId)) throw new Error('Bitte für „' + it.label + '“ eine Kategorie wählen.');
+        if (!it || !/^ing[0-9a-f]{16}$/.test(it.fp)) throw new Error('Ungültige Importzeile.');
+        if (it.take && it.categoryId && !catOk(it.categoryId)) throw new Error('Unbekannte Kategorie bei „' + it.label + '“.');
         if (it.take && !(Number.isFinite(it.amount) && it.amount !== 0)) throw new Error('Ungültiger Betrag bei „' + it.label + '“.');
       });
       if (!Array.isArray(_state.importLog)) _state.importLog = [];
-      const logged = new Set(_state.importLog.map(e => e.id));
+      const logged = new Set(Imports._active().map(e => e.id));
+      const live = Imports._liveRefs();
       const txIds = new Set(_state.transactions.map(t => t.id));
       const at = new Date().toISOString();
-      let taken = 0, skipped = 0, sum = 0;
+      const batch = generateId('imp');
+      let taken = 0, skipped = 0, open = 0, sum = 0;
       (items || []).forEach(it => {
-        if (logged.has(it.fp)) return;
+        if (logged.has(it.fp) || live.has(it.fp)) return;
+        if (it.take && !it.categoryId) { open++; return; }
         const d = String(it.date || '');
         const my = d.slice(5, 7) + '.' + d.slice(0, 4);
         if (it.take) {
-          if (!txIds.has(it.txId)) {
+          const id = Imports._txIdFor(it.fp);
+          if (!txIds.has(id)) {
             _state.transactions.push({
-              id: it.txId, date: my, dateISO: d, categoryId: it.categoryId, subcategoryId: null, objectId: null,
+              id, date: my, dateISO: d, categoryId: it.categoryId, subcategoryId: null, objectId: null,
               amount: r2(-it.amount), rawName: String(it.label || '').slice(0, 80), note: String(it.purpose || '').slice(0, 200),
-              source: 'import', sourceRef: it.fp, personId: pid, createdAt: at,
+              source: 'import', sourceRef: it.fp, importId: batch, personId: pid, createdAt: at,
             });
-            txIds.add(it.txId);
+            txIds.add(id);
             sum = r2(sum - it.amount);
           }
           taken++;
         } else skipped++;
-        _state.importLog.push({ id: it.fp, key: it.key, status: it.take ? 'taken' : 'skipped', categoryId: it.take ? it.categoryId : null, at, date: my });
+        _state.importLog.push({ id: it.fp, key: it.key, status: it.take ? 'taken' : 'skipped', categoryId: it.take ? it.categoryId : null, at, date: my, batch });
         logged.add(it.fp);
       });
+      if (taken || skipped) {
+        _save();
+        appLog('IMPORT', taken + ' übernommen, ' + skipped + ' ausgelassen, ' + open + ' offen, ' + sum + ' €');
+      }
+      return { taken, skipped, open, sum, batch: (taken || skipped) ? batch : null };
+    },
+    // Bisherige Läufe, neueste zuerst (ohne rückgängig gemachte)
+    batches() {
+      const u = Imports._undoneSet(), by = {};
+      (_state.importLog || []).forEach(e => {
+        if (!e || !e.batch || u.has(e.batch)) return;
+        const b = by[e.batch] || (by[e.batch] = { id: e.batch, at: e.at, taken: 0, skipped: 0, sum: 0, live: 0 });
+        if (e.status === 'taken') b.taken++; else b.skipped++;
+      });
+      (_state.transactions || []).forEach(t => {
+        const b = t.importId && by[t.importId];
+        if (b) { b.live++; b.sum = r2(b.sum + (Number(t.amount) || 0)); }
+      });
+      return Object.values(by).sort((a, b) => (a.at < b.at ? 1 : -1));
+    },
+    // Lauf rückgängig: seine Buchungen in den Papierkorb, seine Zeilen sind wieder offen. EIN _save().
+    undo(batchId) {
+      if (!batchId || Imports._undoneSet().has(batchId)) return { removed: 0 };
+      const fps = (_state.importLog || []).filter(e => e && e.batch === batchId).map(e => e.id);
+      if (!fps.length) return { removed: 0 };
+      const txs = (_state.transactions || []).filter(t => t.importId === batchId);
+      txs.forEach(t => Trash._add('transaction', t));
+      const ids = new Set(txs.map(t => t.id));
+      _state.transactions = _state.transactions.filter(t => !ids.has(t.id));
+      if (!Array.isArray(_state.importUndone)) _state.importUndone = [];
+      _state.importUndone.push({ id: batchId, at: new Date().toISOString(), fps });
       _save();
-      appLog('IMPORT', taken + ' übernommen, ' + skipped + ' ausgelassen, ' + sum + ' €');
-      return { taken, skipped, sum };
+      appLog('IMPORT', 'Rückgängig: ' + txs.length + ' Buchungen in den Papierkorb, ' + fps.length + ' Zeilen wieder offen');
+      return { removed: txs.length, reopened: fps.length };
     },
   };
 
@@ -2029,7 +2079,9 @@ const Store = (() => {
           // Nur zurückholen, wenn sie nicht schon wieder da ist (Sync-Merge / Fixkosten-Generator)
           const dup = _state.transactions.some(x => x.id === t.id
             || (t.source === 'recurring' && t.recurringId && x.source === 'recurring'
-                && x.recurringId === t.recurringId && x.date === t.date));
+                && x.recurringId === t.recurringId && x.date === t.date)
+            // Import: dieselbe Bankzeile ist nach „Rückgängig“ evtl. neu übernommen (andere id) → nicht doppelt
+            || (t.source === 'import' && t.sourceRef && x.source === 'import' && x.sourceRef === t.sourceRef));
           if (!dup) _state.transactions.push(t);
         }
       }

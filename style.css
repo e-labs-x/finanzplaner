@@ -1730,3 +1730,8 @@ button { cursor: pointer; border: none; background: none; }
 .imp-miss{font-size:12px;color:var(--amber);font-weight:600;margin-top:2px}
 #imp-ok:disabled{opacity:.5;cursor:not-allowed}
 .tx-person{font-size:10px;font-weight:600;color:var(--purple);background:var(--surf2);border:1px solid var(--brd);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:1px}
+.imp-open{color:var(--amber);font-weight:600}
+.imp-hist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.imp-hist:empty{display:none}
+.imp-hist-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--tx2);padding:0 4px}
+.imp-hist-btn{flex:0 0 auto;font:inherit;font-size:12px;font-weight:600;color:var(--blue);background:none;border:none;padding:4px 0;cursor:pointer}

@@ -117,6 +117,19 @@
       _imp.otherOpen = true; impRender();
     });
     add('Import neue Kategorie', function () { var g = _imp && _imp.groups.find(function (x) { return !x.other; }); if (g) impSetCat(g.idx, '__new'); });
+    add('Import uebernehmen', function () {
+      if (!_imp) return;
+      _imp.items.forEach(function (i) { i.take = true; i.categoryId = S.categories[0].id; });
+      impCommit();
+    });
+    add('Import Verlauf + rueckgaengig fragt', function () {
+      nav('eingabe'); var b = FP.Store.Imports.batches()[0];
+      if (!b) { errs.push('Import: kein Lauf im Verlauf'); return; }
+      impUndo(b.id);
+      var asked = document.getElementById('m-confirm').classList.contains('open');
+      closeM('m-confirm');
+      if (!asked || !FP.Store.Imports.batches().length) errs.push('Import rueckgaengig ohne Rueckfrage');
+    });
     add('Import schliessen', function () { impClose(); });
     add('Uebersicht Import-Buchung', function () { nav('auswertung'); avS.detail = { id: S.categories[0].id, objId: null }; avRender(); avS.detail = null; });
     add('Import-Buchung bearbeiten', function () { editTx('tx_inggift'); closeM('m-tx-edit'); });

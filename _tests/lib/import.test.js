@@ -102,12 +102,22 @@ check('Drogerie → Lebensmittel (Vorschlag), Unbekanntes ohne Kategorie', (!lm 
 // ── 4. Übernehmen ──
 const cat = S.categories.find(c => !c.hidden && c.group === 'freizeit') || S.categories[0];
 P.items.forEach(i => { if (i.take && !i.categoryId) i.categoryId = cat.id; });
-const ohne = JSON.parse(JSON.stringify(P.items)); ohne.find(i => i.take).categoryId = null;
-check('Ohne Kategorie wird abgelehnt, nichts gespeichert', throws(() => FP.Store.Imports.commit(ohne, 'person_2')) && S.transactions.length === tx0 && S.importLog.length === 0);
 const sumBefore = FP.Calculator.getMonthSummary(1, 2026).totalAusgaben;
-const res = FP.Store.Imports.commit(P.items, 'person_2');
+// Pausieren: Händler BEISPIELSHOP (Kauf + Erstattung) noch ohne Kategorie → bleibt offen
+const teil = JSON.parse(JSON.stringify(P.items)); teil.filter(i => i.key === 'BEISPIELSHOP').forEach(i => { i.categoryId = null; });
+const res1 = FP.Store.Imports.commit(teil, 'person_2');
+check('Teil-Übernahme: 1 übernommen, 5 ausgelassen, 2 ohne Kategorie bleiben offen (nicht im Protokoll)',
+  res1.taken === 1 && res1.skipped === 5 && res1.open === 2 && res1.sum === 12.34 && S.importLog.length === 6, JSON.stringify(res1));
+P = FP.Store.Imports.prepare(text);
+check('Morgen dieselbe Datei: nur die 2 offenen Zeilen kommen wieder', P.items.length === 2 && P.known === 6 && P.items.every(i => i.key === 'BEISPIELSHOP' && i.take));
+check('Nur offene Zeilen ohne Kategorie: nichts gespeichert, kein leerer Lauf',
+  FP.Store.Imports.commit(P.items, 'person_2').batch === null && S.importLog.length === 6);
+P.items.forEach(i => { i.categoryId = cat.id; });
+const res2 = FP.Store.Imports.commit(P.items, 'person_2');
+const res = { taken: res1.taken + res2.taken, skipped: res1.skipped + res2.skipped, sum: r2(res1.sum + res2.sum) };
 const imp = S.transactions.filter(t => t.source === 'import');
-check('3 Buchungen übernommen, 5 ausgelassen, Summe 12,34+40−15', res.taken === 3 && res.skipped === 5 && res.sum === 37.34 && imp.length === 3, JSON.stringify(res));
+check('Zusammen 3 Buchungen übernommen, 5 ausgelassen, Summe 12,34+40−15', res.taken === 3 && res.skipped === 5 && res.sum === 37.34 && imp.length === 3, JSON.stringify(res));
+check('Zwei Läufe im Verlauf, Summen stimmen', FP.Store.Imports.batches().length === 2 && FP.Store.Imports.batches().map(b => b.sum).sort((a, b) => a - b).join() === '12.34,25');
 check('Import-Buchungen: Person 2, Erstattung negativ, Bankname, Datum', imp.every(t => t.personId === 'person_2' && t.date === '01.2026' && /^tx_ing[0-9a-f]{16}$/.test(t.id)) &&
   imp.find(t => t.amount === -15) && imp.find(t => t.rawName === 'DM DROGERIEMARKT SAGT DANKE' && t.dateISO === '2026-01-05'));
 check('Monatsübersicht rechnet die Import-Buchungen mit', r2(FP.Calculator.getMonthSummary(1, 2026).totalAusgaben - sumBefore) === 37.34);
@@ -141,6 +151,36 @@ check('Wiederherstellen holt sie mit Person 2 zurück', isTx(FP, dmTx.id) && FP.
 FP.Store.Transactions.edit(dmTx.id, { personId: 'person_1' });
 check('Person einer Buchung änderbar', FP.Store.Transactions.getById(dmTx.id).personId === 'person_1');
 
+// ── 7b. Rückgängig (eigenes Gerät, frische Daten) ──
+function importAll(D, csv) {
+  const P = D.Store.Imports.prepare(csv);
+  P.items.forEach(i => { if (i.take && !i.categoryId) i.categoryId = cat.id; });
+  return D.Store.Imports.commit(P.items, 'person_2');
+}
+const U = fresh();
+const u0 = U.Store.get().transactions.length, sum0 = U.Calculator.getMonthSummary(1, 2026).totalAusgaben;
+const ub = importAll(U, text);
+const handU = U.Store.Transactions.add({ date: '01.2026', categoryId: cat.id, amount: 1 });   // danach von Hand erfasst
+const ur = U.Store.Imports.undo(ub.batch);
+const US = U.Store.get();
+check('Rückgängig: alle 3 Buchungen des Laufs im Papierkorb, Handbuchung bleibt', ur.removed === 3 && US.transactions.length === u0 + 1 &&
+  US.transactions.some(t => t.id === handU.id) && US.trash.filter(e => e.type === 'transaction' && e.item.importId === ub.batch).length === 3);
+check('Rückgängig: Monatsübersicht wie vorher (+ Handbuchung)', r2(U.Calculator.getMonthSummary(1, 2026).totalAusgaben - sum0) === 1);
+let UP = U.Store.Imports.prepare(text);
+check('Rückgängig: alle Zeilen wieder offen, Lauf nicht mehr im Verlauf, nichts „gelernt“',
+  UP.items.length === ROWS.length && UP.known === 0 && U.Store.Imports.batches().length === 0 && UP.items.every(i => i.hint !== 'gelernt'));
+check('Rückgängig ein zweites Mal: wirkungslos', U.Store.Imports.undo(ub.batch).removed === 0);
+const ub2 = importAll(U, text);
+const again = US.transactions.filter(t => t.source === 'import');
+check('Neu übernehmen nach Rückgängig: 3 Buchungen mit neuer id, keine Doppel', again.length === 3 && again.every(t => /_1$/.test(t.id)) && ub2.taken === 3);
+const oldTr = US.trash.find(e => e.type === 'transaction' && e.item.importId === ub.batch);
+U.Store.Trash.restore(oldTr.id);
+check('Alte Buchung aus dem Papierkorb holen, obwohl neu übernommen: keine Doppelung', US.transactions.filter(t => t.source === 'import').length === 3);
+U.Store.Imports.undo(ub2.batch);
+U.Store.Trash.restore(US.trash.find(e => e.type === 'transaction' && e.item.importId === ub.batch && e.item.amount === 12.34).id);
+UP = U.Store.Imports.prepare(text);
+check('Nach Rückgängig eine Buchung zurückgeholt: diese Zeile gilt als erledigt, die anderen sind offen', UP.known === 1 && UP.items.length === ROWS.length - 1);
+
 // ── 8. Neustart + Backup ──
 const FP2 = fresh(null, FP.__mem);
 check('Neustart: Import-Buchungen und Protokoll bleiben', FP2.Store.get().transactions.filter(t => t.source === 'import').length === 3 && FP2.Store.get().importLog.length === ROWS2.length);
@@ -169,6 +209,18 @@ check('Merge: zwei Geräte, gleiche Datei → keine doppelten Buchungen', mi.len
 check('Merge: Protokoll ohne Doppel', m.importLog.length === ROWS.length && new Set(m.importLog.map(e => e.id)).size === ROWS.length);
 const alt = JSON.parse(JSON.stringify(B)); delete alt.store.importLog; alt._backup.storeVersion = 5;
 check('Merge mit Stand ohne Protokoll (altes Gerät): Protokoll bleibt', mctx.merge(A, alt).store.importLog.length === ROWS.length);
+
+// Gerät A importiert, B hat den Stand per Sync, dann macht A rückgängig → Merge darf nichts wiederbeleben
+const DA = fresh(); const ab = importAll(DA, text);
+const Bold = DA.BackupManager.create('t');
+DA.Store.Imports.undo(ab.batch);
+const Anew = DA.BackupManager.create('t');
+[['A neu + B alt', mctx.merge(Anew, Bold).store], ['B alt + A neu', mctx.merge(Bold, Anew).store]].forEach(([name, ms]) => {
+  const DM = fresh(null, { finanzplaner_v3: JSON.stringify(ms) });
+  const MP = DM.Store.Imports.prepare(text);
+  check('Merge nach Rückgängig (' + name + '): Buchungen bleiben weg, Zeilen wieder offen',
+    ms.transactions.filter(t => t.source === 'import').length === 0 && MP.items.length === ROWS.length && DM.Store.Imports.batches().length === 0);
+});
 
 const failed = results.filter(r => r.startsWith('FAIL')).length;
 console.log(results.join('\n'));
