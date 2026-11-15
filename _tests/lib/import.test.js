@@ -6,6 +6,11 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const [storePath, dataPath] = process.argv.slice(2);
 const raw = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 const rawStore = raw.store || raw;
+// Echte Import-Buchungen und -Protokolle herausnehmen: die Prüfung zählt nur ihre eigenen erfundenen Bankzeilen
+// (seit dem ersten echten Import am 10.11.2026 enthalten die Azure-Daten welche — sonst stimmen die Zählungen nicht).
+rawStore.transactions = (rawStore.transactions || []).filter(t => t.source !== 'import');
+rawStore.trash = (rawStore.trash || []).filter(e => !(e && e.type === 'transaction' && e.item && e.item.source === 'import'));
+delete rawStore.importLog; delete rawStore.importUndone;
 const src = fs.readFileSync(storePath, 'utf8');
 
 function fresh(mutate, mem) {

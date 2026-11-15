@@ -21,7 +21,7 @@ Anlass: Nutzer fragte, wo Kindergeld/Steuererstattungen hingehören — es gab k
 
 ---
 
-## 👀 Kontoauszug-Import ING-CSV, Schritt 1 (10.11.2026, `?v=20261110a`/`b`, v12.2, STORE_VERSION 6) — Abnahme offen
+## 👀 Kontoauszug-Import ING-CSV, Schritt 1 (10.11.2026, `?v=20261110a`/`b`, `20261115a`, v12.2, STORE_VERSION 6) — Abnahme offen
 Anlass: Person 2 nutzt die App nicht; ihre Ausgaben kommen regelmäßig per CSV-Export ihres ING-Girokontos rein,
 **mit Prüfliste, nie automatisch übernommen**. Ziel: getrennt sehen, wer was ausgibt.
 - [x] Echte Datei geprüft (nur lokal, nie im Repo): Windows-1252, `;`, 13 Kopfzeilen, Spalten Buchung/Wertstellung/Auftraggeber/
@@ -49,7 +49,12 @@ Anlass: Person 2 nutzt die App nicht; ihre Ausgaben kommen regelmäßig per CSV-
       Papierkorb, Lauf in `importUndone` (Merge per id = Vereinigung, nie wiederbelebt), Zeilen wieder offen; neue Übernahme
       bekommt id-Suffix `_k`; `Trash.restore` holt keine Import-Buchung zurück, deren Bankzeile schon wieder gebucht ist.
       Prüfungen: import 47 (scheitert am alten Code), Sicherheit +2 Ansichten (Verlauf, Rückgängig fragt).
-- [ ] Nutzer: alle Geräte auf build 1110b öffnen (altes Gerät lehnt v6 ab), dann Import am PC durchführen und abnehmen.
+- [x] Nutzer hat am 10.–15.11. importiert: 45 Buchungen (Vodafone → neue Hauptkategorie „Mobilfunk“).
+- [x] `?v=20261115a`: Import-Buchungen stehen auch unter „Letzte Einträge“ (mit Schild, Bankname als Unterzeile) — Nutzer fand sie
+      nur über die Suche („Letzte Einträge“ zeigte bewusst nur Handbuchungen, Übersicht startet im aktuellen Monat).
+      Prüfung: Sicherheit „Letzte Eintraege zeigen Import mit Schild“ (scheitert am alten Code). `import.test.js` nimmt echte
+      Import-Buchungen vorher heraus (sonst zählten seit dem echten Import 45 fremde mit).
+- [ ] Nutzer: Abnahme Import + „Letzte Einträge“.
 - [ ] Schritt 2: Umschalter Alle | Person 1 | Person 2 in Übersicht und Reports, Person im Excel-Export.
 - Automatischer CSV-Versand per Mail: **bei der ING nicht belegt** (Recherche 08.11.2026, Export nur manuell im Web-Banking).
   Echte Automatisierung = Backlog **I** (PSD2/Enable Banking + Azure Function), nutzt dann dieselbe Prüfliste.

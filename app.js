@@ -1357,7 +1357,8 @@ function txSortKey(tx) {
 }
 function renderEntries() {
   impRenderHist();
-  var all = FP.Store.Transactions.getAll().filter(function(t) { return t.source === 'manual'; });
+  // Von Hand erfasst + aus dem Kontoauszug importiert (Nutzerwunsch 15.11.2026); Fixkosten-Buchungen stehen im Fixkosten-Tab
+  var all = FP.Store.Transactions.getAll().filter(function(t) { return t.source === 'manual' || t.source === 'import'; });
   all.sort(function(a, b) {
     var ka = txSortKey(a), kb = txSortKey(b);
     if (ka !== kb) return ka < kb ? 1 : -1;                       // Datum: neueste zuerst
@@ -1385,7 +1386,8 @@ function renderEntries() {
       + '<div class="e-bar" style="background:' + (cat ? cat.color : '#6B7280') + '"></div>'
       + '<div class="e-info">'
       + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + txPersonTag(tx) + '</div>'
-      + (tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
+      + (tx.source === 'import' ? '<div class="e-note">' + esc(tx.rawName || tx.note) + '</div>'   // Bankname statt Verwendungszweck
+         : tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
       + '<div class="e-meta"><span style="font-size:11px;color:var(--tx3)">' + dateTx + '</span>'
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
       + objTag + '</div></div>'

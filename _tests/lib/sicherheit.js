@@ -44,7 +44,7 @@
   var _d = new Date(), _m = ('0' + (_d.getMonth() + 1)).slice(-2) + '.' + _d.getFullYear();
   st.transactions.push({ id: 'tx_waise', date: _m, categoryId: 'cat_geloescht', objectId: null, amount: 123.45, rawName: 'Waisenbuchung', note: '', source: 'manual', recurringId: null, createdAt: _d.toISOString() });
   // Kontoauszug-Import (v6): vergiftete Import-Buchung von Person 2 (Bankname, Zweck)
-  st.transactions.push({ id: 'tx_inggift', date: _m, dateISO: null, categoryId: st.categories[0].id, objectId: null, amount: 9.99,
+  st.transactions.push({ id: 'tx_inggift', date: _m, dateISO: _d.getFullYear() + '-' + _m.slice(0, 2) + '-' + ('0' + _d.getDate()).slice(-2), categoryId: st.categories[0].id, objectId: null, amount: 9.99,
     rawName: 'Laden' + gift('Import.rawName'), note: 'z' + gift('Import.note'), source: 'import', personId: 'person_2', createdAt: _d.toISOString() });
   localStorage.setItem('finanzplaner_v3', JSON.stringify(st));
   // Erfundener ING-Export mit Gift in Kunde, Kontoname, Zeitraum, Empfänger und Zweck (Felder in Anführungszeichen)
@@ -108,6 +108,12 @@
       var asked = document.getElementById('m-confirm').classList.contains('open');
       closeM('m-confirm'); closeM('m-inc');
       if (!asked || !FP.Store.Incomes.getById('inc_gift2')) errs.push('Einnahme loeschen ohne Rueckfrage');
+    });
+    add('Letzte Eintraege zeigen Import mit Schild', function () {
+      nav('eingabe'); renderEntries();
+      var row = document.querySelector('#e-list [onclick*="tx_inggift"]');
+      if (!row) errs.push('Letzte Eintraege: Import-Buchung fehlt');
+      else if (!row.querySelector('.tx-person')) errs.push('Letzte Eintraege: Import-Buchung ohne Personen-Schild');
     });
     add('Import Pruefliste', function () { nav('eingabe'); impFile({ files: [new File([window.__impCsv], 'x.csv')] }); });
     add('Import Datei lesen (wartet)', function () {});
