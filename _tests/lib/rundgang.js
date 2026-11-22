@@ -29,6 +29,22 @@
           });
         });
       }
+      // Kategorien-Dialog (22.11.2026): „+ Neu“ in der Eingabe nach einem Bearbeiten legt eine NEUE Kategorie an
+      // (alter Stand überschrieb die zuletzt bearbeitete), und eine in den Einstellungen angelegte steht sofort in der Liste.
+      try {
+        var cats0 = FP.Store.Categories.getAll(), n0 = cats0.length;
+        var first = cats0.filter(function (c) { return !c.parentId; })[0], name0 = first.name;
+        nav('einstellungen'); stOpen('kategorien');
+        stEditCat(first.id); closeM('m-cat');
+        openKatModal(); document.getElementById('mc-name').value = 'Rundgang Neu A'; saveKat();
+        var cats1 = FP.Store.Categories.getAll();
+        var still = cats1.filter(function (c) { return c.id === first.id; })[0] || {};
+        if (cats1.length !== n0 + 1) errs.push('Kategorie „+ Neu“ (Eingabe): Anzahl ' + n0 + ' -> ' + cats1.length);
+        if (still.name !== name0) errs.push('Kategorie „+ Neu“ (Eingabe) hat „' + name0 + '“ überschrieben');
+        stNewKat(); document.getElementById('mc-name').value = 'Rundgang Neu B'; saveKat();
+        if ((document.getElementById('st-cats').textContent || '').indexOf('Rundgang Neu B') < 0)
+          errs.push('Kategorie „+ Neu“ (Einstellungen) erscheint nicht in der Liste');
+      } catch (e) { errs.push('Kategorien-Dialog: ' + e.message); }
       // Excel-Export: Datei abfangen statt herunterladen; Blatt „Sparpläne“ = alle Sparraten der Daten
       var xInfo = 'Excel nicht geprueft';
       function finish() {

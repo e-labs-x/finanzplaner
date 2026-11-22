@@ -9,6 +9,7 @@
   --surf-raised:  oklch(100% 0 0);
   --brd:          oklch(85.5% 0.013 255);
   --brd2:         oklch(90% 0.009 255);
+  --tbl-shade:    oklch(30% 0.02 260 / 0.16);
   --tx:           oklch(11% 0.022 268);
   --tx2:          oklch(43% 0.02 268);
   --tx3:          oklch(62% 0.014 268);
@@ -84,6 +85,7 @@
     --surf-raised:  oklch(17.5% 0.032 268);
     --brd:          oklch(29% 0.028 268);
     --brd2:         oklch(23.5% 0.022 268);
+    --tbl-shade:    oklch(0% 0 0 / 0.55);
     --tx:           oklch(96% 0.008 255);
     --tx2:          oklch(67% 0.018 260);
     --tx3:          oklch(44% 0.014 264);
@@ -1612,6 +1614,24 @@ button { cursor: pointer; border: none; background: none; }
   .cf-kpi-val{font-size:17px}
   .cf-kpi-lbl{font-size:10px}
   .cf-tbl th,.cf-tbl td{padding:9px 10px;font-size:12px}
+}
+
+/* Breite Tabellen (22.11.2026): auf dem iPhone wischen statt abschneiden. Die erste Spalte bleibt stehen,
+   ein Schatten am rechten Rand zeigt, dass noch Spalten folgen (verschwindet am Ende: local-Abdeckung). */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  background:linear-gradient(to left,var(--surf) 40%,transparent) right center/28px 100% no-repeat local,
+             radial-gradient(farthest-side at 100% 50%,var(--tbl-shade),transparent) right center/14px 100% no-repeat scroll;
+  background-color:var(--surf)}
+.tbl-scroll th,.tbl-scroll td{white-space:nowrap}
+.tbl-scroll th:first-child,.tbl-scroll td:first-child{position:sticky;left:0;z-index:1;background:var(--surf)}
+.tbl-scroll .cf-tbl th:first-child,.tbl-scroll .gh-rw-table th:first-child{background:var(--surf2)}
+.tbl-scroll tr.hl td:first-child{background:var(--blue-lt)}
+.tbl-scroll>.rp-dt{display:table;max-width:none;overflow:visible}
+/* Cashflow-Kacheln: unter 560 px passen drei Beträge nicht nebeneinander → Netto in eigener Zeile */
+.cf-hero{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:560px){
+  .cf-hero{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cf-kpi-net{grid-column:1/-1}
 }
 
 /* ── Reports ── */

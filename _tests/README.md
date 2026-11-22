@@ -26,10 +26,10 @@ wird der Push abgebrochen.
 | Selbsttests | `../tests.html` | Store-Funktionen auf einem isolierten Standard-Datensatz |
 | Vorlagen-Regel | `lib/vorlagen.test.js` (Node) | Kein Hin und Her beim Start, keine Doppelbuchung, Fixkosten-Liste = gebucht, ↕ / ✏️ / Löschen / Papierkorb / Verschieben mit echten Daten, Migration wiederholbar |
 | Robustheit | `lib/robust.test.js` (Node) | Papierkorb für Anlagen/Freistellungsaufträge, Wiederherstellen ohne Doppel, Rentenrechnung meldet fehlende Eingaben statt 0, Service Worker nimmt bei hängendem Netz nach 3 s den Cache |
-| Rundgang | `lib/rundgang.js` | Alle 13 Tabs öffnen sich mit echten Daten ohne Fehler |
+| Rundgang | `lib/rundgang.js` | Alle 13 Tabs öffnen sich mit echten Daten ohne Fehler; Kategorien-Dialog: „+ Neu“ legt neu an (überschreibt nichts) und erscheint sofort in der Liste |
 | Sicherheit | `lib/sicherheit.js` | Gift-Einträge (Namen, Notizen, Farben, Suchbegriff …) in allen Ansichten führen keinen Code aus; „Kurse aktualisieren“ lädt kein Script von fremden Servern; CSP sperrt Abruf an fremden Server; Excel-Bibliothek lädt als 0.20.3 mit Prüfsumme |
 | Konsistenz | `lib/konsistenz.js` | Ø/Monat Reports = Kategorie-Detail, Einnahmen Home = Budget = Cashflow (mit Partner), Budget auf Oberkategorie = Gruppensumme, Vorzeichen der Reports-Liste |
-| Layout | `lib/layout.js` + `lib/layout-app.js` | Rente-Tab bei 390 px (iPhone) und 820 px (iPad hochkant): nichts ragt sichtbar über den Rand |
+| Layout | `lib/layout.js` + `lib/layout-app.js` | Rente-Tab bei 390 px (iPhone) und 820 px (iPad hochkant): nichts ragt sichtbar über den Rand; Cashflow, Gehalt, Vermögen, Rente bei 390 px: breite Tabellen und Kacheln liegen in einem Wischbereich, nichts abgeschnitten |
 | Sync (9 Szenarien) | `lib/sync-harness.js` + `lib/sync-szenarien.js` | Zusammenführen, Server-Daten, Neu verbinden, Buchung während Download/Upload, Wiederholen, If-None-Match, Vermögen-Tab, Auto-Sync aus |
 
 ## Regel für neue Korrekturen

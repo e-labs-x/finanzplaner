@@ -56,8 +56,42 @@
       info.push('Knopf zu: Person ' + zu.person + '/Einst. ' + zu.einst + ', auf: ' + auf.person + '/' + auf.einst);
       if (!zu.person || zu.einst || !auf.person || !auf.einst) errs.push('iphone: Einklapp-Knopf ' + JSON.stringify({ zu: zu, auf: auf }));
     } catch (e) { errs.push('Einklapp-Knopf: ' + e.message); }
-    var pre = document.createElement('pre'); pre.id = 'out';
-    pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join(', '), errors: errs });
-    document.body.appendChild(pre);
+    // Breite Tabellen und Kacheln (22.11.2026): bei 390 px darf nichts abgeschnitten sein — was breiter ist als der
+    // Bildschirm, muss in einem Wischbereich liegen (overflow-x auto/scroll). Alter Stand: Cashflow-Kacheln + -Tabelle
+    // und Reallohn-Tabelle (8 Spalten, nur 3 sichtbar) wurden still abgeschnitten.
+    // Tabs rendern teils verzögert → je Tab öffnen, warten, dann messen.
+    var fw = document.getElementById('iphone').contentWindow, fd = fw.document;
+    var wide = ['cashflow', 'gehalt', 'vermoegen', 'rente'], wi = 0;
+    (function nextWide() {
+      if (wi >= wide.length) {
+        var pre = document.createElement('pre'); pre.id = 'out';
+        pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join(', '), errors: errs });
+        document.body.appendChild(pre);
+        return;
+      }
+      var t = wide[wi++];
+      try { fw.nav(t); } catch (e) { errs.push('Breite Tabellen ' + t + ': ' + e.message); }
+      setTimeout(function () {
+        try {
+          var fvw = fd.documentElement.clientWidth, pg = fd.getElementById('p-' + t), bad = {}, rows = 0;
+          [].forEach.call(pg.querySelectorAll('*'), function (e) {
+            if (e.tagName === 'TR') rows++;
+            var b = e.getBoundingClientRect();
+            if (!(b.width > 0 && b.right > fvw + 1)) return;
+            for (var p = e.parentElement; p && p !== pg; p = p.parentElement) {
+              var ox = fw.getComputedStyle(p).overflowX;
+              if ((ox === 'auto' || ox === 'scroll') && p.getBoundingClientRect().right <= fvw + 1) return;
+            }
+            var k = e.tagName + '.' + String(e.className).split(' ')[0];
+            bad[k] = (bad[k] || 0) + 1;
+          });
+          var n = Object.keys(bad).length;
+          info.push(t + ' ' + (n ? 'abgeschnitten' : 'ok') + ' (' + rows + ' Zeilen)');
+          if (n) errs.push('iphone ' + t + ': abgeschnitten ' + JSON.stringify(bad).slice(0, 200));
+          if (t !== 'vermoegen' && !rows) errs.push('iphone ' + t + ': keine Tabelle gerendert');
+        } catch (e) { errs.push('Breite Tabellen ' + t + ': ' + e.message); }
+        nextWide();
+      }, 1200);
+    })();
   }
 })();

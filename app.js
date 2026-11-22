@@ -1651,15 +1651,10 @@ function txPersonTag(tx) {
 }
 
 /* ── Neue Kategorie ── */
-function openKatModal() {
-  var par = document.getElementById('mc-par');
-  par.innerHTML = '<option value="">— Hauptkategorie —</option>';
-  FP.Store.Categories.getAll().filter(function(c) { return !c.parentId; }).forEach(function(c) {
-    var o = document.createElement('option'); o.value = c.id; o.textContent = c.name; par.appendChild(o);
-  });
-  document.getElementById('mc-name').value = '';
-  openM('m-cat');
-}
+// „+ Neu" in der Eingabe und in den Einstellungen öffnen denselben Dialog über stNewKat — ein Weg.
+// Vorher setzte dieser Aufruf mc-edit-id nicht zurück: nach einem Bearbeiten in den Einstellungen
+// überschrieb „+ Neu" in der Eingabe die zuletzt bearbeitete Kategorie (22.11.2026).
+function openKatModal() { stNewKat(); }
 function saveKat() {
   var name = document.getElementById('mc-name').value.trim();
   if (!name) { toast('Bitte Namen eingeben'); return; }
@@ -1686,6 +1681,7 @@ function saveKat() {
     FP.Store.Categories.add({ name: name, group: parCat ? parCat.group : grp, parentId: par, showInInput: showInInput });
     closeM('m-cat');
     buildCats();
+    stRenderCats();   // sonst erscheint die neue Kategorie in den Einstellungen erst nach erneutem Öffnen
     toast('✓ "' + name + '" angelegt');
   }
 }
@@ -3759,7 +3755,7 @@ function esppRender(){
         '</td>'+
       '</tr>';
     }).join('');
-    tblHtml='<div style="overflow-x:auto"><table class="vm-espp-tbl">'+
+    tblHtml='<div class="tbl-scroll"><table class="vm-espp-tbl">'+
       '<thead><tr><th>Zyklus</th><th>Kaufkurs</th><th>Aktien</th><th>GWV</th><th>Steuer (GWV)</th><th>Erlös</th><th>Netto</th><th>Status</th><th></th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table></div>';
   }
@@ -5599,7 +5595,7 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
       '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Ø Rendite</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
     '</div>'+
     (hasGuardrail?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:8px">⚠ Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
-    '<table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/Jahr</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table>'+
+    '<div class="tbl-scroll"><table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/Jahr</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'+
     '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten.'+
     '</div>';
@@ -6146,7 +6142,7 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
       (hasGuardrail?'<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);vertical-align:middle;margin-right:4px"></span>Guardrail aktiv</span>':'')+
     '</div>'+
     (hasGuardrail?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:8px">⚠ Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
-    '<table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/J.</th><th>Rendite</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="tbl-scroll"><table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/J.</th><th>Rendite</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten, selbst wenn die Durchschnittsrendite stimmt. Tipp: Etwas mehr Puffer einplanen oder Guardrails aktivieren.'+
     '</div>';
