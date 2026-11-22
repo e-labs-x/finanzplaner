@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122f`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122g`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -214,8 +214,8 @@ Tests nutzen erfundene Bankzeilen.
 - **Diagramme (seit 22.11.2026, Schritt 2):** neue Diagramme über den Baustein in app.js — `fpChartLib(cb)` lädt Chart.js 4.6.1
   (vendor, SRI), `fpChartBase()` = gemeinsame Achsen/Antippen/Legende, `fpChart(canvas,cfg)` ersetzt ein altes Diagramm, `fpTokRgba(token)`
   löst Farben auf (Chart.js kennt kein oklch). Canvas liegt in einem Bereich mit fester Höhe (`.fp-chart-box`/`.cf-canvas-wrap`) —
-  Chart.js misst den Bereich, die px-Regel unten gilt für die alten Eigenbauten. Umgestellt: Cashflow, Gehalt, Vermögensverlauf.
-  Noch Eigenbau: Rente (Teil B), Vermögens-Ring, Home-Linie.
+  Chart.js misst den Bereich, die px-Regel unten gilt für die alten Eigenbauten. Umgestellt: Cashflow, Gehalt, Vermögensverlauf, Rente (Verlauf, Stichtag; Markierungen über `fpMarkers`).
+  Noch Eigenbau: Vermögens-Ring, Home-Linie, tote Reiter `rpRenderTabEntnahme/Depot` (nicht erreichbar).
 - **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert

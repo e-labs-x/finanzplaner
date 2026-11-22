@@ -1,6 +1,14 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Schritt 2 Teil A Diagramme (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Schritt 2 Umbau Teil B: Rente-Diagramme auf Chart.js (22.11.2026, `?v=20261122g`) — Sichtkontrolle iPhone offen
+- Verlauf: Anspar/Entnahme/Worst-Case, Rentenbeginn als Linie (gleiches Alter beider = „63 · beide“), Ausbildung als Band (überlappende zusammengefasst),
+  Plugin `fpMarkers`. Antippen: Depot, Worst-Case, Entnahme/Monat. Stichtag: Balken mit runder Achse. Alte Maus-Ereignisse entfernt.
+- Verlauf-Tabelle: Rentenbeginn + jedes 5. Jahr + letztes, „Alle anzeigen“, ganze Euro. „Depot bei Rente“: oben „Enes + Ehli, gesamt“, im Verlauf „· Name“.
+- Aufräumen später: `rpRenderTabEntnahme`, `rpRenderTabDepot`, `rpDrawEntnahmeChart` sind nicht erreichbar (kein Reiter).
 
 ---
 

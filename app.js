@@ -3497,6 +3497,34 @@ function fpChartBase() {
     }
   };
 }
+// Markierungen für Diagramme mit Zahlen-x-Achse (Rente): Bänder (z. B. Ausbildung) hinter, Linien (Rentenbeginn) über den Daten
+function fpMarkers(m) {
+  function xs(c, v) { return c.scales.x.getPixelForValue(v); }
+  return { id: 'fpMarkers',
+    beforeDatasetsDraw: function (c) {
+      var a = c.chartArea, x = c.ctx;
+      (m.bands || []).forEach(function (b) {
+        var x1 = Math.max(a.left, xs(c, b.from)), x2 = Math.min(a.right, xs(c, b.to));
+        if (x2 <= x1) return;
+        x.save(); x.fillStyle = b.fill; x.fillRect(x1, a.top, x2 - x1, a.bottom - a.top);
+        if (b.label) { x.fillStyle = b.color; x.font = '600 12px ' + window.Chart.defaults.font.family; x.textAlign = 'center';
+          x.fillText(b.label, (x1 + x2) / 2, a.bottom - 6); }
+        x.restore();
+      });
+    },
+    afterDatasetsDraw: function (c) {
+      var a = c.chartArea, x = c.ctx;
+      (m.lines || []).forEach(function (l, i) {
+        var px = xs(c, l.x); if (px < a.left || px > a.right) return;
+        x.save(); x.strokeStyle = l.color; x.lineWidth = 1.5; x.setLineDash([4, 3]);
+        x.beginPath(); x.moveTo(px, a.top); x.lineTo(px, a.bottom); x.stroke(); x.setLineDash([]);
+        if (l.label) { x.fillStyle = l.color; x.font = '600 12px ' + window.Chart.defaults.font.family;
+          var right = px > (a.left + a.right) / 2; x.textAlign = right ? 'right' : 'left';
+          x.fillText(l.label, px + (right ? -5 : 5), a.top + 12 + i * 15); }
+        x.restore();
+      });
+    } };
+}
 // Neu zeichnen = altes Diagramm am selben Canvas verwerfen (sonst doppelte Diagramme/Ereignisse)
 function fpChart(canvas, cfg) {
   if (canvas._fpChart) { canvas._fpChart.destroy(); canvas._fpChart = null; }
@@ -5579,7 +5607,7 @@ function rpRenderKpi(r1,r2,store) {
     'Person 1 ab '+r1.targetRetirementAge+(r2?' · Person 2 ab '+r2.targetRetirementAge:'');
   var cards=[
     {lbl:'Rentenlücke',val:hhLuecke>0?eur(hhLuecke):'Kein Defizit',sub:hhLuecke>0?'nach Entnahme':'Einkommen reicht',cls:(hhLuecke>0?'luecke':'ok')+' primary'},
-    {lbl:'Depot bei Rente',val:eur(hhDepot),sub:partnerOn?'Person 1 + Person 2':'ab Alter '+r.targetRetirementAge,cls:'primary'},
+    {lbl:'Depot bei Rente',val:eur(hhDepot),sub:partnerOn?(rpPersonName('person_1',store)+' + '+rpPersonName('person_2',store)+', gesamt'):'ab Alter '+r.targetRetirementAge,cls:'primary'},
     {lbl:'Depot reicht',val:(r1&&!r1.hatLuecke)?'∞':depJahre>=60?'60+ Jahre':depJahre>0?depJahre.toFixed(0)+' Jahre':'< 1 Jahr',sub:(r1&&!r1.hatLuecke)?'Kein Depot-Verzehr nötig':depJahre>0&&depJahre<10?'Achtung: < 10 Jahre':yearsNote,cls:((r1&&!r1.hatLuecke)||depJahre>=20?'ok':(depJahre>0?'luecke':''))+' primary'},
     {lbl:'Renteneinkommen (Netto)',val:eur(partnerOn?hhEink:r.gesamtEinkommen+r.erbMieteMonatlich),sub:'Brutto: '+eur(partnerOn?(r1?r1.gesamtBrutto:0)+(r2?r2.gesamtBrutto:0):r.gesamtBrutto),cls:''},
     {lbl:'Ausgaben/Monat',val:eur(partnerOn?hhAusg:r.ausgaben),sub:partnerOn?'Beide':'Ruhestand',cls:''},
@@ -5641,9 +5669,11 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     return{start:start,end:start+kDauer};
   }).filter(function(p){return p.end>curAge;});
   var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
-  var tableRows=ep.slice(0,30).map(function(w){
+  // Tabelle: Rentenbeginn, jedes 5. Lebensjahr und das letzte — auf Wunsch alle (Schritt 2 Teil B)
+  var epAll=ep.slice(0,30), epShow=_rpTblAll?epAll:epAll.filter(function(w,i){ return w.alter===retAge||(w.alter-retAge)%5===0||i===epAll.length-1; });
+  var tableRows=epShow.map(function(w){
     var grIco=w.guardrailAktiv?' <span style="font-size:12px;color:var(--amber)" title="Guardrail">'+ic('alert',11)+'</span>':'';
-    return '<tr class="'+(w.alter===retAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
+    return '<tr class="'+(w.alter===retAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+fpEur0(w.depot)+'</td><td style="color:var(--red)">'+fpEur0(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+fpEur0(w.rendite)+'</td></tr>';
   }).join('');
   var pName=rpPersonName(rpS.person||'person_1',store);
   var oName=rpPersonName(rpS.person==='person_2'?'person_1':'person_2',store);
@@ -5661,7 +5691,7 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     legendHtml+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:8px">'+
       '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:12px;color:var(--tx3)">'+stratLbl+'</div></div>'+
-      '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:12px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente · '+pName+'</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:12px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
       '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ Jahre':r.depotJahre>0?r.depotJahre.toFixed(0)+' Jahre':'< 1 Jahr')+'</div><div style="font-size:12px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:12px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ Jahre':r.wcDepotJahre.toFixed(0)+' Jahre')+' (−30% Schock)</div>':'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px">'+
@@ -5671,6 +5701,7 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     '</div>'+
     (hasGuardrail?'<div style="font-size:12px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:var(--r-sm)">'+ic('alert')+' Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
     '<div class="tbl-scroll"><table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/Jahr</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'+
+    (epAll.length>epShow.length||_rpTblAll?'<button class="st-btn gh-tbl-more" style="margin-left:0" onclick="rpToggleTblAll()">'+(_rpTblAll?'Nur alle 5 Jahre':'Alle '+epAll.length+' Jahre anzeigen')+'</button>':'')+
     '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:var(--r-sm);font-size:12px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten.'+
     '</div>';
@@ -5680,231 +5711,73 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     if(!cv)return;
     var wcData=r.wcVerlauf||[];
     rpDrawVerlaufChart(cv,data,retAge,-1,ausbildungPeriods,ep,ret2Age,wcData);
-    var PAD_L=62,PAD_R=16;
-    cv.onmousemove=function(e){
-      var rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left;
-      var cW=rect.width-PAD_L-PAD_R;
-      var minA=data[0].alter,rng=(data[data.length-1].alter-minA)||1;
-      var best=-1,bd=1e9;
-      data.forEach(function(d,i){
-        var dx=Math.abs(mx-(PAD_L+(d.alter-minA)/rng*cW));
-        if(dx<bd){bd=dx;best=i;}
-      });
-      if(best!==rpVerlaufHov){rpVerlaufHov=best;rpDrawVerlaufChart(cv,data,retAge,rpVerlaufHov,ausbildungPeriods,ep,ret2Age,wcData);}
-    };
-    cv.onmouseleave=function(){rpVerlaufHov=-1;rpDrawVerlaufChart(cv,data,retAge,-1,ausbildungPeriods,ep,ret2Age,wcData);};
   });
 }
+// Rente-Verlauf (Chart.js, Schritt 2 Teil B): Anspar- und Entnahmephase, Worst-Case (−30 %), Rentenbeginn beider
+// Personen als Linien, Ausbildungszeiten als Band. Achse ab 0, Antippen zeigt Depot, Worst-Case und Entnahme/Monat.
+var _rpTblAll=false;
+function rpToggleTblAll(){ _rpTblAll=!_rpTblAll; rpRenderMain(); }
 function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahmePlan,ret2Age,wcData) {
-  if(!canvas||!data.length)return;
-  var cs=getComputedStyle(document.documentElement);
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
-  var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
-  var cPurple=cs.getPropertyValue('--purple').trim()||'oklch(57% 0.22 295)';
-  var dpr=window.devicePixelRatio||1;
-  canvas.style.width='100%';
-  var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||500;
-  var H=250;
-  canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-  var PAD={t:16,r:16,b:32,l:62};
-  var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
-  var maxDepot=Math.max.apply(null,data.map(function(d){return d.depot;}));
-  if(!maxDepot)maxDepot=1;
-  var maxY=Math.ceil(maxDepot/100000)*100000*1.1;
-  var minAlter=data[0].alter,maxAlter=data[data.length-1].alter;
-  var alterRange=maxAlter-minAlter||1;
-  function toX(alter){return PAD.l+(alter-minAlter)/alterRange*cW;}
-  function toY(v){return PAD.t+cH-(v/maxY)*cH;}
-  // Ausbildungs-Bänder (vor Gitter, damit alles drüber liegt)
-  if(ausbildungPeriods&&ausbildungPeriods.length){
-    ausbildungPeriods.forEach(function(p){
-      if(p.end<=minAlter||p.start>=maxAlter)return;
-      var x1=toX(Math.max(p.start,minAlter));
-      var x2=toX(Math.min(p.end,maxAlter));
-      ctx.fillStyle='rgba(124,58,237,0.09)';
-      ctx.fillRect(x1,PAD.t,x2-x1,cH);
-      ctx.strokeStyle='rgba(124,58,237,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-      ctx.beginPath();ctx.moveTo(x1,PAD.t);ctx.lineTo(x1,PAD.t+cH);ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle=cPurple;ctx.font='bold 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
-      ctx.fillText('Ausbildung',(x1+x2)/2,PAD.t+cH-5);
-    });
-  }
-  // Gitter
-  [0,0.25,0.5,0.75,1].forEach(function(s){
-    var v=maxY*s,y=toY(v);
-    ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
-    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
-    ctx.fillText(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':'0',PAD.l-5,y+4);
+  if(!canvas||!data.length) return;
+  fpChartLib(function(){
+    if(!document.body.contains(canvas)) return;
+    var minA=data[0].alter, maxA=data[data.length-1].alter;
+    var pt=function(d){ return {x:d.alter,y:d.depot}; };
+    var cB=fpTokRgba('--blue'), cA=fpTokRgba('--amber'), cR=fpTokRgba('--red'), cG=fpTokRgba('--green'), cP=fpTokRgba('--purple');
+    var anspar=data.filter(function(d){ return d.alter<=retAge; }).map(pt);
+    var entn=data.filter(function(d){ return d.alter>=retAge; }).map(pt);
+    var wc=(wcData||[]).filter(function(d){ return d.alter>=minA&&d.alter<=maxA; }).map(pt);
+    var byAge=function(arr,age){ for(var i=0;i<arr.length;i++) if(arr[i].x===age) return arr[i].y; return null; };
+    var cfg=fpChartBase();
+    cfg.plugins.legend.display=false;
+    cfg.interaction={mode:'nearest',axis:'x',intersect:false};
+    cfg.scales.x={type:'linear',min:minA,max:maxA,grid:{display:false},border:{display:false},
+      ticks:{color:fpTokRgba('--tx3'),stepSize:5,maxRotation:0,autoSkipPadding:8,callback:function(v){ return v; }}};
+    cfg.plugins.tooltip.callbacks={
+      title:function(it){ var x=it[0].parsed.x; return 'Alter '+x+(x===retAge?' · Rentenbeginn':''); },
+      label:function(c){ var x=c.parsed.x, d=byAge(anspar,x); if(d==null) d=byAge(entn,x); return ' Depot: '+fpEur0(d==null?c.parsed.y:d); },
+      afterBody:function(it){
+        var x=it[0].parsed.x, out=[], w=byAge(wc,x);
+        if(w!=null) out.push('Worst-Case (−30 %): '+fpEur0(w));
+        if(entnahmePlan&&x>=retAge){ var e=entnahmePlan.find(function(p){ return p.alter===x; }); if(e&&e.entnahme>0) out.push('Entnahme: '+eur(e.entnahme/12)+'/Monat'); }
+        return out;
+      }
+    };
+    cfg.plugins.tooltip.filter=function(c,i){ return i===0; };
+    var line=function(label,pts,color,fill,extra){ var d={type:'line',label:label,data:pts,borderColor:color,backgroundColor:fill,fill:fill?'origin':false,
+      borderWidth:2.5,tension:0.2,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color}; for(var k in (extra||{})) d[k]=extra[k]; return d; };
+    var ds=[ line('Ansparphase',anspar,cB,fpTokRgba('--blue',0.12)), line('Entnahmephase',entn,cA,fpTokRgba('--amber',0.12)) ];
+    if(wc.length>=2) ds.push(line('Worst-Case',wc,cR,null,{borderWidth:1.8,borderDash:[5,4]}));
+    // Überlappende Ausbildungszeiten (mehrere Kinder) zu einem Band zusammenfassen — sonst doppelte Beschriftung
+    var per=(ausbildungPeriods||[]).slice().sort(function(a,b){ return a.start-b.start; }), merged=[];
+    per.forEach(function(p){ var l=merged[merged.length-1]; if(l&&p.start<=l.end) l.end=Math.max(l.end,p.end); else merged.push({start:p.start,end:p.end}); });
+    var bands=merged.map(function(p){ return {from:p.start,to:p.end,label:'Ausbildung',fill:fpTokRgba('--purple',0.09),color:cP}; });
+    // Gleicher Rentenbeginn beider Personen = eine Linie
+    var same=ret2Age!=null&&ret2Age===retAge;
+    var lines=[{x:retAge,label:String(retAge)+(same?' · beide':''),color:cR}];
+    if(ret2Age!=null&&!same) lines.push({x:ret2Age,label:String(ret2Age),color:cG});
+    fpChart(canvas,{ data:{datasets:ds}, options:cfg, plugins:[fpMarkers({bands:bands,lines:lines})] });
   });
-  // X-Achse
-  for(var a=Math.ceil(minAlter/5)*5;a<=maxAlter;a+=5){
-    var x=toX(a);
-    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
-    ctx.fillText(a,x,H-PAD.b+14);
-    ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
-    ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t+cH);ctx.stroke();
-  }
-  // Renteneintritts-Linien P1 + P2
-  function drawRetLine(age, color, labelY) {
-    if(age==null||age<minAlter||age>maxAlter)return;
-    var rx=toX(age);
-    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
-    ctx.beginPath();ctx.moveTo(rx,PAD.t);ctx.lineTo(rx,PAD.t+cH);ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle=color;ctx.font='bold 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
-    ctx.fillText(''+age,rx,labelY);
-  }
-  var _csRp=getComputedStyle(document.documentElement);
-  drawRetLine(retAge,_csRp.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)',PAD.t+10);
-  drawRetLine(ret2Age,_csRp.getPropertyValue('--green').trim()||'oklch(57% 0.2 295)',PAD.t+22);
-  // Fills + Linien
-  var anspar=data.filter(function(d){return d.alter<=retAge;});
-  var entn=data.filter(function(d){return d.alter>=retAge;});
-  if(anspar.length>=2){
-    ctx.beginPath();
-    anspar.forEach(function(d,i){i===0?ctx.moveTo(toX(d.alter),toY(d.depot)):ctx.lineTo(toX(d.alter),toY(d.depot));});
-    ctx.lineTo(toX(anspar[anspar.length-1].alter),toY(0));ctx.lineTo(toX(anspar[0].alter),toY(0));ctx.closePath();
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--blue-lt').trim()||'oklch(95% 0.048 268)';ctx.fill();
-  }
-  if(entn.length>=2){
-    ctx.beginPath();
-    entn.forEach(function(d,i){i===0?ctx.moveTo(toX(d.alter),toY(d.depot)):ctx.lineTo(toX(d.alter),toY(d.depot));});
-    ctx.lineTo(toX(entn[entn.length-1].alter),toY(0));ctx.lineTo(toX(entn[0].alter),toY(0));ctx.closePath();
-    ctx.fillStyle='rgba(245,158,11,0.10)';ctx.fill();
-  }
-  function drawLine(pts,color){
-    if(pts.length<2)return;
-    ctx.setLineDash([]);ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
-    ctx.beginPath();
-    pts.forEach(function(d,i){var x=toX(d.alter),y=toY(d.depot);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-    ctx.stroke();
-  }
-  drawLine(anspar,cBlue);
-  drawLine(entn,cAmber);
-  // Worst-Case-Linie: gestrichelt rot, nur Entnahmephase
-  if(wcData&&wcData.length>=2){
-    var cRed=getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
-    ctx.setLineDash([5,4]);ctx.strokeStyle=cRed;ctx.lineWidth=1.8;ctx.lineJoin='round';
-    ctx.beginPath();
-    wcData.forEach(function(d,i){
-      if(d.alter<minAlter||d.alter>maxAlter)return;
-      var x=toX(d.alter),y=toY(d.depot);
-      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    });
-    ctx.stroke();ctx.setLineDash([]);
-  }
-  // Hover-Crosshair + Tooltip
-  if(hovIdx>=0&&data[hovIdx]){
-    var hd=data[hovIdx];
-    var hx=toX(hd.alter),hy=toY(hd.depot);
-    ctx.strokeStyle='rgba(100,100,100,0.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-    ctx.beginPath();ctx.moveTo(hx,PAD.t);ctx.lineTo(hx,PAD.t+cH);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(PAD.l,hy);ctx.lineTo(PAD.l+cW,hy);ctx.stroke();
-    ctx.setLineDash([]);
-    var ptColor=hd.alter<=retAge?cBlue:cAmber;
-    ctx.fillStyle=ptColor;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.stroke();
-    var depotStr=hd.depot>=1e6?(hd.depot/1e6).toFixed(2)+' M €':hd.depot>=1e3?(hd.depot/1000).toFixed(0)+' K €':'0 €';
-    var line1='Alter '+hd.alter+(hd.alter===retAge?' · Rentenbeginn':'');
-    var line2=depotStr;
-    var line3='';
-    if(entnahmePlan&&hd.alter>=retAge){
-      var ep=entnahmePlan.find(function(e){return e.alter===hd.alter;});
-      if(ep&&ep.entnahme>0)line3='Entnahme: '+eur(ep.entnahme/12)+'/Monat';
-    }
-    ctx.font='bold 12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-    var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width,line3?ctx.measureText(line3).width:0);
-    var tp=8,th=line3?62:44,tx=hx+14,ty=PAD.t+8;
-    if(tx+tw+tp*2>W-4)tx=hx-tw-tp*2-14;
-    if(ty+th>PAD.t+cH)ty=PAD.t+cH-th-4;
-    ctx.fillStyle='rgba(28,28,30,0.88)';
-    ctx.beginPath();ctx.rect(tx-tp,ty-tp,tw+tp*2,th);ctx.fill();
-    ctx.fillStyle='#fff';ctx.textAlign='left';
-    ctx.fillText(line1,tx,ty+12);
-    ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
-    ctx.fillText(line2,tx,ty+30);
-    if(line3)ctx.fillText(line3,tx,ty+48);
-  }
 }
 
 /* ── Bar Chart: Stichtag ── */
 var rpStichtagHov=-1;
+// Stichtag-Balken (Chart.js, Schritt 2 Teil B): Depot je Stichtag; Ansparphase blau, Rentenbeginn lila, Entnahme gelb
 function rpDrawStichtagChart(canvas,rows,retAge,hovIdx){
-  if(!canvas||!rows.length)return;
-  var cs=getComputedStyle(document.documentElement);
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
-  var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cGreen=cs.getPropertyValue('--green').trim()||'oklch(57% 0.2 150)';
-  var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
-  var dpr=window.devicePixelRatio||1;
-  canvas.style.width='100%';
-  var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||500;
-  var H=canvas.parentElement?canvas.parentElement.clientHeight||250:250;
-  canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-  var PAD={t:22,r:16,b:32,l:62};
-  var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
-  var maxDepot=Math.max.apply(null,rows.map(function(r){return r.depot;}));
-  if(!maxDepot)maxDepot=1;
-  var maxY=Math.ceil(maxDepot/100000)*100000*1.1;
-  var n=rows.length;
-  var barW=Math.min(36,Math.floor(cW/(n+1)*0.72));
-  var spacing=(cW-barW*n)/(n+1);
-  [0,0.25,0.5,0.75,1].forEach(function(s){
-    var v=maxY*s,y=PAD.t+cH-(v/maxY)*cH;
-    ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
-    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
-    ctx.fillText(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':'0',PAD.l-5,y+4);
-  });
-  rows.forEach(function(r,i){
-    var bx=PAD.l+spacing+i*(barW+spacing);
-    var barH=(r.depot/maxY)*cH;
-    var by=PAD.t+cH-barH;
-    var color=r.phase==='Anspar'?cBlue:r.isRet?cGreen:cAmber;
-    var isHov=(i===hovIdx);
-    ctx.globalAlpha=isHov?1.0:0.82;
-    var rad=3;
-    ctx.fillStyle=color;
-    ctx.beginPath();
-    ctx.moveTo(bx+rad,by);ctx.lineTo(bx+barW-rad,by);
-    ctx.quadraticCurveTo(bx+barW,by,bx+barW,by+rad);
-    ctx.lineTo(bx+barW,PAD.t+cH);ctx.lineTo(bx,PAD.t+cH);
-    ctx.lineTo(bx,by+rad);ctx.quadraticCurveTo(bx,by,bx+rad,by);
-    ctx.closePath();ctx.fill();
-    ctx.globalAlpha=1.0;
-    ctx.fillStyle=r.isRet?cGreen:cTx3;
-    ctx.font=(r.isRet?'bold ':'')+' 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText(r.alter,bx+barW/2,H-PAD.b+14);
-    if(barH>18){
-      var valStr=r.depot>=1e6?(r.depot/1e6).toFixed(1)+'M':r.depot>=1e3?(r.depot/1e3).toFixed(0)+'K':'';
-      if(valStr){ctx.fillStyle=color;ctx.font='10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(valStr,bx+barW/2,by-4);}
-    }
-    if(isHov){
-      var depStr=r.depot>=1e6?(r.depot/1e6).toFixed(2)+' M €':r.depot>=1e3?(r.depot/1e3).toFixed(0)+' K €':'0 €';
-      var line1='Alter '+r.alter+(r.isRet?' · Rentenbeginn':'');
-      var line2=depStr;
-      ctx.font='bold 12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width);
-      var tp=8,th=44,tx=bx+barW/2+6,ty=by-52;
-      if(tx+tw+tp*2>W-4)tx=bx+barW/2-tw-tp*2-6;
-      if(ty<2)ty=2;
-      ctx.fillStyle='rgba(28,28,30,0.88)';
-      ctx.beginPath();ctx.rect(tx-tp,ty,tw+tp*2,th);ctx.fill();
-      ctx.fillStyle='#fff';ctx.textAlign='left';
-      ctx.fillText(line1,tx,ty+14);
-      ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
-      ctx.fillText(line2,tx,ty+32);
-    }
+  if(!canvas||!rows.length) return;
+  fpChartLib(function(){
+    if(!document.body.contains(canvas)) return;
+    var cB=fpTokRgba('--blue'), cG=fpTokRgba('--green'), cA=fpTokRgba('--amber');
+    var col=rows.map(function(r){ return r.phase==='Anspar'?cB:r.isRet?cG:cA; });
+    var cfg=fpChartBase();
+    cfg.plugins.legend.display=false;
+    cfg.plugins.tooltip.callbacks={
+      title:function(it){ var r=rows[it[0].dataIndex]; return 'Alter '+r.alter+(r.isRet?' · Rentenbeginn':''); },
+      label:function(c){ return ' Depot: '+fpEur0(c.raw); }
+    };
+    fpChart(canvas,{ type:'bar', data:{ labels:rows.map(function(r){ return String(r.alter); }),
+      datasets:[{ label:'Depot', data:rows.map(function(r){ return r.depot; }), backgroundColor:col, hoverBackgroundColor:col, borderRadius:4, maxBarThickness:36 }] },
+      options:cfg });
   });
 }
 
@@ -6064,20 +5937,6 @@ function rpRenderTabStichtag(r1,r2,store,el) {
     var cv=document.getElementById('rp-stichtag-canvas');
     if(!cv)return;
     rpDrawStichtagChart(cv,closedRows,retAge,-1);
-    cv.onmousemove=function(e){
-      var rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left;
-      var cW=rect.width-62-16;
-      var n=closedRows.length;
-      var barW=Math.min(36,Math.floor(cW/(n+1)*0.72));
-      var spacing=(cW-barW*n)/(n+1);
-      var best=-1;
-      closedRows.forEach(function(r,i){
-        var bx=62+spacing+i*(barW+spacing);
-        if(mx>=bx-4&&mx<=bx+barW+4)best=i;
-      });
-      if(best!==rpStichtagHov){rpStichtagHov=best;rpDrawStichtagChart(cv,closedRows,retAge,rpStichtagHov);}
-    };
-    cv.onmouseleave=function(){rpStichtagHov=-1;rpDrawStichtagChart(cv,closedRows,retAge,-1);};
   });
 }
 

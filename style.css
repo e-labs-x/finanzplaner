@@ -1225,7 +1225,7 @@ button { cursor: pointer; border: none; background: none; }
 .rp-kpi.ok{border-color:var(--green);background:var(--green-lt)}.rp-kpi.ok .rp-kpi-val{color:var(--green)}
 .rp-kpi.luecke{border-color:var(--red);background:var(--red-lt)}.rp-kpi.luecke .rp-kpi-val{color:var(--red)}
 .rp-kpi.primary{border-width:2px;padding:13px 15px}.rp-kpi.primary .rp-kpi-val{font-size:20px}.rp-kpi.primary .rp-kpi-lbl{font-size:12px}
-.rp-chart-wrap{height:260px;margin:-4px 0 4px}
+.rp-chart-wrap{position:relative;height:260px;margin:-4px 0 4px}
 /* Tab bar for results */
 .rp-tabs{display:flex;gap:2px;flex-wrap:wrap;margin-top:4px}
 .rp-tab{padding:9px 14px;border-radius:10px 10px 0 0;border:1px solid var(--brd);border-bottom:none;background:var(--surf2);cursor:pointer;font-size:14px;font-weight:600;color:var(--tx2);transition:all .12s;font-family:inherit}
