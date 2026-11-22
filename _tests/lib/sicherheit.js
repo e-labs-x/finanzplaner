@@ -70,7 +70,7 @@
   function first(a) { return a && a.length ? a[0] : null; }
   window.addEventListener('load', function () {
     var S = FP.Store.get(), steps = [];
-    function add(label, fn) { steps.push([label, fn]); }
+    function add(label, fn, until) { steps.push([label, fn, until]); }
     'home eingabe auswertung budget cashflow reports objekte fixkosten gehalt vermoegen rente einstellungen mehr'.split(' ')
       .forEach(function (t) { add('Tab ' + t, function () { nav(t); }); });
     ['verlauf', 'stichtag', 'rente', 'haushalt'].forEach(function (t) {
@@ -116,7 +116,9 @@
       else if (!row.querySelector('.tx-person')) errs.push('Letzte Eintraege: Import-Buchung ohne Personen-Schild');
     });
     add('Import Pruefliste', function () { nav('eingabe'); impFile({ files: [new File([window.__impCsv], 'x.csv')] }); });
-    add('Import Datei lesen (wartet)', function () {});
+    // Datei wird echt asynchron gelesen (arrayBuffer) → nicht feste 120 ms, sondern warten bis die Prüfliste offen ist
+    // (max. 5 s). Vorher rot je nach Rechnerlast, z. B. im pre-push-Hook direkt nach einem Prüflauf (22.11.2026).
+    add('Import Datei lesen (wartet)', function () {}, function () { return !!window._imp; });
     add('Import einzeln', function () {
       if (!_imp) { errs.push('Import: Pruefliste oeffnet nicht'); return; }
       impToggle(_imp.groups.findIndex(function (g) { return !g.other; }));
@@ -177,7 +179,14 @@
       if (i < steps.length) {
         step = steps[i][0];
         try { steps[i][1](); } catch (e) { errs.push(step + ': ' + e.message); }
-        i++; setTimeout(next, 120);
+        var until = steps[i][2], t0 = Date.now();
+        i++;
+        (function wait() {
+          var ok = false;
+          try { ok = !until || until(); } catch (e) { ok = true; }
+          if (!ok && Date.now() - t0 < 5000) return setTimeout(wait, 100);
+          setTimeout(next, 120);
+        })();
         return;
       }
       setTimeout(function () {
