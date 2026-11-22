@@ -127,7 +127,7 @@ try {
     }
     $o = $null
     if ($html -match '<pre id="out">([^<]*)</pre>') { $o = [Net.WebUtility]::HtmlDecode($Matches[1]) | ConvertFrom-Json }
-    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } elseif ($r.Label -eq 'sicherheit') { 'Sicherheit (Gift-Eintraege, Kurse)' } elseif ($r.Label -eq 'konsistenz') { 'Konsistenz (gleiche Zahl ueberall)' } elseif ($r.Label -eq 'layout') { 'Layout Rente iPhone/iPad' } elseif ($r.Label -eq 'nav_alt') { 'Navigation alt (Schalter aus)' } elseif ($r.Label -eq 'nav_neu') { 'Navigation neu (Schalter an)' } elseif ($r.Label -eq 'farben') { 'Vermoegen-Seite (Farben, Historie, Auswahl)' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
+    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } elseif ($r.Label -eq 'sicherheit') { 'Sicherheit (Gift-Eintraege, Kurse)' } elseif ($r.Label -eq 'konsistenz') { 'Konsistenz (gleiche Zahl ueberall)' } elseif ($r.Label -eq 'layout') { 'Layout Rente iPhone/iPad' } elseif ($r.Label -eq 'nav_alt') { 'Navigation alt (Schalter aus)' } elseif ($r.Label -eq 'nav_neu') { 'Navigation neu (Schalter an)' } elseif ($r.Label -eq 'farben') { 'Farbregel (Gruen, Vermoegen-Kacheln)' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
     if (-not $o) { Add-Result $name $false 'keine Ausgabe'; continue }
     $info = [string]$o.info
     if ($o.errors -and @($o.errors).Count -gt 0) { $info += ' - Fehler: ' + ((@($o.errors) | ForEach-Object { if ($_ -is [string]) { $_ } else { $_ | ConvertTo-Json -Compress } }) -join ' | ') }
