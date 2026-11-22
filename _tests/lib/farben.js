@@ -48,6 +48,21 @@
           // Typfarben sind Tokens (Ring/Punkt), nicht mehr feste Hex-Werte
           if (typeof vmTypeColor !== 'function') errs.push('vmTypeColor fehlt');
           else if (!/^rgba\(/.test(vmTypeColor('etf'))) errs.push('vmTypeColor liefert ' + vmTypeColor('etf'));
+          // Historie-Tabelle (22.11.2026): füllt die Karte (vorher width:auto → endete mitten in der Karte),
+          // keine Zeile „Änderung Vorjahr“ voller Striche, runde Farbpunkte wie Kacheln/Ring
+          var hs = document.querySelector('#vm-hist .vm-hist-scroll'), ht = hs && hs.querySelector('table');
+          if (!ht) errs.push('Historie-Tabelle fehlt');
+          else {
+            var old = hs.style.width; hs.style.width = '2000px';
+            var tw = ht.getBoundingClientRect().width;
+            if (tw < 1990) errs.push('Historie füllt die Breite nicht: Tabelle ' + Math.round(tw) + ' px in 2000 px');
+            hs.style.width = old;
+            var yoyRow = [].filter.call(ht.querySelectorAll('tr'), function (r) { return /Vorjahr/.test(r.cells[0] && r.cells[0].textContent); })[0];
+            if (yoyRow && !/\d/.test([].slice.call(yoyRow.cells, 1).map(function (c) { return c.textContent; }).join(''))) errs.push('Historie: Zeile „Änderung Vorjahr“ nur mit Strichen');
+            var dot = ht.querySelector('.vm-h-dot');
+            if (dot && getComputedStyle(dot).borderTopLeftRadius !== '50%') errs.push('Historie: Farbpunkt eckig (' + getComputedStyle(dot).borderTopLeftRadius + ')');
+            info.push('Historie füllt Breite, ' + (yoyRow ? 'Vorjahr mit Werten' : 'Vorjahr ausgeblendet'));
+          }
           info.push(cards.length + ' Kacheln, ' + nVal + ' Beträge neutral, ' + nSpark + ' Verläufe blau, ' + nGain + ' Gewinn-Zeilen');
         } catch (e) { errs.push('Kacheln: ' + e.message); }
         var pre = document.createElement('pre'); pre.id = 'out';

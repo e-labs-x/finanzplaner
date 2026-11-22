@@ -1,6 +1,14 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Vermögen-Historie an die Seite angepasst (22.11.2026, `?v=20261122j`) — Abnahme offen
+Anlass: Nutzer-Screenshot (PC) — Tabelle endete mitten in der Karte (`width:auto`, nur 7 Monate ab Mai 2026). Sicherung: Tag `vor-historie`.
+- Tabelle volle Kartenbreite; am PC (≥ 768 px) Namensspalte nur so breit wie der längste Name, Monate teilen den Rest. iPhone unverändert (wischbar).
+- Zeile „Änderung Vorjahr“ nur, wenn ein Monat einen Vorjahreswert hat (2026 = erstes Jahr). Farbpunkte rund.
+- Prüfung in `farben.js` (Breite bei 2000 px, Vorjahr-Zeile, Punkt rund), Gegenprobe gegen `vor-historie`: rot.
 
 ---
 

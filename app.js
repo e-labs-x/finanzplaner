@@ -6624,7 +6624,9 @@ function vmRenderHistory(){
   }).join('');
   var sum='<tr class="vm-h-sum"><td>Summe</td>'+idx.map(function(i){return '<td>'+(h.sums[i]==null?'—':vmFmtEur0(h.sums[i]))+'</td>';}).join('')+'</tr>';
   var dvm='<tr class="vm-h-delta"><td>'+vmDeltaLbl('Vormonat')+'</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dPrev[i])+'</td>';}).join('')+'</tr>';
-  var dvj='<tr class="vm-h-delta"><td>'+vmDeltaLbl('Vorjahr')+'</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>';
+  // „Änderung Vorjahr“ nur, wenn mindestens ein Monat einen Vorjahreswert hat (2026: erstes Jahr → nur Striche)
+  var hasYoY=idx.some(function(i){ return !!h.dYoY[i]; });
+  var dvj=hasYoY?'<tr class="vm-h-delta"><td>'+vmDeltaLbl('Vorjahr')+'</td>'+idx.map(function(i){return '<td>'+vmFmtDelta(h.dYoY[i])+'</td>';}).join('')+'</tr>':'';
   el.innerHTML=hdr+'<div class="vm-hist-scroll"><table class="vm-hist">'+head+body+sum+dvm+dvj+'</table></div>'+
     '<div class="vm-hist-note"><i>Grau</i> = kein Eintrag in dem Monat, letzter Stand fortgeschrieben. Zelle antippen = Wert für diesen Monat eintragen. '+
     'Name antippen = Anlage aus Summe, Ring und Verlauf ausblenden. '+
