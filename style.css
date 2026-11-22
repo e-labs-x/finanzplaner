@@ -1280,7 +1280,9 @@ button { cursor: pointer; border: none; background: none; }
 /* ════════════════════════════════════════
    VERMÖGEN TAB
 ════════════════════════════════════════ */
-.vm-wrap{display:flex;flex-direction:column;gap:16px}
+/* Höchstbreite (22.11.2026): auf sehr breiten Bildschirmen stand der Ring in einer schmalen Spalte, das Diagramm war
+   1.500 px breit und nur halb so hoch wie die Karte. iPhone/Laptop (< 1.200 px Inhalt) unverändert. */
+.vm-wrap{display:flex;flex-direction:column;gap:16px;max-width:1200px;margin:0 auto;width:100%}
 .vm-chart-card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:20px;box-shadow:var(--sh)}
 .vm-chart-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:12px}
 /* Vermögens-Historie: Anlagen × Monate (wie die frühere Excel-Tabelle) */
@@ -1306,11 +1308,27 @@ button { cursor: pointer; border: none; background: none; }
 .vm-chip{background:var(--surf);border:1px solid var(--brd);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer}
 .vm-chip.on{background:var(--blue);border-color:var(--blue);color:var(--on-accent)}
 .vm-filter-note{font-size:12px;color:var(--tx3);margin-left:4px}
-/* Eingezahlt / Gewinn unter dem Ring */
-.vm-gain{margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);display:flex;flex-direction:column;gap:6px;text-align:left}
-.vm-gain-row{display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--tx2)}
-.vm-gain-row b{font-size:14px;color:var(--tx);white-space:nowrap}
+/* Kopf der Vermögen-Karte: eine Hauptzahl + Gewinn-Zeile, darunter Ring|Legende neben dem Verlauf */
+.vm-head{text-align:left;margin-bottom:18px}
+.vm-head-lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
+.vm-head-reset{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--blue);padding:2px 0}
+.vm-head-val{font-size:28px;font-weight:700;color:var(--tx);letter-spacing:-.5px;margin-top:2px}
+.vm-head-gain{font-size:14px;color:var(--tx2);margin-top:2px}
+.vm-head-gain b{font-weight:600}
 .vm-gain-n{color:var(--tx3);font-size:12px}
+.vm-ti{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:center;text-align:left}
+.vm-dc{display:flex;align-items:center;gap:16px;min-width:0}
+.vm-ring{width:180px;flex-shrink:0}
+.vm-dleg-wrap{display:flex;flex-direction:column;min-width:220px}
+.vm-dleg{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:var(--r-sm);cursor:default;transition:background .1s,opacity .1s;font-size:14px}
+.vm-dleg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.vm-dleg-lbl{flex:1;color:var(--tx2);white-space:nowrap}
+.vm-dleg-val{font-weight:600;color:var(--tx);white-space:nowrap}
+.vm-dleg-pct{font-size:12px;color:var(--tx3);min-width:44px;text-align:right}
+.vm-tc{min-width:0}
+.vm-trend-ttl{font-size:14px;color:var(--tx2);margin-bottom:6px}
+@media(max-width:899px){.vm-ti{grid-template-columns:minmax(0,1fr);gap:20px}}
+@media(max-width:480px){.vm-dc{flex-direction:column;align-items:stretch}.vm-ring{margin:0 auto}.vm-dleg-wrap{min-width:0}}
 .vm-hist th,.vm-hist td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--brd)}
 .vm-hist th{font-size:12px;font-weight:600;color:var(--tx3)}
 /* Namen nie abschneiden: am PC volle Länge, schmal (iPhone) Umbruch in eine zweite Zeile */
@@ -1332,13 +1350,15 @@ button { cursor: pointer; border: none; background: none; }
 .vm-hist .vm-h-neg{color:var(--red)}
 .vm-hist-note{margin-top:8px;font-size:12px;color:var(--tx3);line-height:1.5}
 .vm-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.vm-bar-row.vm-bar-off{opacity:.38}
+.vm-bar-row.vm-bar-off .vm-bar-lbl{text-decoration:line-through}
 /* Namen nie abschneiden: am PC breite Spalte, schmal (iPhone) Umbruch in eine zweite Zeile */
 .vm-bar-lbl{font-size:12px;color:var(--tx2);width:120px;flex-shrink:0;line-height:1.3;overflow-wrap:anywhere}
 @media(min-width:768px){.vm-bar-lbl{width:280px}}
 .vm-bar-track{flex:1;height:10px;background:var(--surf2);border-radius:var(--r-sm);overflow:hidden}
 .vm-bar-fill{height:100%;border-radius:var(--r-sm);transition:width .5s ease}
 .vm-bar-val{font-size:12px;font-weight:600;color:var(--tx);width:80px;text-align:right;flex-shrink:0}
-.vm-total-card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:24px 20px;box-shadow:var(--sh);text-align:center}
+.vm-total-card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:20px;box-shadow:var(--sh);text-align:left}
 .vm-total-lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:6px}
 .vm-total-val{font-size:36px;font-weight:700;color:var(--tx);letter-spacing:-1px}
 .vm-total-sub{font-size:12px;color:var(--tx3);margin-top:4px}

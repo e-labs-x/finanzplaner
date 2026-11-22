@@ -6668,10 +6668,14 @@ function vmRenderCharts(){
   items.sort(function(a,b){return b.value-a.value;});
   var total=s.total||1;
 
+  // Liste bleibt vollständig (Nutzer-Entscheidung 22.11.2026); was über die Auswahl ausgeblendet ist, steht blass und
+  // durchgestrichen da wie in der Historie — vorher sah es aus, als zähle es zur Summe im Ring.
   var barsHtml=items.map(function(item){
     var color=vmTypeColor(item.type);
     var pct=(item.value/total*100).toFixed(1);
-    return '<div class="vm-bar-row">'+
+    var a=item.id==='__espp__'?{id:'__espp__',ownerId:'person_1'}:(FP.Store.Assets.getById(item.id)||item);
+    var off=!vmInclude(a);
+    return '<div class="vm-bar-row'+(off?' vm-bar-off':'')+'"'+(off?' title="ausgeblendet – zählt nicht zur Auswahl"':'')+'>'+
       '<div class="vm-bar-lbl" title="'+esc(item.name)+'">'+esc(item.name)+'</div>'+
       '<div class="vm-bar-track"><div class="vm-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
       '<div class="vm-bar-val">'+eur(item.value)+'</div>'+
@@ -6798,44 +6802,51 @@ function vmRenderTotal(){
   var esppNow=s.byType['espp']||0, curM=FP.currentMonthStr();
   trendPts.forEach(function(p){ if(p.label===curM) p.value=r2(p.value+esppNow); });
 
-  // Legend (single column für schmalere Donut-Spalte)
+  // Kopf (22.11.2026): EINE Hauptzahl oben links + Gewinn-Zeile; der Ring zeigt nur noch die Aufteilung.
+  // Bei aktiver Auswahl steht dabei, WAS ausgewählt ist, mit „alle zeigen“ (gleich wie Taste „Alle“).
+  var selTxt='';
+  if(selOn){
+    var parts=[], ow=vmSel.owners;
+    if(!(ow.person_1&&ow.person_2&&ow.joint)) parts.push(['person_1','person_2','joint'].filter(function(k){return ow[k];}).map(function(k){return VM_OWNER_LABEL[k]||k;}).join(' + '));
+    var nH=Object.keys(vmSel.hidden).length;
+    if(nH) parts.push(nH+' Anlage'+(nH>1?'n':'')+' ausgeblendet');
+    selTxt=parts.join(' · ');
+  }
+  var gainHtml=totalCostBasis>0
+    ?'<div class="vm-head-gain"><b style="color:'+(portfolioGain>=0?'var(--green)':'var(--red)')+'">'+(portfolioGain>=0?'+':'')+fpEur0(portfolioGain)+
+       ' Gewinn ('+(portfolioGain>=0?'+':'')+portfolioGainPct.toFixed(1).replace('.',',')+' %)</b> auf '+fpEur0(totalCostBasis)+' eingezahlt'+
+       ' <span class="vm-gain-n">('+s.nInvested+' Anlage'+(s.nInvested>1?'n':'')+' mit Einstand)</span></div>'
+    :'';
+  var headHtml='<div class="vm-head">'+
+    '<div class="vm-head-lbl">'+(selOn?'Auswahl · '+esc(selTxt)+' <button class="vm-head-reset" onclick="vmSelOwner(\'all\')">alle zeigen</button>':'Gesamtvermögen')+'</div>'+
+    '<div class="vm-head-val">'+eur(total)+'</div>'+gainHtml+'</div>';
+  // Verlauf-Titel: Veränderung im gezeigten Zeitraum (Achse bleibt ab 0 → Linie wirkt flach, die Zahl sagt es)
+  var trendTtl='Verlauf';
+  if(hasTrend){
+    var p0=trendPts[0], p1=trendPts[trendPts.length-1], d=r2(p1.value-p0.value), dp=p0.value>0?d/p0.value*100:0;
+    var mLbl=function(m){var q=m.split('.');return MON[parseInt(q[0],10)-1]+' '+q[1];};
+    var y0=p0.label.split('.')[1], y1=p1.label.split('.')[1];
+    var span=y0===y1?MON[parseInt(p0.label,10)-1]+'–'+mLbl(p1.label):mLbl(p0.label)+' – '+mLbl(p1.label);
+    trendTtl='Verlauf '+span+': <b style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+(d>=0?'+':'')+fpEur0(d)+' ('+(d>=0?'+':'')+dp.toFixed(1).replace('.',',')+' %)</b>';
+  }
+
   var legHtml=segs.map(function(sg,i){
     return '<div class="vm-dleg" data-i="'+i+'" onmouseenter="vmDonutHighlight('+i+')" onmouseleave="vmDonutHighlight(-1)">'+
-      '<div style="width:9px;height:9px;border-radius:3px;background:'+sg.color+';flex-shrink:0"></div>'+
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--tx2)">'+sg.label+'</span>'+
-      '<span style="font-size:12px;font-weight:600;color:var(--tx);font-family:var(--mono);white-space:nowrap">'+eur(sg.value)+'</span>'+
-      '<span style="font-size:12px;color:var(--tx3);min-width:28px;text-align:right;flex-shrink:0">'+sg.pct.toFixed(1)+'%</span>'+
+      '<span class="vm-dleg-dot" style="background:'+sg.color+'"></span>'+
+      '<span class="vm-dleg-lbl">'+esc(sg.label)+'</span>'+
+      '<span class="vm-dleg-val">'+eur(sg.value)+'</span>'+
+      '<span class="vm-dleg-pct">'+sg.pct.toFixed(1).replace('.',',')+' %</span>'+
     '</div>';
   }).join('');
 
-  // CSS einmalig
-  if(!document.getElementById('_vm-layout-css')){
-    var _s=document.createElement('style');
-    _s.id='_vm-layout-css';
-    _s.textContent=
-      '.vm-ti{display:flex;gap:20px;align-items:flex-start}'+
-      '.vm-dc{flex-shrink:0;width:196px}'+
-      '.vm-tc{flex:1;min-width:0}'+
-      '.vm-dleg{display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:var(--r-sm);cursor:default;transition:background .1s,opacity .1s}'+
-      '@media(max-width:560px){.vm-ti{flex-direction:column}.vm-dc,.vm-tc{width:100%!important}}';
-    document.head.appendChild(_s);
-  }
-
-  el.innerHTML=
+  el.innerHTML=headHtml+
     '<div class="vm-ti">'+
       '<div class="vm-dc" id="vm-donut-col">'+
-        '<canvas id="vm-donut-canvas" style="display:block;margin:0 auto;cursor:default"></canvas>'+
-        '<div id="vm-dleg-wrap" style="margin-top:10px;border-top:1px solid var(--brd);padding-top:8px;display:flex;flex-direction:column;text-align:left">'+legHtml+'</div>'+
-        (totalCostBasis>0
-          ?'<div class="vm-gain">'+
-              '<div class="vm-gain-row"><span>Eingezahlt <span class="vm-gain-n">('+s.nInvested+' Anlage'+(s.nInvested>1?'n':'')+' mit Einstand)</span></span><b>'+eur(totalCostBasis)+'</b></div>'+
-              '<div class="vm-gain-row"><span>Gewinn darauf</span><b style="color:'+(portfolioGain>=0?'var(--green)':'var(--red)')+'">'+
-                (portfolioGain>=0?'+':'')+eur(portfolioGain)+' ('+(portfolioGain>=0?'+':'')+portfolioGainPct.toFixed(1).replace('.',',')+' %)</b></div>'+
-            '</div>'
-          :'')+
+        '<div class="vm-ring" id="vm-ring-box"><canvas id="vm-donut-canvas" style="display:block;margin:0 auto;cursor:default"></canvas></div>'+
+        '<div id="vm-dleg-wrap" class="vm-dleg-wrap">'+legHtml+'</div>'+
       '</div>'+
       '<div class="vm-tc" id="vm-trend-col">'+
-        '<div style="font-size:12px;font-weight:600;color:var(--tx3);margin-bottom:4px;padding-left:52px">Vermögensentwicklung</div>'+
+        '<div class="vm-trend-ttl">'+trendTtl+'</div>'+
         (hasTrend
           ?'<div class="fp-chart-box" style="height:240px"><canvas id="vm-trend-canvas-r"></canvas></div>'
           :'<div style="height:250px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1.5px dashed var(--brd);border-radius:var(--r-sm);color:var(--tx3)">'+
@@ -6847,11 +6858,11 @@ function vmRenderTotal(){
 
   requestAnimationFrame(function(){
     // Donut
-    var donutCol=document.getElementById('vm-donut-col');
+    var donutCol=document.getElementById('vm-ring-box');
     var canvas=document.getElementById('vm-donut-canvas');
     if(!canvas)return;
     var dpr=window.devicePixelRatio||1;
-    var W=Math.max(Math.min(donutCol?donutCol.clientWidth-4:190,200),120);
+    var W=Math.max(Math.min(donutCol?donutCol.clientWidth:180,200),120);
     canvas.width=W*dpr; canvas.height=W*dpr;
     canvas.style.width=W+'px'; canvas.style.height=W+'px';
 
@@ -6897,8 +6908,9 @@ function vmRenderTotal(){
       var fs1=Math.max(Math.round(W*0.054),9);
       var fs2=Math.max(Math.round(W*0.090),14);
       var lbl,val,valColor;
+      // Mitte: nur beim Zeigen auf ein Stück dessen Wert — die Gesamtsumme steht groß oben (eine Hauptzahl)
       if(hi>=0&&segs[hi]){lbl=segs[hi].label;val=eur(segs[hi].value);valColor=segs[hi].color;}
-      else{lbl=selOn?'Auswahl':'Gesamtvermögen';val=eur(total);valColor=tx;}
+      else{lbl='Aufteilung';val=segs.length+(segs.length>1?' Arten':' Art');valColor=tx3;}
       ctx.font='700 '+fs2+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       while(ctx.measureText(val).width>ri*1.75&&fs2>10){fs2--;ctx.font='700 '+fs2+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';}
       ctx.fillStyle=tx3;ctx.font='500 '+fs1+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
@@ -6943,7 +6955,7 @@ function vmDonutHighlight(idx){
   var canvas=document.getElementById('vm-donut-canvas');
   if(canvas&&canvas._donut)canvas._donut.draw(idx);
   document.querySelectorAll('.vm-dleg').forEach(function(r,i){
-    r.style.background=(idx>=0&&i===idx)?'var(--bg2,rgba(0,0,0,0.06))':'';
+    r.style.background=(idx>=0&&i===idx)?'var(--surf2)':'';
     r.style.opacity=(idx>=0&&i!==idx)?'0.4':'1';
   });
 }
