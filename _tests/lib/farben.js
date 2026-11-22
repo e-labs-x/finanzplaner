@@ -63,6 +63,17 @@
             if (dot && getComputedStyle(dot).borderTopLeftRadius !== '50%') errs.push('Historie: Farbpunkt eckig (' + getComputedStyle(dot).borderTopLeftRadius + ')');
             info.push('Historie füllt Breite, ' + (yoyRow ? 'Vorjahr mit Werten' : 'Vorjahr ausgeblendet'));
           }
+          // Auswahl (22.11.2026): eine ausgeblendete Anlage steht außer in Kacheln/Historie/ESPP nirgends mehr auf der Seite
+          // (die frühere Balkenliste „Anlagen im Überblick“ ignorierte die Auswahl und zeigte sie weiter).
+          var big = FP.Calculator.getAssetSummary().items.slice().sort(function (a, b) { return b.value - a.value; })[0];
+          if (big) {
+            vmToggleAsset(big.id);
+            var pg = document.getElementById('p-vermoegen').cloneNode(true);
+            ['#vm-assets', '#vm-hist', '#vm-espp'].forEach(function (q) { var x = pg.querySelector(q); if (x) x.remove(); });
+            if (pg.textContent.indexOf(big.name) >= 0) errs.push('ausgeblendete Anlage „' + big.name + '“ steht weiter auf der Vermögen-Seite');
+            if (/Anlagen im Überblick/.test(pg.textContent)) errs.push('Balkenliste „Anlagen im Überblick“ noch da');
+            vmToggleAsset(big.id);
+          }
           info.push(cards.length + ' Kacheln, ' + nVal + ' Beträge neutral, ' + nSpark + ' Verläufe blau, ' + nGain + ' Gewinn-Zeilen');
         } catch (e) { errs.push('Kacheln: ' + e.message); }
         var pre = document.createElement('pre'); pre.id = 'out';

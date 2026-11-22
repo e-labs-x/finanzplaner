@@ -6531,7 +6531,6 @@ function vmRender(){
   vmRenderFilter();
   vmRenderTotal();
   vmRenderHistory();
-  vmRenderCharts();
   vmRenderAssets();
   vmRenderFsa();
   esppRender();
@@ -6640,46 +6639,8 @@ function vmHistCell(assetId,month){
   vmOpenSnapshot(assetId,month,own?own.value:null);
 }
 
-function vmRenderCharts(){
-  var el=document.getElementById('vm-charts');
-  if(!el)return;
-  var store=FP.Store.get();
-  var assets=store.assets.filter(function(a){return a.status==='aktiv';});
-
-  // ── Verlaufsdaten: alle Snapshots aller Assets nach Monat summieren ──
-  var byMonth={};
-  assets.forEach(function(asset){
-    var snaps=asset.snapshots||[];
-    snaps.forEach(function(s){
-      if(!s.date||!s.value)return;
-      byMonth[s.date]=(byMonth[s.date]||0)+s.value;
-    });
-  });
-  var months=Object.keys(byMonth).sort(function(a,b){
-    var pa=a.split('.'),pb=b.split('.');
-    return (parseInt(pa[1])*100+parseInt(pa[0]))-(parseInt(pb[1])*100+parseInt(pb[0]));
-  });
-
-  // ── Asset-Balken: aktuelle Werte ──
-  var s=FP.Calculator.getAssetSummary();
-  var items=s.items.filter(function(i){return i.value>0;}).slice();
-  var esppVal=s.byType['espp']||0;
-  if(esppVal>0) items.push({id:'__espp__',name:'ESPP (Fidelity)',type:'espp',value:esppVal});
-  items.sort(function(a,b){return b.value-a.value;});
-  var total=s.total||1;
-
-  var barsHtml=items.map(function(item){
-    var color=vmTypeColor(item.type);
-    var pct=(item.value/total*100).toFixed(1);
-    return '<div class="vm-bar-row">'+
-      '<div class="vm-bar-lbl" title="'+esc(item.name)+'">'+esc(item.name)+'</div>'+
-      '<div class="vm-bar-track"><div class="vm-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
-      '<div class="vm-bar-val">'+eur(item.value)+'</div>'+
-    '</div>';
-  }).join('');
-
-  el.innerHTML=(items.length?'<div class="vm-chart-title">Anlagen im Überblick</div>'+barsHtml:'');
-}
+// „Anlagen im Überblick“ (Balkenliste, vmRenderCharts) entfernt 22.11.2026: folgte der Auswahl nicht (zeigte ausgeblendete
+// Anlagen, während Ring/Verlauf/Historie sie wegließen) und war die dritte Liste derselben Anlagen (Kacheln, Historie).
 
 function vmDrawTrend(canvas, pts){
   var ctx=canvas.getContext('2d');
