@@ -1,6 +1,19 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Farbregel: echtes Grün + Vermögen-Kacheln (22.11.2026, `?v=20261122i`) — Abnahme offen
+Anlass: Nutzer verstand die Farben im Vermögen-Tab nicht (blau/grün/lila „von allem ein wenig“, Verläufe „flach“). Befund: 4 Regeln
+übereinander — Betrag in Typfarbe (feste Hex), Gewinn in `--green` (war seit der Dateiaufteilung **Lila**, Ton 295, ohne dokumentierten
+Grund), Mini-Verlauf rot/lila nach „letzter < erster Punkt“ (ACWI rot trotz +80 %), 28 px hoch, Schilder blau/lila ohne Bedeutung.
+Sicherung vorher: Tag `vor-farben`.
+- `--green`/`-dk`/`-lt`/`-mid` echtes Grün (hell + dunkel) → wirkt app-weit (Einnahmen Cashflow, Netto-Schilder, Rente „Kein Defizit“, Gewinne).
+- Typfarben als Tokens `--vm-<typ>` + `vmTypeColor()` (ersetzt Hex-Tabelle `VM_TYPE_COLOR`, Ring/Legende/Balken/Suche).
+- Kachel: Betrag neutral, graues Typ-Schild mit Farbpunkt, eine Zeile „Stand · Person · Sparplan“, Gewinn grün/Verlust rot,
+  Verlauf blau 48 px. ✎/✕/„+ Wert eintragen“ bleiben bis Schritt 5.
+- Prüfung `farben.js`, Gegenprobe gegen `vor-farben`: rot; neu 23/23 grün. Dunkelmodus nur über Tokens, nicht gerendert geprüft.
 
 ---
 

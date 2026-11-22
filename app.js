@@ -6388,7 +6388,8 @@ function rpSyncSlider(id, val) {
 /* ════════════════════════════════════════
    VERMÖGEN TAB
 ════════════════════════════════════════ */
-var VM_TYPE_COLOR  = {etf:'#3B82F6',aktie:'#2563EB',geldmarkt:'#10B981',tagesgeld:'#0891B2',girokonto:'#059669',immobilie:'#7C3AED',espp:'#F59E0B',rsu:'#EC4899',sonstiges:'#94A3B8'};
+// Typfarben als Tokens (--vm-<typ>, style.css, hell+dunkel) — aufgelöst zu rgba, damit sie auch im Canvas (Ring) gehen
+function vmTypeColor(t){ return fpTokRgba('--vm-'+(VM_TYPE_LABEL[t]?t:'sonstiges')); }
 var VM_TYPE_LABEL  = {etf:'ETF',aktie:'Aktie',geldmarkt:'Geldmarkt',tagesgeld:'Tagesgeld',girokonto:'Girokonto',immobilie:'Immobilie',espp:'ESPP',rsu:'RSU',sonstiges:'Sonstiges'};
 var VM_OWNER_LABEL = {person_1:'Person 1',person_2:'Partner',joint:'Gemeinsam'};
 function vmBuildOwnerLabel(){
@@ -6611,7 +6612,7 @@ function vmRenderHistory(){
   var idx=[]; for(var i=start;i<h.months.length;i++) idx.push(i);
   var head='<tr><th>Anlage</th>'+idx.map(function(i){return '<th>'+h.months[i].label+'</th>';}).join('')+'</tr>';
   var body=h.rows.map(function(r){
-    var color=VM_TYPE_COLOR[r.type]||'#94A3B8';
+    var color=vmTypeColor(r.type);
     var tds=idx.map(function(i){
       var c=r.cells[i], key=h.months[i].key;
       var click=r.id==='__espp__'?'':' onclick="vmHistCell(\''+r.id+'\',\''+key+'\')"';
@@ -6666,7 +6667,7 @@ function vmRenderCharts(){
   var total=s.total||1;
 
   var barsHtml=items.map(function(item){
-    var color=VM_TYPE_COLOR[item.type]||'#94A3B8';
+    var color=vmTypeColor(item.type);
     var pct=(item.value/total*100).toFixed(1);
     return '<div class="vm-bar-row">'+
       '<div class="vm-bar-lbl" title="'+esc(item.name)+'">'+esc(item.name)+'</div>'+
@@ -6758,7 +6759,7 @@ function vmRenderTotal(){
   var selOn=vmSelActive();
 
   var segs=Object.entries(s.byType).filter(function(e){return e[1]>0;}).map(function(e){
-    return {type:e[0],value:e[1],pct:total>0?e[1]/total*100:0,color:VM_TYPE_COLOR[e[0]]||'#94A3B8',label:VM_TYPE_LABEL[e[0]]||e[0]};
+    return {type:e[0],value:e[1],pct:total>0?e[1]/total*100:0,color:vmTypeColor(e[0]),label:VM_TYPE_LABEL[e[0]]||e[0]};
   }).sort(function(a,b){return b.value-a.value;});
 
   if(!segs.length){
@@ -7002,28 +7003,25 @@ function vmRenderAssets(){
     el.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--tx3);font-size:14px">Keine Anlagen vorhanden.</div>';
     return;
   }
+  // Farbregel (22.11.2026): Beträge neutral; Farbe nur mit Bedeutung — Gewinn grün, Verlust rot, Verlauf blau (= Vermögen).
+  // Die Typfarbe erscheint nur als Punkt im Schild (passt zum Ring/Legende).
+  function typeTag(t){ return '<div class="vm-asset-type"><span class="vm-type-dot" style="background:'+vmTypeColor(t)+'"></span>'+esc(VM_TYPE_LABEL[t]||t)+'</div>'; }
   var esppVal=s.byType['espp']||0;
-  var ec=VM_TYPE_COLOR['espp']||'var(--amber)';
   var esppTile='<div class="vm-asset" onclick="document.getElementById(\'vm-espp\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="cursor:pointer">'+
     '<div class="vm-asset-top">'+
       '<div><div class="vm-asset-name">ESPP (Fidelity)</div></div>'+
-      '<div style="display:flex;align-items:center;gap:6px">'+
-        '<div class="vm-asset-type" style="color:'+ec+';background:'+ec+'22">ESPP</div>'+
-      '</div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+typeTag('espp')+'</div>'+
     '</div>'+
     (esppVal>0
-      ? '<div class="vm-asset-val" style="color:'+ec+'">'+eur(esppVal)+'</div>'+
-        '<div class="vm-asset-meta">Gehaltene Zyklen · Details unten</div>'
+      ? '<div class="vm-asset-val">'+eur(esppVal)+'</div>'+
+        '<div class="vm-asset-meta">Gehaltene Zyklen · Details unten · '+esc(VM_OWNER_LABEL['person_1']||'Person 1')+'</div>'
       : '<div class="vm-asset-val" style="color:var(--tx3);font-size:16px">–</div>'+
         '<div class="vm-asset-meta">Noch keine Zyklen erfasst</div>')+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
-      '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL['person_1']||'Person 1')+'</div>'+
+    '<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px">'+
       '<button onclick="event.stopPropagation();document.getElementById(\'vm-espp\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:4px 10px;font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer">Details ↓</button>'+
     '</div>'+
   '</div>';
   el.innerHTML=s.items.map(function(item){
-    var color=VM_TYPE_COLOR[item.type]||'#94A3B8';
-    var alpha=color+'22';
     var hasVal=item.value>0;
     var asset=FP.Store.Assets.getById(item.id);
     var isinHint=asset&&asset.isin?'<span style="font-size:12px;color:var(--tx3);font-family:var(--mono)">'+esc(asset.isin)+'</span>':'';
@@ -7039,30 +7037,29 @@ function vmRenderAssets(){
         gs+eur(gain)+' ('+gs+gainPct.toFixed(1)+'%) · Einstand '+eur(asset.costBasis)+'</div>';
     }
 
-    // Mini sparkline SVG
+    // Mini-Verlauf: immer blau (= Vermögen) — ob die Anlage im Plus ist, sagt die Gewinn-Zeile darüber.
+    // Früher rot/lila nach „letzter < erster Punkt“: rot trotz +80 % Gewinn, wenn der Novemberkurs unter dem Mai lag.
     var sparkHtml='';
     var snaps=asset&&asset.snapshots?asset.snapshots:[];
     if(snaps.length>=2){
       var sVals=snaps.map(function(s){return s.value;});
       var sMin=Math.min.apply(null,sVals),sMax=Math.max.apply(null,sVals);
       var sRange=sMax-sMin||1;
-      var svgH=28,pad=4;
+      var svgH=48,pad=5;
       var pts=snaps.map(function(s,i){
         var x=(i/(snaps.length-1)*100).toFixed(1);
         var y=(svgH-pad-(s.value-sMin)/sRange*(svgH-pad*2)).toFixed(1);
         return [x,y];
       });
-      var isUp=snaps[snaps.length-1].value>=snaps[0].value;
-      var _csVm=getComputedStyle(document.documentElement);
-      var lc=isUp?_csVm.getPropertyValue('--green').trim()||'oklch(57% 0.2 295)':'var(--red)';
-      var fc=isUp?_csVm.getPropertyValue('--green-lt').trim()||'oklch(95.5% 0.042 295)':_csVm.getPropertyValue('--red-lt').trim()||'oklch(97% 0.04 22)';
       var polyPts=pts.map(function(p){return p[0]+','+p[1];}).join(' ');
       var fillD='M0,'+svgH+' '+pts.map(function(p){return 'L'+p[0]+','+p[1];}).join(' ')+' L100,'+svgH+' Z';
-      sparkHtml='<svg viewBox="0 0 100 '+svgH+'" preserveAspectRatio="none" style="display:block;width:100%;height:'+svgH+'px;margin:8px 0 2px;border-radius:4px;overflow:hidden">'+
-        '<path d="'+fillD+'" fill="'+fc+'"/>'+
-        '<polyline points="'+polyPts+'" fill="none" stroke="'+lc+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'+
+      sparkHtml='<svg class="vm-spark" viewBox="0 0 100 '+svgH+'" preserveAspectRatio="none" aria-hidden="true">'+
+        '<path d="'+fillD+'" fill="var(--blue-lt)"/>'+
+        '<polyline points="'+polyPts+'" fill="none" stroke="var(--blue)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>'+
         '</svg>';
     }
+    var meta=[item.date?'Stand '+item.date:'Noch kein Wert erfasst', VM_OWNER_LABEL[item.ownerId]||item.ownerId];
+    if(asset&&asset.monthlyPlan) meta.push('Sparplan '+eur(asset.monthlyPlan).replace(',00','')+'/Monat');
 
     return '<div class="vm-asset">'+
       '<div class="vm-asset-top">'+
@@ -7071,22 +7068,16 @@ function vmRenderAssets(){
           (isinHint?'<div style="margin-top:2px">'+isinHint+'</div>':'')+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:6px">'+
-          '<div class="vm-asset-type" style="color:'+color+';background:'+alpha+'">'+(VM_TYPE_LABEL[item.type]||item.type)+'</div>'+
+          typeTag(item.type)+
           '<button onclick="vmEditAsset(\''+item.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:var(--r-sm);padding:2px 7px;font-size:12px;color:var(--tx3);cursor:pointer">✎</button>'+
           '<button onclick="vmDelAsset(event,\''+item.id+'\')" style="background:none;border:none;padding:2px 5px;font-size:14px;color:var(--tx3);cursor:pointer" title="Anlage löschen">✕</button>'+
         '</div>'+
       '</div>'+
-      '<div class="vm-asset-val" style="color:'+(hasVal?color:'var(--tx3);font-size:16px')+'">'+eur(item.value)+'</div>'+
-      '<div class="vm-asset-meta">'+(item.date?'Stand: '+item.date:'Noch kein Wert erfasst')+'</div>'+
+      '<div class="vm-asset-val"'+(hasVal?'':' style="color:var(--tx3);font-size:16px"')+'>'+eur(item.value)+'</div>'+
+      '<div class="vm-asset-meta">'+esc(meta.join(' · '))+'</div>'+
       perfHtml+
       sparkHtml+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
-        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
-          '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL[item.ownerId]||item.ownerId)+'</div>'+
-          (asset&&asset.monthlyPlan
-            ?'<div onclick="vmEditAsset(\''+item.id+'\')" style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:12px;font-weight:600;background:rgba(124,58,237,0.12);color:var(--purple);cursor:pointer" title="Sparplan bearbeiten">€'+asset.monthlyPlan+'/Mo</div>'
-            :'')+
-        '</div>'+
+      '<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px">'+
         '<button onclick="vmOpenSnapshot(\''+item.id+'\')" style="background:var(--blue);border:none;border-radius:var(--r-sm);padding:4px 10px;font-size:12px;font-weight:600;color:var(--on-accent);cursor:pointer">+ Wert eintragen</button>'+
       '</div>'+
     '</div>';
@@ -7812,7 +7803,7 @@ function srSearch(q){
   if(assetHits.length){
     html+='<div class="sr-section-lbl">Anlagen</div>';
     html+=assetHits.map(function(a){
-      var color=VM_TYPE_COLOR[a.type]||'#94A3B8';
+      var color=vmTypeColor(a.type);
       var snap=FP.Store.Assets.getLatestSnapshot(a.id);
       var meta=[a.wkn,a.isin].filter(Boolean).join(' · ');
       return '<button class="sr-item" onclick="closeSearch();nav(\'vermoegen\')">'

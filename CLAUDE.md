@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122h`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122i`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -225,7 +225,10 @@ Tests nutzen erfundene Bankzeilen.
   löst Farben auf (Chart.js kennt kein oklch). Canvas liegt in einem Bereich mit fester Höhe (`.fp-chart-box`/`.cf-canvas-wrap`) —
   Chart.js misst den Bereich, die px-Regel unten gilt für die alten Eigenbauten. Umgestellt: Cashflow, Gehalt, Vermögensverlauf, Rente (Verlauf, Stichtag; Markierungen über `fpMarkers`).
   Noch Eigenbau: Vermögens-Ring, Home-Linie, tote Reiter `rpRenderTabEntnahme/Depot` (nicht erreichbar).
-- **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
+- **Farbregel (seit 22.11.2026, `_tests/lib/farben.js`):** Farbe nur mit Bedeutung — **Grün = Gewinn/Einnahme/gut** (`--green` ist echtes Grün,
+  vorher Lila), **Rot = Verlust/Ausgabe**, **Blau = Vermögen/Netto**. Beträge sonst neutral (`--tx`). Anlage-Arten nur als Punkt/Ring über
+  Tokens `--vm-<typ>` → `vmTypeColor(typ)` (liefert rgba, geht auch im Canvas). Nie wieder Typfarbe auf Beträgen oder rot/grün-Wertung im Mini-Verlauf.
+- **Canvas/Donut:** Farben über `vmTypeColor()` / `fpTokRgba()` aufgelöst — kein `var(--...)` direkt in der Canvas-API
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert
   liefern, dann reagieren Charts nie auf iPhone-Drehung. Gilt für alle Chart-Funktionen (`ghDrawChart`,

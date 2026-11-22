@@ -45,9 +45,20 @@
   --blue-lt:      oklch(95% 0.048 268);
   --blue-bd:      oklch(78% 0.12 268);
   --blue-glow:    oklch(52% 0.22 268 / .2);
-  --green:        oklch(57% 0.2 295);
-  --green-dk:     oklch(50% 0.18 295);
-  --green-lt:     oklch(95.5% 0.042 295);
+  /* Grün = Gewinn / Einnahme / „gut“ (seit 22.11.2026 echtes Grün; vorher stand hier Lila, Ton 295) */
+  --green:        oklch(53% 0.15 150);
+  --green-dk:     oklch(45% 0.13 150);
+  --green-lt:     oklch(95.5% 0.045 150);
+  /* Anlage-Arten (Vermögen): nur für Ring, Legende und den Punkt im Typ-Schild — nie für Beträge */
+  --vm-etf:       oklch(62% 0.17 255);
+  --vm-aktie:     oklch(52% 0.2 268);
+  --vm-geldmarkt: oklch(65% 0.13 185);
+  --vm-tagesgeld: oklch(62% 0.12 215);
+  --vm-girokonto: oklch(58% 0.12 160);
+  --vm-immobilie: oklch(55% 0.2 296);
+  --vm-espp:      oklch(74% 0.16 70);
+  --vm-rsu:       oklch(63% 0.2 350);
+  --vm-sonstiges: oklch(68% 0.03 260);
   --amber:        oklch(72% 0.18 65);
   --amber-lt:     oklch(97% 0.04 75);
   --red:          oklch(57% 0.24 22);
@@ -68,7 +79,7 @@
   --purple-lt:    oklch(93% 0.055 296);
   --purple-bd:    oklch(78% 0.12 296);
   --purple-glow:  oklch(57% 0.22 296 / .2);
-  --green-mid:    oklch(76% 0.16 295);
+  --green-mid:    oklch(76% 0.14 150);
   --purple-mid:   oklch(83% 0.13 296);
   --nav-w:        224px;
   --nav-col:      62px;
@@ -121,9 +132,18 @@
     --blue-lt:      oklch(22% 0.068 265);
     --blue-bd:      oklch(38% 0.12 265);
     --blue-glow:    oklch(68% 0.2 265 / .28);
-    --green:        oklch(70% 0.18 295);
-    --green-dk:     oklch(70% 0.18 295);
-    --green-lt:     oklch(22% 0.065 295);
+    --green:        oklch(72% 0.16 150);
+    --green-dk:     oklch(72% 0.16 150);
+    --green-lt:     oklch(24% 0.06 150);
+    --vm-etf:       oklch(70% 0.15 255);
+    --vm-aktie:     oklch(66% 0.17 268);
+    --vm-geldmarkt: oklch(74% 0.12 185);
+    --vm-tagesgeld: oklch(72% 0.11 215);
+    --vm-girokonto: oklch(70% 0.12 160);
+    --vm-immobilie: oklch(68% 0.18 296);
+    --vm-espp:      oklch(80% 0.15 70);
+    --vm-rsu:       oklch(70% 0.18 350);
+    --vm-sonstiges: oklch(65% 0.03 260);
     --amber:        oklch(78% 0.17 65);
     --amber-lt:     oklch(22% 0.055 65);
     --red:          oklch(65% 0.22 22);
@@ -138,7 +158,7 @@
     --purple-lt:    oklch(22% 0.065 296);
     --purple-bd:    oklch(38% 0.12 296);
     --purple-glow:  oklch(70% 0.2 296 / .28);
-    --green-mid:    oklch(55% 0.16 295);
+    --green-mid:    oklch(52% 0.13 150);
     --purple-mid:   oklch(55% 0.14 296);
 
     --sidebar-border: oklch(27% 0.028 268);
@@ -1331,8 +1351,10 @@ button { cursor: pointer; border: none; background: none; }
 .vm-asset:hover{background:var(--bg)}
 .vm-asset-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
 .vm-asset-name{font-size:14px;font-weight:600;color:var(--tx)}
-.vm-asset-type{font-size:12px;font-weight:600;padding:2px 7px;border-radius:99px}
-.vm-asset-val{font-size:20px;font-weight:700;letter-spacing:-.5px}
+.vm-asset-type{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:400;padding:2px 8px;border-radius:99px;background:var(--surf2);color:var(--tx2)}
+.vm-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.vm-asset-val{font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--tx)}
+.vm-spark{display:block;width:100%;height:48px;margin:10px 0 2px;overflow:hidden}
 .vm-asset-meta{font-size:12px;color:var(--tx3);margin-top:3px}
 .vm-asset-owner{display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:12px;font-weight:600;background:var(--blue-lt);color:var(--blue);margin-top:6px}
 .vm-fsa-card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
