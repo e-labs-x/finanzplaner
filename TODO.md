@@ -1,6 +1,21 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Schritt 3a Umbau: neue Navigation hinter Schalter (22.11.2026, `?v=20261122h`) — Abnahme auf dem iPhone offen
+Sicherung vorher: Tag `vor-navigation-schritt3`, `files\*_2026-11-22_vor-navigation.*`, Daten `files\sync_2026-11-22_vor-navigation.fpbackup` (2.530 Buchungen).
+- Einstellungen → Ansicht → Navigation: „Neue Navigation testen“ (`localStorage fp_newnav`, nur dieses Gerät, kein Store-Feld; App lädt neu).
+- Aus = **nichts** wird angefasst (keine neuen Elemente, `#nn-sub` ausgeblendet). An = `body.nn`, 5 Bereiche `NN_AREAS` (app.js):
+  Start · Buchungen [Eingabe · Liste (= Reports) · Import · Fixkosten] · Auswertung [Kategorien (= Übersicht) · Objekte · Jahr (= Cashflow)] ·
+  Vermögen · Planung [Gehalt · Rente · Steuern]. Zahnrad oben rechts (iPhone) bzw. unten in der Seitenleiste (PC), mit Sync-Punkt.
+- Gleiche Seiten und Renderer wie bisher, nur anders gruppiert: `nav(id)` ruft `nnSync(id)`; Import-Knopf/-Verlauf und Freistellungsaufträge
+  werden beim Start in die neuen Seiten `p-import`/`p-steuern` verschoben (gleiche ids). Budget und „Mehr“ in der neuen Navigation nicht erreichbar,
+  Budget-Aufteilung im Einstellungsmenü ausgeblendet (Werte bleiben gespeichert).
+- Prüfung `navigation.js` (2 Läufe, alt/neu), Gegenprobe gegen `vor-navigation-schritt3`: rot; neu: 22/22 grün.
+- **Offen Teil 3b:** globaler Umschalter Alle | Enes | Ehli (Rechenfunktionen nach Person), Buchungsliste mit Filtern statt Reports,
+  Objekte-Karten (Summe, Ø/Monat, Gesamt | Zeitraum), Budget-Code entfernen wenn neue Navigation Standard wird.
 
 ---
 

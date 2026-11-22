@@ -1,7 +1,7 @@
 'use strict';
 
 const MON = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', cashflow:'Cashflow', budget:'Budget', reports:'Reports', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr' };
+const LABELS = { home:'Home', eingabe:'Eingabe', auswertung:'Übersicht', cashflow:'Cashflow', budget:'Budget', reports:'Reports', objekte:'Objekte', gehalt:'Gehalt', vermoegen:'Vermögen', rente:'Rentenplanung', fixkosten:'Fixkosten', einstellungen:'Einstellungen', mehr:'Mehr', import:'Import', steuern:'Steuern' };
 const MEHR_PAGES = ['gehalt','fixkosten','objekte','einstellungen'];
 const ICONS  = {
   cat_lebensmittel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
@@ -632,20 +632,21 @@ function setSyncStatus(state, label) {
   var ind   = document.getElementById('sync-indicator');
   var dot   = document.getElementById('sync-dot');
   var lbl   = document.getElementById('sync-lbl');
-  var badge = document.getElementById('bn-sync-badge');
+  // zwei Punkte: „Mehr“ (alte Navigation) und Zahnrad (neue Navigation, nur wenn eingeschaltet vorhanden)
+  var badges = [document.getElementById('bn-sync-badge'), document.getElementById('nn-sync-badge')].filter(Boolean);
   if (!ind) return;
   if (state === 'off') {
     ind.style.display = 'none';
-    if (badge) badge.classList.remove('show');
+    badges.forEach(function(b) { b.classList.remove('show'); });
     return;
   }
   ind.style.display = 'flex';
   if (dot) dot.className = 'sync-dot ' + state;
   if (lbl) lbl.textContent = label || '';
-  if (badge) {
+  badges.forEach(function(badge) {
     badge.style.background = state === 'synced' ? 'var(--green)' : state === 'error' ? 'var(--red)' : 'var(--amber)';
     badge.classList.toggle('show', state !== 'synced');
-  }
+  });
 }
 
 function azsRenderUI() {
@@ -865,6 +866,92 @@ function nav(id) {
   if (id === 'fixkosten')    setTimeout(fkInit, 80);
   if (id === 'objekte')       setTimeout(obInit, 80);
   if (id === 'einstellungen') setTimeout(stInit, 80);
+  if (id === 'import')        impRenderHist();
+  if (id === 'steuern')       vmRenderFsa();
+  if (NN_ON) nnSync(id);
+}
+
+/* ── Neue Navigation (Schritt 3, 22.11.2026) — Test-Schalter je Gerät ──
+   Nur Ansicht: dieselben Seiten (p-*) und Renderer wie bisher, sie werden nur anders gruppiert.
+   Aus (Standard) = kein einziges Element wird angefasst, die alte Navigation bleibt exakt wie sie war.
+   An = body.nn, fünf Bereiche (Leiste unten / Seitenleiste), Reiter oben (#nn-sub), Zahnrad = Einstellungen.
+   Budget und „Mehr“ sind in der neuen Navigation nicht mehr erreichbar (Konzept 22.11.2026). */
+var NN_KEY = 'fp_newnav';
+var NN_ON = false;
+try { NN_ON = localStorage.getItem(NN_KEY) === '1'; } catch (e) {}
+var NN_AREAS = [
+  { k:'start',      t:'Start',      ico:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    subs:[['home','Start']] },
+  { k:'buchungen',  t:'Buchungen',  ico:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/>',
+    subs:[['eingabe','Eingabe'],['reports','Liste'],['import','Import'],['fixkosten','Fixkosten']] },
+  { k:'auswertung', t:'Auswertung', ico:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    subs:[['auswertung','Kategorien'],['objekte','Objekte'],['cashflow','Jahr']] },
+  { k:'vermoegen',  t:'Vermögen',   ico:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+    subs:[['vermoegen','Vermögen']] },
+  { k:'planung',    t:'Planung',    ico:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+    subs:[['gehalt','Gehalt'],['rente','Rente'],['steuern','Steuern']] }
+];
+var NN_GEAR = '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>';
+var _nnLast = {};   // zuletzt gewählter Reiter je Bereich (nur für diese Sitzung)
+function nnSvg(paths, size) {
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+}
+function nnAreaOf(id) {
+  for (var i = 0; i < NN_AREAS.length; i++)
+    for (var j = 0; j < NN_AREAS[i].subs.length; j++) if (NN_AREAS[i].subs[j][0] === id) return NN_AREAS[i];
+  return null;
+}
+function nnArea(k) {
+  var a = NN_AREAS.filter(function (x) { return x.k === k; })[0]; if (!a) return;
+  nav(_nnLast[k] || a.subs[0][0]);
+}
+// Einmal beim Start (nur wenn eingeschaltet): Bedienelemente anlegen, Import und Freistellungsaufträge umziehen
+function nnApply() {
+  if (!NN_ON) return;
+  document.body.classList.add('nn');
+  var bn = document.getElementById('bot-nav');
+  if (bn) bn.insertAdjacentHTML('beforeend', '<div class="bn-items bn-items-nn">' + NN_AREAS.map(function (a) {
+    return '<button class="bn-item" data-a="' + a.k + '" onclick="nnArea(\'' + a.k + '\')"><span class="bn-icon">' + nnSvg(a.ico, 18) + '</span><span class="bn-lbl">' + a.t + '</span></button>';
+  }).join('') + '</div>');
+  var grp = document.querySelector('#sidebar .sb-grp');
+  if (grp) grp.insertAdjacentHTML('afterend', '<div class="sb-grp sb-grp-nn">' + NN_AREAS.map(function (a) {
+    return '<button class="sb-item" data-a="' + a.k + '" data-tip="' + a.t + '" onclick="nnArea(\'' + a.k + '\')"><span class="sb-ico">' + nnSvg(a.ico, 18) + '</span><span class="sb-txt">' + a.t + '</span></button>';
+  }).join('') + '</div>');
+  var foot = document.querySelector('#sidebar .sb-foot');
+  if (foot) foot.insertAdjacentHTML('beforeend', '<button class="sb-item" data-a="settings" data-tip="Einstellungen" onclick="stGo(null)"><span class="sb-ico">' + nnSvg(NN_GEAR, 16) + '</span><span class="sb-txt">Einstellungen</span></button>');
+  var srch = document.querySelector('#mob-hdr .sr-mob-btn');
+  if (srch) srch.insertAdjacentHTML('afterend', '<button class="nn-gear" data-a="settings" onclick="stGo(null)" title="Einstellungen" aria-label="Einstellungen">' + nnSvg(NN_GEAR, 18) + '<span class="bn-sync-badge" id="nn-sync-badge"></span></button>');
+  // Inhalte umziehen (gleiche Elemente/ids → die bestehenden Funktionen schreiben weiter hinein)
+  var imp = document.getElementById('nn-import');
+  ['.imp-start', '#imp-file', '#imp-hist'].forEach(function (sel) {
+    var el = document.querySelector('#p-eingabe ' + sel); if (el && imp) imp.appendChild(el);
+  });
+  var fsa = document.querySelector('#p-vermoegen .vm-fsa-card'), st = document.getElementById('nn-steuern');
+  if (fsa && st) st.appendChild(fsa);
+  var cur = document.querySelector('.page.active');
+  nnSync(cur ? cur.id.slice(2) : 'eingabe');
+}
+// Nach jedem nav(): Bereich markieren, Reiter zeichnen, Titel setzen
+function nnSync(id) {
+  var a = nnAreaOf(id);
+  var key = a ? a.k : (id === 'einstellungen' ? 'settings' : '');
+  if (a) _nnLast[a.k] = id;
+  document.querySelectorAll('[data-a]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-a') === key); });
+  var sub = document.getElementById('nn-sub');
+  if (sub) {
+    var many = a && a.subs.length > 1;
+    sub.classList.toggle('show', !!many);
+    sub.innerHTML = many ? a.subs.map(function (s) {
+      return '<button class="nn-tab' + (s[0] === id ? ' on' : '') + '" role="tab" aria-selected="' + (s[0] === id) + '" onclick="nav(\'' + s[0] + '\')">' + s[1] + '</button>';
+    }).join('') : '';
+  }
+  var lbl = document.getElementById('mob-lbl');
+  if (lbl) lbl.textContent = a ? a.t : (LABELS[id] || id);
+}
+function nnToggle(on) {
+  try { localStorage.setItem(NN_KEY, on ? '1' : '0'); } catch (e) { toast('Konnte die Einstellung nicht speichern'); return; }
+  toast(on ? 'Neue Navigation – App lädt neu' : 'Bisherige Navigation – App lädt neu');
+  setTimeout(function () { location.reload(); }, 600);
 }
 
 /* ── Sidebar ── */
@@ -2636,6 +2723,8 @@ var ST_MENU=[
   {grp:'Rechengrundlagen', items:[
     {k:'inflation',  t:'Inflationsraten'},
     {k:'kurs',       t:'Kursabruf (Depot)'}]},
+  {grp:'Ansicht', items:[
+    {k:'ansicht',    t:'Navigation'}]},
   {grp:'Technik', items:[
     {k:'technik',    t:'Protokoll & Zurücksetzen'}]}
 ];
@@ -2687,6 +2776,7 @@ function stStatus(k){
         var ys=Object.keys(FP.Store.Settings.getInflation()||{}).map(Number).filter(function(x){return x>0;}).sort();
         return {txt:ys.length?ys[0]+'–'+ys[ys.length-1]:'keine Werte'};
       }
+      case 'ansicht': return {txt:NN_ON?'neue Navigation (Test, nur dieses Gerät)':'bisherige Navigation'};
       case 'kurs': return FP.Store.Settings.getApiKey('alphavantage')?{txt:'Schlüssel hinterlegt'}:{txt:'kein Schlüssel',warn:true};
       case 'technik':{ var v=(document.querySelector('.sb-ver')||{}).textContent||''; return {txt:'Protokoll · '+v.replace(/^v[\d.]+ · /,'')}; }
     }
@@ -2695,8 +2785,12 @@ function stStatus(k){
 }
 function stRenderMenu(){
   var el=document.getElementById('st-menu'); if(!el) return;
+  var nnBox=document.getElementById('st-nn'); if(nnBox) nnBox.checked=NN_ON;
   el.innerHTML=ST_MENU.map(function(g){
-    return '<div class="st-menu-grp">'+esc(g.grp)+'</div><div class="st-menu-card">'+g.items.map(function(it){
+    // Neue Navigation: Budget entfällt → auch die Budget-Aufteilung nicht mehr anbieten (Werte bleiben gespeichert)
+    var items=g.items.filter(function(it){ return !(NN_ON&&it.k==='budget'); });
+    if(!items.length) return '';
+    return '<div class="st-menu-grp">'+esc(g.grp)+'</div><div class="st-menu-card">'+items.map(function(it){
       var s=stStatus(it.k);
       return '<button class="st-menu-item'+(stSection===it.k?' on':'')+'" onclick="stOpen(\''+it.k+'\')">'+
         '<span class="st-menu-txt"><span class="st-menu-t">'+esc(it.t)+'</span>'+
@@ -8481,6 +8575,10 @@ function rp2ExportExcel(btn) {
   XLSX.writeFile(wb, fname);
   toast('Excel-Export heruntergeladen');
 }
+
+// Neue Navigation (Test-Schalter) vor den Tooltips aufbauen, damit auch ihre Einträge einen Tooltip bekommen.
+// Die Skripte stehen am Ende von <body>, das HTML ist hier schon da.
+nnApply();
 
 // ── Sidebar Tooltip ──
 (function(){

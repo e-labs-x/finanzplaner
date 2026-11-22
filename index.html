@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
 <title>Finanzplaner v12.2</title>
-<link rel="stylesheet" href="style.css?v=20261122g">
+<link rel="stylesheet" href="style.css?v=20261122h">
 </head>
 <body>
 
@@ -37,7 +37,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.2 · build 1122g</div>
+      <div class="sb-ver">v12.2 · build 1122h</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -80,6 +80,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Neue Navigation (Schritt 3, Test-Schalter): Reiter des Bereichs, nur sichtbar mit body.nn -->
+  <div id="nn-sub" class="nn-sub" role="tablist" aria-label="Reiter"></div>
 
   <!-- Pages -->
   <div id="pages">
@@ -857,6 +860,20 @@
           </div>
 
           <!-- Automatische Sicherungen (Wiederherstellung) -->
+          <div class="st-card" data-st="ansicht">
+            <div class="st-card-hdr"><span class="st-card-title">Navigation</span></div>
+            <div class="st-card-body">
+              <div class="ghs-toggle-row">
+                <span class="ghs-toggle-lbl">Neue Navigation testen</span>
+                <label class="ghs-switch">
+                  <input type="checkbox" id="st-nn" onchange="nnToggle(this.checked)">
+                  <span class="ghs-switch-slider"></span>
+                </label>
+              </div>
+              <div class="nn-hint">Fünf Bereiche statt „Mehr“: Start · Buchungen · Auswertung · Vermögen · Planung, Einstellungen über das Zahnrad oben. Gilt nur auf diesem Gerät, die Daten bleiben gleich. Die App lädt beim Umschalten neu.</div>
+            </div>
+          </div>
+
           <div class="st-card" data-st="autobk">
             <div class="st-card-hdr"><span class="st-card-title">Automatische Sicherungen</span></div>
             <div style="padding:0 16px 6px" id="st-autobackups"></div>
@@ -872,6 +889,10 @@
         </div>
       </div>
     </div>
+
+    <!-- Neue Navigation: eigene Seiten für Import und Steuern (Inhalt wird beim Einschalten hierher verschoben) -->
+    <div class="page" id="p-import"><div class="pg"><div class="nn-page" id="nn-import"></div></div></div>
+    <div class="page" id="p-steuern"><div class="pg"><div class="nn-page" id="nn-steuern"></div></div></div>
 
     <!-- MEHR -->
     <div class="page" id="p-mehr">
@@ -1548,8 +1569,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261122g"></script>
-<script src="app.js?v=20261122g"></script>
+<script src="store.js?v=20261122h"></script>
+<script src="app.js?v=20261122h"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

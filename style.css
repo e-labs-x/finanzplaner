@@ -1770,3 +1770,35 @@ button { cursor: pointer; border: none; background: none; }
 .imp-hist:empty{display:none}
 .imp-hist-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--tx2);padding:0 4px}
 .imp-hist-btn{flex:0 0 auto;font:inherit;font-size:12px;font-weight:600;color:var(--blue);background:none;border:none;padding:4px 0;cursor:pointer}
+
+/* ════════════════════════════════════════
+   NEUE NAVIGATION (Schritt 3, 22.11.2026) — nur mit body.nn (Test-Schalter je Gerät)
+   Ohne den Schalter greift keine dieser Regeln: .bn-items-nn, .sb-grp-nn, .nn-gear werden dann gar nicht erzeugt,
+   #nn-sub bleibt ausgeblendet.
+════════════════════════════════════════ */
+.nn-sub { display: none; }
+body.nn .bn-items:not(.bn-items-nn) { display: none; }
+body.nn #sidebar .sb-grp:not(.sb-grp-nn) { display: none; }
+body.nn .nn-sub.show {
+  display: flex; gap: 6px; flex-shrink: 0;
+  padding: 8px 16px; overflow-x: auto; scrollbar-width: none;
+  background: var(--nav); border-bottom: 1px solid var(--sidebar-border);
+}
+body.nn .nn-sub.show::-webkit-scrollbar { display: none; }
+.nn-tab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 400; color: var(--tx2);
+  background: var(--surf2); transition: background .15s, color .15s;
+}
+.nn-tab:hover { color: var(--tx); }
+.nn-tab.on { background: var(--blue-lt); color: var(--blue); font-weight: 600; }
+.nn-gear {
+  position: relative; padding: 5px 8px; border-radius: var(--r-sm); color: var(--tx2);
+  display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s;
+}
+.nn-gear:hover { background: var(--surf2); }
+.nn-gear.active { color: var(--blue); }
+.nn-gear .bn-sync-badge { top: 2px; right: 4px; }
+.nn-page { max-width: 720px; }
+.nn-page .vm-fsa-card { margin-top: 0; }
+.nn-hint { font-size: 12px; color: var(--tx3); padding-top: 8px; line-height: 1.5; }

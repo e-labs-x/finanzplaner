@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122g`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122h`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -151,6 +151,15 @@ Ohne das serviert der SW alte gecachte Dateien, auch wenn Browser schon neu läd
 1. Relevante Datei(en) einlesen — je nach Aufgabe `store.js` (Logik) oder `app.js` (UI)
 2. Nur **ein Feature oder 1–2 Bugs** pro Session
 3. Backup nicht vergessen
+
+---
+
+## Navigation — alt und neu nebeneinander (seit 22.11.2026, Schritt 3a)
+- Schalter „Neue Navigation testen“ = `localStorage('fp_newnav')`, nur pro Gerät, **kein Store-Feld**. `NN_ON` wird einmal beim Laden gelesen.
+- **Aus darf nichts verändern:** alle neuen Elemente (`.bn-items-nn`, `.sb-grp-nn`, `.nn-gear`, `[data-a]`) entstehen nur in `nnApply()` bei `NN_ON`.
+- Bereiche/Reiter stehen nur in `NN_AREAS` (app.js). Neue Seite = `p-<id>` + Eintrag dort + `navigation.js` erweitern. Seiten wechseln weiter nur über `nav(id)`.
+- Import (`.imp-start`, `#imp-file`, `#imp-hist`) und Freistellungsaufträge (`.vm-fsa-card`) werden bei `NN_ON` in `p-import`/`p-steuern`
+  **verschoben** (gleiche ids) — Code, der sie sucht, nie auf `#p-eingabe`/`#p-vermoegen` einschränken.
 
 ---
 

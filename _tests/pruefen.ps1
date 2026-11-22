@@ -57,6 +57,7 @@ try {
   }
   Write-Page 'rundgang.html' '<script src="data.js"></script><script src="rundgang.js"></script>'
   Write-Page 'sicherheit.html' '<script src="data.js"></script><script src="sicherheit.js"></script>'
+  Write-Page 'navigation.html' '<script src="data.js"></script><script src="navigation.js"></script>'
   Write-Page 'konsistenz.html' '<script src="data.js"></script><script src="konsistenz.js"></script>'
   Write-Page 'layout-app.html' '<script src="data.js"></script><script src="layout-app.js"></script>'
   [IO.File]::WriteAllText((Join-Path $app 'layout.html'), '<!doctype html><meta charset="utf-8"><body><script src="layout.js"></script></body>', $utf8)
@@ -80,6 +81,8 @@ try {
   $runs += Start-Page 'sicherheit' 'sicherheit.html' 30000
   $runs += Start-Page 'konsistenz' 'konsistenz.html' 15000
   $runs += Start-Page 'layout' 'layout.html' 40000
+  $runs += Start-Page 'nav_alt' 'navigation.html?nn=0' 20000
+  $runs += Start-Page 'nav_neu' 'navigation.html?nn=1' 30000
   $szen = 'merge', 'remote', 'connect', 'pullrace', 'pushrace', 'retry', 'nonematch', 'espp', 'autosync'
   foreach ($s in $szen) { $runs += Start-Page ('sync_' + $s) ('sync.html?sc=' + $s) 90000 }
 
@@ -122,7 +125,7 @@ try {
     }
     $o = $null
     if ($html -match '<pre id="out">([^<]*)</pre>') { $o = [Net.WebUtility]::HtmlDecode($Matches[1]) | ConvertFrom-Json }
-    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } elseif ($r.Label -eq 'sicherheit') { 'Sicherheit (Gift-Eintraege, Kurse)' } elseif ($r.Label -eq 'konsistenz') { 'Konsistenz (gleiche Zahl ueberall)' } elseif ($r.Label -eq 'layout') { 'Layout Rente iPhone/iPad' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
+    $name = if ($r.Label -eq 'rundgang') { 'Rundgang alle Tabs' } elseif ($r.Label -eq 'sicherheit') { 'Sicherheit (Gift-Eintraege, Kurse)' } elseif ($r.Label -eq 'konsistenz') { 'Konsistenz (gleiche Zahl ueberall)' } elseif ($r.Label -eq 'layout') { 'Layout Rente iPhone/iPad' } elseif ($r.Label -eq 'nav_alt') { 'Navigation alt (Schalter aus)' } elseif ($r.Label -eq 'nav_neu') { 'Navigation neu (Schalter an)' } else { 'Sync: ' + ($r.Label -replace 'sync_', '') }
     if (-not $o) { Add-Result $name $false 'keine Ausgabe'; continue }
     $info = [string]$o.info
     if ($o.errors -and @($o.errors).Count -gt 0) { $info += ' - Fehler: ' + ((@($o.errors) | ForEach-Object { if ($_ -is [string]) { $_ } else { $_ | ConvertTo-Json -Compress } }) -join ' | ') }
