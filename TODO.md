@@ -4,7 +4,7 @@ Letzte Aktualisierung: 2026-11-22 — Schritt 2 Teil B Rente-Diagramme (`?v=2026
 
 ---
 
-## 👀 Schritt 2 Umbau Teil B: Rente-Diagramme auf Chart.js (22.11.2026, `?v=20261122g`) — Sichtkontrolle iPhone offen
+## ✅ Schritt 2 Umbau Teil B: Rente-Diagramme auf Chart.js (22.11.2026, `?v=20261122g`) — vom Nutzer auf dem iPhone abgenommen („passt so“)
 - Verlauf: Anspar/Entnahme/Worst-Case, Rentenbeginn als Linie (gleiches Alter beider = „63 · beide“), Ausbildung als Band (überlappende zusammengefasst),
   Plugin `fpMarkers`. Antippen: Depot, Worst-Case, Entnahme/Monat. Stichtag: Balken mit runder Achse. Alte Maus-Ereignisse entfernt.
 - Verlauf-Tabelle: Rentenbeginn + jedes 5. Jahr + letztes, „Alle anzeigen“, ganze Euro. „Depot bei Rente“: oben „Enes + Ehli, gesamt“, im Verlauf „· Name“.
