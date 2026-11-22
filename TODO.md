@@ -4,7 +4,7 @@ Letzte Aktualisierung: 2026-11-22 — Schritt 0 des Umbau-Konzepts: Tabellen fü
 
 ---
 
-## 👀 Schritt 0 Umbau: iPhone-Tabellen + Kategorien-Dialog (22.11.2026, `?v=20261122a`/`b`) — Sichtkontrolle offen
+## 👀 Schritt 0 Umbau: iPhone-Tabellen + Kategorien-Dialog (22.11.2026, `?v=20261122a`/`b`/`c`) — Cashflow auf iPhone abgenommen
 Gesamtplan (Umbau in 5 Bereiche, Design, Diagramme, Fixkosten, Vermögen) steht außerhalb des Repos im
 Konzept `Finanzen App\konzept_umbau_2026-11-22.md` (Repo ist öffentlich).
 - **Abgeschnitten bei 390 px (gemessen):** Cashflow-Kacheln (Netto über dem Rand), Cashflow-Tabelle (Karte
@@ -12,6 +12,7 @@ Konzept `Finanzen App\konzept_umbau_2026-11-22.md` (Repo ist öffentlich).
   waren wischbar, aber ohne Hinweis. → Neue Klasse `.tbl-scroll` (style.css): wischen, erste Spalte bleibt stehen,
   Schatten am rechten Rand (Token `--tbl-shade`, verschwindet am Ende). Cashflow-Kacheln unter 560 px: Netto eigene Zeile.
 - **Nachtrag `b`:** Cashflow-Netto stand linksbündig unter rechtsbündiger Überschrift (am PC sichtbar verschoben) → rechtsbündig, Pfeil-Spalte schmal.
+- **Nachtrag `c`:** Zeilenlinien fehlten unter der feststehenden ersten Spalte (iPhone-Screenshot Nutzer) → `.tbl-scroll table` mit `border-collapse:separate`.
 - **Kategorien:** „+ Neu“ in den Einstellungen legte an, aber die Liste lud nicht neu (`saveKat` ohne `stRenderCats`).
   „+ Neu“ in der Eingabe (`openKatModal`) setzte `mc-edit-id` nicht zurück → nach einem Bearbeiten wurde die zuletzt
   bearbeitete Kategorie überschrieben (Gegenprobe: „Lebensmittel“ umbenannt). Jetzt ein Weg: `openKatModal` = `stNewKat`.
