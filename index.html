@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
 <title>Finanzplaner v12.2</title>
-<link rel="stylesheet" href="style.css?v=20261122e">
+<link rel="stylesheet" href="style.css?v=20261122f">
 </head>
 <body>
 
@@ -37,7 +37,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.2 · build 1122e</div>
+      <div class="sb-ver">v12.2 · build 1122f</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -225,7 +225,7 @@
                 </div>
               </div>
             </div>
-            <div style="padding:16px 12px 4px"><canvas id="ghc" style="display:block;width:100%"></canvas></div>
+            <div style="padding:16px 12px 4px"><div class="fp-chart-box gh-chart-box"><canvas id="ghc"></canvas></div></div>
             <div id="gh-rw" class="tbl-scroll"></div>
           </div>
         </div>
@@ -987,11 +987,6 @@
           </div>
         </div>
         <div class="cf-chart-card">
-          <div class="cf-chart-legend">
-            <span class="cf-leg-dot" style="background:var(--green)"></span><span>Einnahmen</span>
-            <span class="cf-leg-dot" style="background:var(--red)"></span><span>Ausgaben</span>
-            <span class="cf-leg-line"></span><span>Netto-Trend</span>
-          </div>
           <div class="cf-canvas-wrap"><canvas id="cf-canvas"></canvas></div>
         </div>
         <div class="cf-table-card">
@@ -1553,8 +1548,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261122e"></script>
-<script src="app.js?v=20261122e"></script>
+<script src="store.js?v=20261122f"></script>
+<script src="app.js?v=20261122f"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

@@ -3433,6 +3433,77 @@ function _loadXLSX(onload, onerror) {
   s.onload = onload; s.onerror = onerror;
   document.head.appendChild(s);
 }
+
+/* ════════════════════════════════════════
+   DIAGRAMM-BAUSTEIN (Schritt 2, 22.11.2026)
+   Chart.js 4.6.1 (MIT) selbst gehostet unter vendor/, Prüfsumme wie bei Excel, nachgeladen beim
+   ersten Diagramm. Alle Diagramme teilen Achsen-Regeln (ab 0, runde Schritte, „Tsd. €“/„Mio. €“,
+   Beschriftung dünnt sich selbst aus), Antippen zeigt den Wert, Farben aus den Tokens zur Zeichenzeit.
+   Größe: Chart.js misst den umgebenden Bereich (nicht das Canvas) → folgt Drehung von selbst.
+════════════════════════════════════════ */
+var _CHART_SRC = 'vendor/chart-4.6.1.umd.min.js';
+var _CHART_SRI = 'sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0';
+var _chartWait = null;
+function fpChartLib(cb) {
+  if (window.Chart) { cb(); return; }
+  if (_chartWait) { _chartWait.push(cb); return; }
+  _chartWait = [cb];
+  var s = document.createElement('script');
+  s.src = _CHART_SRC; s.integrity = _CHART_SRI; s.crossOrigin = 'anonymous';
+  s.onload = function () {
+    var C = window.Chart;
+    C.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    C.defaults.font.size = 12;
+    var w = _chartWait; _chartWait = null;
+    w.forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
+  };
+  s.onerror = function () { _chartWait = null; toast('Diagramm konnte nicht geladen werden'); };
+  document.head.appendChild(s);
+}
+// Token → rgba (Chart.js rechnet Farben selbst um und kennt oklch nicht → über ein 1-px-Canvas auflösen)
+var _fpColCv = null;
+function fpTokRgba(name, alpha) {
+  var css = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!_fpColCv) { _fpColCv = document.createElement('canvas'); _fpColCv.width = _fpColCv.height = 1; }
+  var x = _fpColCv.getContext('2d', { willReadFrequently: true });
+  x.clearRect(0, 0, 1, 1); x.fillStyle = '#000'; x.fillStyle = css; x.fillRect(0, 0, 1, 1);
+  var d = x.getImageData(0, 0, 1, 1).data;
+  return 'rgba(' + d[0] + ',' + d[1] + ',' + d[2] + ',' + (alpha == null ? 1 : alpha) + ')';
+}
+// Achsenwerte: 2.500 → „2,5 Tsd. €“, 1.200.000 → „1,2 Mio. €“
+function fpEurAxis(v) {
+  var a = Math.abs(v), f = function (n, d) { return n.toLocaleString('de-DE', { maximumFractionDigits: d }); };
+  if (a >= 1e6) return f(v / 1e6, 1) + ' Mio. €';
+  if (a >= 1e3) return f(v / 1e3, a >= 1e4 ? 0 : 1) + ' Tsd. €';
+  return f(v, 0) + ' €';
+}
+function fpEur0(v) { return Math.round(v).toLocaleString('de-DE') + ' €'; }
+function fpMonthLong(y, i) { return new Date(y, i, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }); }
+// Gemeinsame Grundeinstellung — jedes Diagramm ergänzt nur, was es braucht
+function fpChartBase() {
+  var tx3 = fpTokRgba('--tx3'), grid = fpTokRgba('--brd2'), tipBg = fpTokRgba('--tx'), tipTx = fpTokRgba('--surf');
+  return {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      // Legende in Daten-Reihenfolge (nicht Zeichen-Reihenfolge: Linien liegen oben, sollen aber hinten stehen)
+      legend: { position: 'bottom', labels: { color: tx3, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 14,
+        sort: function (a, b) { return a.datasetIndex - b.datasetIndex; } } },
+      tooltip: { backgroundColor: tipBg, titleColor: tipTx, bodyColor: tipTx, padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true }
+    },
+    scales: {
+      x: { grid: { display: false }, border: { display: false }, ticks: { color: tx3, autoSkip: true, maxRotation: 0, autoSkipPadding: 8 } },
+      y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: tx3, maxTicksLimit: 5, callback: fpEurAxis } }
+    }
+  };
+}
+// Neu zeichnen = altes Diagramm am selben Canvas verwerfen (sonst doppelte Diagramme/Ereignisse)
+function fpChart(canvas, cfg) {
+  if (canvas._fpChart) { canvas._fpChart.destroy(); canvas._fpChart = null; }
+  canvas._fpChart = new window.Chart(canvas, cfg);
+  return canvas._fpChart;
+}
+
 function stExportExcel(btn) {
   if (typeof XLSX === 'undefined') {
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
@@ -6810,7 +6881,7 @@ function vmRenderTotal(){
       '<div class="vm-tc" id="vm-trend-col">'+
         '<div style="font-size:12px;font-weight:600;color:var(--tx3);margin-bottom:4px;padding-left:52px">Vermögensentwicklung</div>'+
         (hasTrend
-          ?'<canvas id="vm-trend-canvas-r" style="display:block;width:100%"></canvas>'
+          ?'<div class="fp-chart-box" style="height:240px"><canvas id="vm-trend-canvas-r"></canvas></div>'
           :'<div style="height:250px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1.5px dashed var(--brd);border-radius:var(--r-sm);color:var(--tx3)">'+
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;opacity:0.4"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>'+
             '<div style="font-size:12px;text-align:center;line-height:1.6">Verlauf erscheint nach dem<br>ersten monatlichen Kurs-Update</div>'+
@@ -6925,115 +6996,29 @@ function vmDonutHighlight(idx){
 // abgeschnittener Legende — die Aufteilung nach Anlagen zeigt jetzt die Historie-Tabelle).
 // Canvas-Regel: style.width='100%' VOR der Messung, danach nur die Höhe setzen. Farben (Token)
 // werden bei jedem Zeichnen gelesen; Hell/Dunkel-Wechsel zeichnet über vmRender neu.
+// Vermögensverlauf (Chart.js, Schritt 2): Achse ab 0 — vorher begann sie knapp unter dem kleinsten Wert
+// (z. B. 838 Tsd.), dadurch sahen 10 % Anstieg wie ein Sprung aus. Antippen: Monat, Gesamt, größte Anlagen.
 function vmDrawTrendRight(canvas,pts,costBasis){
-  if(!pts||pts.length<1)return;
-  var dpr=window.devicePixelRatio||1;
-  canvas.style.width='100%';
-  var W=Math.max(Math.round(canvas.getBoundingClientRect().width)||(canvas.parentElement?canvas.parentElement.clientWidth:0)||280,100);
-  var H=230;
-  canvas.width=Math.round(W*dpr); canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  canvas.style.cursor='crosshair';
-
-  var pL=52,pR=14,pT=12,pB=28;
-  var cW=W-pL-pR,cH=H-pT-pB;
-  var vals=pts.map(function(p){return p.value;}).concat(costBasis>0?[costBasis]:[]);
-  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
-  var pad=(hi-lo)*0.12||hi*0.05||1;
-  var minV=Math.max(0,lo-pad),maxV=hi+pad,vRange=maxV-minV||1;
-  function vy(v){return pT+cH*(1-(v-minV)/vRange);}
-  function vx(i){return pL+(pts.length<2?cW/2:i/(pts.length-1)*cW);}
-
-  function draw(hov){
-    var cs=getComputedStyle(document.documentElement);
-    function tok(n,fb){return cs.getPropertyValue(n).trim()||fb;}
-    var brd=tok('--brd','#E5E7EB'),tx=tok('--tx','#111'),tx2=tok('--tx2','#555'),tx3=tok('--tx3','#888'),surf=tok('--surf','#fff'),blue=tok('--blue','#4F46E5');
-    var ctx=canvas.getContext('2d');
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-
-    // Raster + Y-Beschriftung
-    for(var g=0;g<=4;g++){
-      var gv=minV+(g/4)*vRange,gy=vy(gv);
-      ctx.strokeStyle=brd;ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(W-pR,gy);ctx.stroke();
-      ctx.fillStyle=tx3;ctx.font='500 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      ctx.textAlign='right';ctx.textBaseline='middle';
-      ctx.fillText(vmFmtK(gv),pL-5,gy);
-    }
-    // Einstand
-    if(costBasis>0){
-      var cy=vy(costBasis);
-      ctx.strokeStyle=tx3;ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
-      ctx.beginPath();ctx.moveTo(pL,cy);ctx.lineTo(W-pR,cy);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle=tx3;ctx.font='500 9px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      ctx.textAlign='left';ctx.textBaseline='bottom';
-      ctx.fillText('Einstand '+vmFmtK(costBasis),pL+3,cy-2);
-    }
-    // Hover-Senkrechte
-    if(hov>=0){
-      ctx.strokeStyle=brd;ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(vx(hov),pT);ctx.lineTo(vx(hov),pT+cH);ctx.stroke();
-    }
-    // Fläche unter der Linie (zart) + Linie
-    ctx.beginPath();
-    pts.forEach(function(p,i){if(i===0)ctx.moveTo(vx(0),vy(p.value));else ctx.lineTo(vx(i),vy(p.value));});
-    ctx.lineTo(vx(pts.length-1),pT+cH);ctx.lineTo(vx(0),pT+cH);ctx.closePath();
-    ctx.fillStyle=blue;ctx.globalAlpha=0.10;ctx.fill();ctx.globalAlpha=1;
-    ctx.beginPath();
-    pts.forEach(function(p,i){if(i===0)ctx.moveTo(vx(0),vy(p.value));else ctx.lineTo(vx(i),vy(p.value));});
-    ctx.strokeStyle=blue;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
-    pts.forEach(function(p,i){
-      ctx.beginPath();ctx.arc(vx(i),vy(p.value),hov===i?5:3,0,Math.PI*2);
-      ctx.fillStyle=blue;ctx.fill();
-      if(hov===i){ctx.strokeStyle=surf;ctx.lineWidth=2;ctx.stroke();}
-    });
-    // X-Beschriftung kurz („Mai 26") und nur so viele, wie nebeneinander passen (iPhone)
-    ctx.font='500 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle=tx3;ctx.textBaseline='top';
-    var maxLbl=Math.max(2,Math.floor(cW/52));
-    var step=Math.max(1,Math.ceil(pts.length/maxLbl)),shown={};
-    for(var xi=0;xi<pts.length;xi+=step){
-      if(xi!==pts.length-1&&pts.length-1-xi<step*0.6)continue;  // nicht kurz vor dem letzten
-      shown[xi]=1;
-      var isLast=xi===pts.length-1;
-      ctx.textAlign=xi===0?'left':(isLast?'right':'center');
-      ctx.fillText(vmShortMonth(pts[xi].label),xi===0?pL:(isLast?W-pR:vx(xi)),pT+cH+6);
-    }
-    if(!shown[pts.length-1]){ctx.textAlign='right';ctx.fillText(vmShortMonth(pts[pts.length-1].label),W-pR,pT+cH+6);}
-    // Tooltip: Monat, Gesamt, Änderung zum vorigen Punkt
-    if(hov>=0){
-      var p=pts[hov],lines=[p.label,eur(p.value)];
-      if(hov>0){
-        var d=p.value-pts[hov-1].value,pp=pts[hov-1].value?d/pts[hov-1].value*100:0;
-        lines.push((d>=0?'+':'')+eur(d)+' ('+(d>=0?'+':'')+pp.toFixed(1).replace('.',',')+' %)');
+  if(!pts||pts.length<1) return;
+  fpChartLib(function(){
+    if(!document.body.contains(canvas)) return;
+    var c=fpTokRgba('--blue'), fill=fpTokRgba('--blue',0.12);
+    var cfg=fpChartBase();
+    cfg.plugins.legend.display=false;
+    cfg.plugins.tooltip.callbacks={
+      title:function(it){ var p=pts[it[0].dataIndex].label.split('.'); return fpMonthLong(+p[1], +p[0]-1); },
+      label:function(x){ return ' Gesamt: '+fpEur0(x.raw); },
+      afterBody:function(it){
+        var bd=(pts[it[0].dataIndex].breakdown||[]).slice().sort(function(a,b){ return b.value-a.value; });
+        return bd.slice(0,5).map(function(e){ return e.name+': '+fpEur0(e.value); }).concat(bd.length>5?['… und '+(bd.length-5)+' weitere']:[]);
       }
-      ctx.font='600 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      var tw=0;lines.forEach(function(l){tw=Math.max(tw,ctx.measureText(l).width);});
-      var bw=tw+18,bh=lines.length*16+12,bx=vx(hov)+10,by=Math.max(pT,vy(p.value)-bh-6);
-      if(bx+bw>W-2)bx=vx(hov)-bw-10;
-      ctx.fillStyle=surf;ctx.strokeStyle=brd;ctx.lineWidth=1;
-      ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.fill();ctx.stroke();
-      ctx.textAlign='left';ctx.textBaseline='top';
-      lines.forEach(function(l,i){
-        ctx.font=(i===1?'700 12px ':'500 10px ')+'-apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-        ctx.fillStyle=i===0?tx3:(i===1?tx:tx2);
-        ctx.fillText(l,bx+9,by+6+i*16);
-      });
-    }
-  }
-
-  var hovIdx=-1;
-  draw(-1);
-  function pick(e){
-    var r=canvas.getBoundingClientRect(),mx=(e.clientX-r.left)*(W/r.width);
-    var ni=-1,nd=9999;
-    pts.forEach(function(p,i){var d=Math.abs(vx(i)-mx);if(d<nd){nd=d;ni=i;}});
-    return nd<40?ni:-1;
-  }
-  canvas.onmousemove=function(e){var i=pick(e);if(i!==hovIdx){hovIdx=i;draw(i);}};
-  canvas.onmouseleave=function(){hovIdx=-1;draw(-1);};
-  canvas.onclick=function(e){var i=pick(e);hovIdx=(i===hovIdx)?-1:i;draw(hovIdx);};  // iPhone: antippen
+    };
+    fpChart(canvas,{ type:'line',
+      data:{ labels:pts.map(function(p){ return vmShortMonth(p.label); }),
+        datasets:[{ label:'Vermögen', data:pts.map(function(p){ return p.value; }), borderColor:c, backgroundColor:fill,
+          fill:'origin', borderWidth:2, tension:0.25, pointRadius:pts.length>24?0:3, pointHoverRadius:5, pointBackgroundColor:c }] },
+      options:cfg });
+  });
 }
 
 function vmShortMonth(mmyyyy){
@@ -7646,325 +7631,85 @@ function ghRenderRealWage(){
     bruttoMap[h.year]={gross:sy.grossTotal, bonus:sy.bonusGross, total:FP.r2(sy.grossTotal+sy.bonusGross)};
   });
 
-  // ── Tabelle ──
+  // ── Tabelle: letzte 5 Jahre, auf Wunsch alle; ganze Euro (Schritt 2) ──
+  var rows=pts.slice().reverse(), many=rows.length>5;
+  if(many&&!_ghTblAll) rows=rows.slice(0,5);
   el.innerHTML='<table class="gh-rw-table"><thead><tr>'+
     '<th>Jahr</th><th>Brutto Jahresgehalt</th><th>Bonus Brutto</th><th>Brutto inkl. Bonus</th>'+
     '<th>Ø Netto/Monat</th><th>Nominal p.a.</th><th>Reallohn p.a.</th><th>Inflation p.a.</th>'+
     '</tr></thead><tbody>'+
-    pts.slice().reverse().map(function(r){
+    rows.map(function(r){
       var ncCls=r.nomYoY>0?'gh-chg-pos':r.nomYoY<0?'gh-chg-neg':'';
       var rcCls=r.realYoY>0?'gh-chg-pos':r.realYoY<0?'gh-chg-neg':'';
       var b=bruttoMap[r.year]||{gross:0,bonus:0,total:0};
       return '<tr>'+
         '<td style="font-weight:600">'+r.year+'</td>'+
-        '<td>'+eur(b.gross)+'</td>'+
-        '<td>'+(b.bonus?eur(b.bonus):'—')+'</td>'+
-        '<td style="font-weight:600">'+eur(b.total)+'</td>'+
-        '<td>'+eur(r.monthlyNet)+'</td>'+
+        '<td>'+fpEur0(b.gross)+'</td>'+
+        '<td>'+(b.bonus?fpEur0(b.bonus):'—')+'</td>'+
+        '<td style="font-weight:600">'+fpEur0(b.total)+'</td>'+
+        '<td>'+fpEur0(r.monthlyNet)+'</td>'+
         '<td class="'+ncCls+'">'+(r.nomYoY>0?'+':'')+r.nomYoY.toFixed(1)+'%</td>'+
         '<td class="'+rcCls+'">'+(r.realYoY>0?'+':'')+r.realYoY.toFixed(1)+'%</td>'+
         '<td style="color:var(--tx3)">'+r.inflRate.toFixed(1)+'%</td>'+
         '</tr>';
     }).join('')+
-    // Basisjahr
-    (function(){
+    // Basisjahr (nur in der vollen Liste)
+    (many&&!_ghTblAll?'':(function(){
       var b0=bruttoMap[history[0].year]||{gross:0,bonus:0,total:0};
       return '<tr style="color:var(--tx3)">'+
         '<td style="font-weight:600">'+history[0].year+'</td>'+
-        '<td>'+eur(b0.gross)+'</td>'+
-        '<td>'+(b0.bonus?eur(b0.bonus):'—')+'</td>'+
-        '<td>'+eur(b0.total)+'</td>'+
-        '<td>'+eur(history[0].monthlyNet)+'</td>'+
+        '<td>'+fpEur0(b0.gross)+'</td>'+
+        '<td>'+(b0.bonus?fpEur0(b0.bonus):'—')+'</td>'+
+        '<td>'+fpEur0(b0.total)+'</td>'+
+        '<td>'+fpEur0(history[0].monthlyNet)+'</td>'+
         '<td>Basisjahr</td><td>—</td>'+
         '<td>'+(infl[history[0].year]||0).toFixed(1)+'%</td>'+
       '</tr>';
-    })()+
-    '</tbody></table>';
+    })())+
+    '</tbody></table>'+
+    (many?'<button class="st-btn gh-tbl-more" onclick="ghToggleTblAll()">'+(_ghTblAll?'Nur letzte 5 Jahre':'Alle '+(pts.length+1)+' Jahre anzeigen')+'</button>':'');
 }
 
 function ghSetMode(mode){ _ghChartMode=mode; ghRenderRealWage(); }
+var _ghTblAll=false;
+function ghToggleTblAll(){ _ghTblAll=!_ghTblAll; ghRenderRealWage(); }
 function ghToggleShowAll(){ _ghShowAll=!_ghShowAll; ghRenderRealWage(); }
 
-function ghDrawChart(canvas, pts){
-  if(!canvas||!pts.length)return;
-  var cs=getComputedStyle(document.documentElement);
-  var cTx=cs.getPropertyValue('--tx').trim()||'#1C1C1E';
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
-  var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cRealPos='#30a46c'; // Echtes Grün (#30a46c ≈ oklch 64% H146) — Canvas versteht OKLCH-Strings nicht zuverlässig
-  var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
-  var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
-
-  canvas.style.width='100%';
-  var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
-  var H=284;
-  var dpr=window.devicePixelRatio||1;
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-
-  var PAD={t:36,r:16,b:32,l:50};
-  var cW=W-PAD.l-PAD.r;
-  var cH=H-PAD.t-PAD.b;
-  var n=pts.length;
-  var slotW=cW/n;
-  var barW=Math.min(slotW*0.3,22);
-  var gap=barW*0.4;
-
-  var allVals=pts.map(function(p){return p.nomYoY;})
-    .concat(pts.map(function(p){return p.realYoY;}))
-    .concat(pts.map(function(p){return p.inflRate;}));
-  var maxV=Math.max.apply(null,allVals.map(Math.abs));
-  maxV=Math.max(maxV,3);
-  maxV=Math.ceil(maxV/2)*2+2;
-
-  function toY(v){ return PAD.t+cH/2-(v/maxV)*(cH/2); }
-
-  function draw(hovIdx){
-    ctx.clearRect(0,0,W,H);
-
-    // Gitter + Y-Achse
-    ctx.lineWidth=0.5;
-    [-maxV,-maxV/2,0,maxV/2,maxV].forEach(function(v){
-      var y=toY(v);
-      ctx.strokeStyle=cBrd;
-      ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-      ctx.fillStyle=cTx3;ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      ctx.textAlign='right';
-      ctx.fillText((v>0?'+':'')+v.toFixed(0)+'%',PAD.l-5,y+4);
-    });
-    ctx.strokeStyle=cTx3;ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(PAD.l,toY(0));ctx.lineTo(PAD.l+cW,toY(0));ctx.stroke();
-
-    // Balken
-    pts.forEach(function(p,i){
-      var x=PAD.l+slotW*i+slotW/2;
-      var y0=toY(0);
-      var isHov=i===hovIdx;
-      ctx.globalAlpha=isHov?1:0.7;
-
-      // Nominal (blau)
-      ctx.fillStyle=cBlue;
-      var yN=toY(p.nomYoY);
-      ctx.beginPath();
-      ctx.roundRect?ctx.roundRect(x-gap-barW,Math.min(yN,y0),barW,Math.abs(yN-y0)||2,2):
-        ctx.rect(x-gap-barW,Math.min(yN,y0),barW,Math.abs(yN-y0)||2);
-      ctx.fill();
-
-      // Real (grün/rot)
-      ctx.fillStyle=p.realYoY>=0?cRealPos:cRed;
-      var yR=toY(p.realYoY);
-      ctx.beginPath();
-      ctx.roundRect?ctx.roundRect(x+gap,Math.min(yR,y0),barW,Math.abs(yR-y0)||2,2):
-        ctx.rect(x+gap,Math.min(yR,y0),barW,Math.abs(yR-y0)||2);
-      ctx.fill();
-
-      ctx.globalAlpha=1;
-      ctx.fillStyle=isHov?cTx:cTx3;
-      ctx.font=(isHov?'bold ':'')+'13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      ctx.textAlign='center';
-      ctx.fillText(String(p.year),x,H-PAD.b+14);
-    });
-
-    // Inflation-Linie
-    ctx.strokeStyle=cAmber;ctx.lineWidth=2.5;
-    ctx.setLineDash([4,3]);
-    ctx.beginPath();
-    pts.forEach(function(p,i){
-      var x=PAD.l+slotW*i+slotW/2;
-      if(i===0)ctx.moveTo(x,toY(p.inflRate));else ctx.lineTo(x,toY(p.inflRate));
-    });
-    ctx.stroke();ctx.setLineDash([]);
-    pts.forEach(function(p,i){
-      var x=PAD.l+slotW*i+slotW/2;
-      ctx.fillStyle=cAmber;
-      ctx.beginPath();ctx.arc(x,toY(p.inflRate),i===hovIdx?6:4,0,Math.PI*2);ctx.fill();
-    });
-
-    // Hover-Info-Zeile oben (alle 3 Werte auf einmal, sauber lesbar)
-    if(hovIdx>=0&&hovIdx<n){
-      var p=pts[hovIdx];
-      var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
-              '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
-              '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
-      ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      var tw=ctx.measureText(txt).width+20;
-      ctx.fillStyle=cs.getPropertyValue('--surf').trim()||'#fff';
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD.l,2,tw,22,4):ctx.rect(PAD.l,2,tw,22);
-      ctx.fill();
-      ctx.fillStyle=cTx;ctx.textAlign='left';
-      ctx.fillText(txt,PAD.l+10,17);
-    }
-
-    // Legende (im Canvas — exakt gleiche Farben + Alpha wie die Balken)
-    var lgY=H-8;
-    ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-    ctx.textAlign='left';
-    var lgX=PAD.l;
-
-    // Nominal (blaue Balken, gleiche Alpha wie Chart)
-    ctx.globalAlpha=0.7;ctx.fillStyle=cBlue;
-    ctx.fillRect(lgX,lgY-9,10,10);
-    ctx.globalAlpha=1;ctx.fillStyle=cTx3;
-    ctx.fillText('Nominal Δ p.a.',lgX+14,lgY);
-    lgX+=14+Math.round(ctx.measureText('Nominal Δ p.a.').width)+16;
-
-    // Reallohn (grün wenn positiv, rot wenn negativ — beide als Split)
-    ctx.globalAlpha=0.7;
-    ctx.fillStyle=cRealPos;ctx.fillRect(lgX,lgY-9,5,10);
-    ctx.fillStyle=cRed;ctx.fillRect(lgX+5,lgY-9,5,10);
-    ctx.globalAlpha=1;ctx.fillStyle=cTx3;
-    ctx.fillText('Reallohn Δ p.a.',lgX+14,lgY);
-    lgX+=14+Math.round(ctx.measureText('Reallohn Δ p.a.').width)+16;
-
-    // Inflation (gestrichelte Amber-Linie + Punkt)
-    ctx.strokeStyle=cAmber;ctx.lineWidth=2;ctx.setLineDash([4,3]);
-    ctx.beginPath();ctx.moveTo(lgX,lgY-4);ctx.lineTo(lgX+12,lgY-4);ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle=cAmber;ctx.beginPath();ctx.arc(lgX+6,lgY-4,3,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=cTx3;ctx.fillText('Inflation p.a.',lgX+16,lgY);
-  }
-
-  draw(-1);
-  canvas.style.cursor='default';
-  canvas.onmousemove=function(e){
-    var rect=canvas.getBoundingClientRect();
-    var x=(e.clientX-rect.left)*(W/rect.width);
-    var idx=Math.floor((x-PAD.l)/slotW);
-    draw((idx>=0&&idx<n)?idx:-1);
-  };
-  canvas.onmouseleave=function(){draw(-1);};
-  canvas.onclick=null;
-}
-
-function ghDrawLineChart(canvas, pts){
-  if(!canvas||pts.length<2)return;
-  var cs=getComputedStyle(document.documentElement);
-  var cTx=cs.getPropertyValue('--tx').trim()||'#1C1C1E';
-  var cTx3=cs.getPropertyValue('--tx3').trim()||'#AEAEB2';
-  var cBrd=cs.getPropertyValue('--brd').trim()||'#E5E5EA';
-  var cBlue=cs.getPropertyValue('--blue').trim()||'oklch(55% 0.24 262)';
-  var cRealPos='#30a46c';
-  var cRed=cs.getPropertyValue('--red').trim()||'oklch(57% 0.24 22)';
-  var cAmber=cs.getPropertyValue('--amber').trim()||'oklch(75% 0.2 75)';
-  var cSurf=cs.getPropertyValue('--surf').trim()||'#fff';
-
-  canvas.style.width='100%';
-  var W=canvas.getBoundingClientRect().width||canvas.offsetWidth||300;
-  var H=284;
-  var dpr=window.devicePixelRatio||1;
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  var ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-
-  var PAD={t:36,r:16,b:32,l:50};
-  var cW=W-PAD.l-PAD.r;
-  var cH=H-PAD.t-PAD.b;
-  var n=pts.length;
-
-  var allVals=pts.map(function(p){return p.nomYoY;})
-    .concat(pts.map(function(p){return p.realYoY;}))
-    .concat(pts.map(function(p){return p.inflRate;}));
-  var maxV=Math.max.apply(null,allVals.map(Math.abs));
-  maxV=Math.max(maxV,3);
-  maxV=Math.ceil(maxV/2)*2+2;
-
-  function xOf(i){ return PAD.l+i*(cW/(n-1)); }
-  function toY(v){ return PAD.t+cH/2-(v/maxV)*(cH/2); }
-
-  function drawLine(series, color, dash){
-    ctx.strokeStyle=color; ctx.lineWidth=2.5;
-    ctx.setLineDash(dash||[]);
-    ctx.beginPath();
-    series.forEach(function(v,i){ i===0?ctx.moveTo(xOf(i),toY(v)):ctx.lineTo(xOf(i),toY(v)); });
-    ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  function draw(hovIdx){
-    ctx.clearRect(0,0,W,H);
-
-    // Gitter
-    ctx.lineWidth=0.5;
-    [-maxV,-maxV/2,0,maxV/2,maxV].forEach(function(v){
-      var y=toY(v);
-      ctx.strokeStyle=cBrd;
-      ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-      ctx.fillStyle=cTx3;ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
-      ctx.fillText((v>0?'+':'')+v.toFixed(0)+'%',PAD.l-5,y+4);
-    });
-    ctx.strokeStyle=cTx3;ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(PAD.l,toY(0));ctx.lineTo(PAD.l+cW,toY(0));ctx.stroke();
-
-    // Linien
-    drawLine(pts.map(function(p){return p.nomYoY;}), cBlue);
-    drawLine(pts.map(function(p){return p.inflRate;}), cAmber, [4,3]);
-
-    // Reallohn: grüne/rote Segmente
-    for(var i=0;i<n-1;i++){
-      var v0=pts[i].realYoY, v1=pts[i+1].realYoY;
-      var col=(v0>=0&&v1>=0)?cRealPos:(v0<0&&v1<0)?cRed:cRealPos;
-      ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.setLineDash([]);
-      ctx.beginPath();ctx.moveTo(xOf(i),toY(v0));ctx.lineTo(xOf(i+1),toY(v1));ctx.stroke();
-    }
-
-    // Datenpunkte
-    pts.forEach(function(p,i){
-      var r=i===hovIdx?6:3;
-      [[p.nomYoY,cBlue],[p.realYoY,p.realYoY>=0?cRealPos:cRed],[p.inflRate,cAmber]].forEach(function(pair){
-        ctx.fillStyle=pair[1];
-        ctx.beginPath();ctx.arc(xOf(i),toY(pair[0]),r,0,Math.PI*2);ctx.fill();
-      });
-    });
-
-    // X-Achse: jedes 2. Jahr
-    ctx.fillStyle=cTx3;ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
-    pts.forEach(function(p,i){
-      if(n<=12||i%2===0||i===n-1)
-        ctx.fillText(String(p.year),xOf(i),H-PAD.b+14);
-    });
-
-    // Hover-Info
-    if(hovIdx>=0&&hovIdx<n){
-      var p=pts[hovIdx];
-      var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
-              '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
-              '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
-      ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
-      var tw=ctx.measureText(txt).width+20;
-      ctx.fillStyle=cSurf;
-      ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD.l,2,tw,22,4):ctx.rect(PAD.l,2,tw,22);ctx.fill();
-      ctx.fillStyle=cTx;ctx.textAlign='left';
-      ctx.fillText(txt,PAD.l+10,17);
-    }
-
-    // Legende
-    var lgY=H-8;
-    ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='left';
-    var lgX=PAD.l;
-    [[cBlue,'Nominal Δ p.a.',[]],[cRealPos,'Reallohn Δ p.a.',[]],[cAmber,'Inflation p.a.',[4,3]]].forEach(function(e){
-      ctx.strokeStyle=e[0];ctx.lineWidth=2;ctx.setLineDash(e[2]);
-      ctx.beginPath();ctx.moveTo(lgX,lgY-4);ctx.lineTo(lgX+12,lgY-4);ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle=e[0];ctx.beginPath();ctx.arc(lgX+6,lgY-4,3,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=cTx3;ctx.fillText(e[1],lgX+16,lgY);
-      lgX+=16+Math.round(ctx.measureText(e[1]).width)+16;
-    });
-  }
-
-  draw(-1);
-  canvas.style.cursor='default';
-  canvas.onmousemove=function(e){
-    var rect=canvas.getBoundingClientRect();
-    var x=(e.clientX-rect.left)*(W/rect.width);
-    var slotW=cW/(n-1);
-    var idx=Math.round((x-PAD.l)/slotW);
-    draw((idx>=0&&idx<n)?idx:-1);
-  };
-  canvas.onmouseleave=function(){draw(-1);};
-  canvas.onclick=null;
+// Reallohn-Diagramm (Chart.js, Schritt 2): Balken = Nominal + Reallohn je Jahr, Linie = Inflation;
+// „Linie“ zeigt alle drei als Linien. Achse in Prozent, Jahreszahlen dünnen sich selbst aus.
+function ghDrawChart(canvas, pts){ ghChart(canvas, pts, 'bar'); }
+function ghDrawLineChart(canvas, pts){ ghChart(canvas, pts, 'line'); }
+function ghChart(canvas, pts, mode){
+  if(!canvas||!pts.length) return;
+  fpChartLib(function(){
+    if(!document.body.contains(canvas)) return;
+    var cNom=fpTokRgba('--blue'), cPos=fpTokRgba('--chart-real'), cNeg=fpTokRgba('--red'), cInf=fpTokRgba('--amber');
+    var pct=function(v){ return (v>0?'+':'')+v.toLocaleString('de-DE',{maximumFractionDigits:1})+' %'; };
+    var real=pts.map(function(p){ return p.realYoY; });
+    var cfg=fpChartBase();
+    cfg.scales.y.beginAtZero=true;
+    cfg.scales.y.ticks.callback=function(v){ return pct(v); };
+    cfg.plugins.tooltip.callbacks={
+      title:function(it){ return String(pts[it[0].dataIndex].year); },
+      label:function(c){ return ' '+c.dataset.label+': '+pct(c.raw); }
+    };
+    var bar=mode==='bar';
+    var ds=[
+      { type:bar?'bar':'line', label:'Nominal', data:pts.map(function(p){ return p.nomYoY; }),
+        backgroundColor:cNom, hoverBackgroundColor:cNom, borderColor:cNom, borderRadius:3, maxBarThickness:14,
+        borderWidth:bar?0:2, tension:0.25, pointRadius:bar?0:2, order:1 },
+      { type:bar?'bar':'line', label:'Reallohn', data:real,
+        backgroundColor:bar?real.map(function(v){ return v<0?cNeg:cPos; }):cPos,
+        hoverBackgroundColor:bar?real.map(function(v){ return v<0?cNeg:cPos; }):cPos,
+        borderColor:cPos, borderRadius:3, maxBarThickness:14,
+        borderWidth:bar?0:2, tension:0.25, pointRadius:bar?0:2, order:1,
+        segment:bar?undefined:{ borderColor:function(c){ return c.p1.parsed.y<0?cNeg:cPos; } } },
+      { type:'line', label:'Inflation', data:pts.map(function(p){ return p.inflRate; }),
+        borderColor:cInf, backgroundColor:cInf, borderWidth:2, borderDash:[5,4], tension:0.25,
+        pointRadius:2, pointHoverRadius:4, order:0 }
+    ];
+    fpChart(canvas, { data:{ labels:pts.map(function(p){ return String(p.year); }), datasets:ds }, options:cfg });
+  });
 }
 
 function ghOpenMonth(month){
@@ -8436,102 +8181,33 @@ function cfRender() {
 function cfDrawChart(months) {
   var canvas = document.getElementById('cf-canvas');
   if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  // Canvas-Regel: Breite NIE in px fixieren — erst 100 %, dann am Canvas selbst messen, nur die Höhe setzen
-  canvas.style.width = '100%';
-  var W = Math.round(canvas.getBoundingClientRect().width) || canvas.parentNode.clientWidth || 600;
-  var H = 180;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.height = H + 'px';
-  var ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, W, H);
-
-  var cs = getComputedStyle(document.documentElement);
-  var cGreen    = cs.getPropertyValue('--green').trim();
-  var cGreenLt  = cs.getPropertyValue('--green-lt').trim();
-  var cRed      = cs.getPropertyValue('--red').trim();
-  var cRedLt    = cs.getPropertyValue('--red-lt').trim();
-  var cBlue     = cs.getPropertyValue('--blue').trim();
-  var cBrd      = cs.getPropertyValue('--brd').trim();
-  var cTx       = cs.getPropertyValue('--tx').trim();
-  var cTx3      = cs.getPropertyValue('--tx3').trim();
-
-  var maxV = Math.max.apply(null, months.map(function(mo) { return Math.max(mo.inc, mo.exp, 1); }));
-  var pL = 8, pR = 8, pT = 16, pB = 22;
-  var bW = (W - pL - pR) / 12;
-  var cH = H - pT - pB;
-  var outerGap = Math.max(2, bW * 0.10);
-  var innerW = bW - outerGap;
-  var barW = (innerW - 2) / 2;
-
-  // Horizontale Hilfslinien (3 Linien)
-  ctx.strokeStyle = cBrd;
-  ctx.lineWidth = 0.5;
-  for (var g = 1; g <= 3; g++) {
-    var gy = pT + (g / 4) * cH;
-    ctx.beginPath();
-    ctx.moveTo(pL, gy);
-    ctx.lineTo(W - pR, gy);
-    ctx.stroke();
-  }
-  var now = new Date();
-
-  function drawBar(x, y, w, h, color) {
-    var r = Math.min(3, w / 2, h / 2);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x, y + h);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  months.forEach(function(mo, i) {
-    var isCur = cfY === now.getFullYear() && (i + 1) === (now.getMonth() + 1);
-    var xBase = pL + i * bW + outerGap / 2;
-
-    if (mo.inc > 0) {
-      var bh = Math.max(2, (mo.inc / maxV) * cH);
-      drawBar(xBase, H - pB - bh, barW, bh, isCur ? cGreen : cGreenLt);
-    }
-    if (mo.exp > 0) {
-      var bh2 = Math.max(2, (mo.exp / maxV) * cH);
-      drawBar(xBase + barW + 2, H - pB - bh2, barW, bh2, isCur ? cRed : cRedLt);
-    }
-
-    ctx.font = (isCur ? '700 ' : '') + '10px Inter,sans-serif';
-    ctx.fillStyle = isCur ? cTx : cTx3;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(MON[i].slice(0, 3), xBase + innerW / 2, H);
-  });
-
-  // Netto-Trend-Linie (gestrichelt)
-  var hasAny = months.some(function(mo) { return mo.inc > 0 || mo.exp > 0; });
-  if (hasAny) {
-    ctx.strokeStyle = cBlue;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    var started = false;
-    months.forEach(function(mo, i) {
-      if (mo.inc === 0 && mo.exp === 0) return;
-      var cx = pL + i * bW + outerGap / 2 + innerW / 2;
-      var netPct = (mo.net + maxV) / (2 * maxV);
-      netPct = Math.min(1, Math.max(0, netPct));
-      var cy = pT + (1 - netPct) * cH;
-      if (!started) { ctx.moveTo(cx, cy); started = true; }
-      else           { ctx.lineTo(cx, cy); }
+  fpChartLib(function () {
+    if (!document.body.contains(canvas)) return;
+    var now = new Date(), cur = cfY === now.getFullYear() ? now.getMonth() : -1;
+    var has = function (m) { return m.inc > 0 || m.exp > 0; };
+    var cInc = fpTokRgba('--green'), cExp = fpTokRgba('--red'), cNet = fpTokRgba('--blue'), cCur = fpTokRgba('--tx3', 0.45);
+    var paint = function (c) { return months.map(function (m, i) { return i === cur ? cCur : c; }); };
+    var cfg = fpChartBase();
+    cfg.plugins.tooltip.callbacks = {
+      title: function (it) { var i = it[0].dataIndex; return fpMonthLong(cfY, i) + (i === cur ? ' · läuft noch' : ''); },
+      label: function (c) { return ' ' + c.dataset.label + ': ' + (c.raw == null ? '–' : eur(c.raw)); }
+    };
+    fpChart(canvas, {
+      data: {
+        labels: months.map(function (m, i) { return MON[i]; }),
+        datasets: [
+          { type: 'bar', label: 'Einnahmen', order: 1, data: months.map(function (m) { return m.inc > 0 ? m.inc : null; }),
+            backgroundColor: paint(cInc), hoverBackgroundColor: paint(cInc), borderRadius: 4, maxBarThickness: 18, categoryPercentage: 0.72, barPercentage: 0.9 },
+          { type: 'bar', label: 'Ausgaben', order: 1, data: months.map(function (m) { return m.exp > 0 ? m.exp : null; }),
+            backgroundColor: paint(cExp), hoverBackgroundColor: paint(cExp), borderRadius: 4, maxBarThickness: 18, categoryPercentage: 0.72, barPercentage: 0.9 },
+          { type: 'line', label: 'Netto', order: 0, data: months.map(function (m, i) { return has(m) && i !== cur ? m.net : null; }),
+            borderColor: cNet, backgroundColor: cNet, borderWidth: 2, tension: 0.3, spanGaps: false,
+            pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: cNet }
+        ]
+      },
+      options: cfg
     });
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  });
 }
 
 function cfRenderTable(months) {

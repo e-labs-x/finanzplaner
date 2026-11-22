@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122e`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122f`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -78,7 +78,7 @@ Niemals klein anfangen und hoffen dass es reicht.
 | `sw.js` | Service Worker — `CACHE_NAME` muss bei **jedem** Deploy mit `?v=` übereinstimmen |
 | `tests.html` | Selbsttests (laufen in `_tests\pruefen.ps1` mit) |
 | `_tests/` | Prüfungen mit echten Daten + Git-Hook — **vor jedem Deploy**, siehe `_tests/README.md` |
-| `vendor/` | Fremdbibliotheken selbst gehostet (SheetJS 0.20.3 + Lizenz), Einbindung mit SRI |
+| `vendor/` | Fremdbibliotheken selbst gehostet (SheetJS 0.20.3, Chart.js 4.6.1 + Lizenzen), Einbindung mit SRI |
 | `TODO.md` | Gepflegte Aufgabenliste + Befund-Dokumentation (z. B. iOS-Rotationsfix) |
 
 **Repo:** `C:\Users\enesc\finanzplaner-repo\`
@@ -211,6 +211,11 @@ Tests nutzen erfundene Bankzeilen.
 - **Dark Mode:** automatisch via `@media (prefers-color-scheme: dark)` — kein manueller Schalter
 - **Rente-Tab unter 960 px:** eine Spalte (Umschalter → Ergebnisse → Einstellungen, Nutzer-Freigabe 25.10.2026);
   `.rp-sidebar` ist dort `display:contents`. Darüber zwei Spalten wie gehabt. `_tests/lib/layout.js` misst 390/820 px.
+- **Diagramme (seit 22.11.2026, Schritt 2):** neue Diagramme über den Baustein in app.js — `fpChartLib(cb)` lädt Chart.js 4.6.1
+  (vendor, SRI), `fpChartBase()` = gemeinsame Achsen/Antippen/Legende, `fpChart(canvas,cfg)` ersetzt ein altes Diagramm, `fpTokRgba(token)`
+  löst Farben auf (Chart.js kennt kein oklch). Canvas liegt in einem Bereich mit fester Höhe (`.fp-chart-box`/`.cf-canvas-wrap`) —
+  Chart.js misst den Bereich, die px-Regel unten gilt für die alten Eigenbauten. Umgestellt: Cashflow, Gehalt, Vermögensverlauf.
+  Noch Eigenbau: Rente (Teil B), Vermögens-Ring, Home-Linie.
 - **Canvas/Donut:** echte Hex-Werte aus `VM_TYPE_COLOR` — kein `var(--...)` in Canvas-API
 - **Canvas-Breite niemals auf px fixieren:** `canvas.style.width='100%'` **vor** der Messung setzen,
   danach nur `style.height` — ein `style.width = W+'px'` lässt die nächste Messung den alten Wert

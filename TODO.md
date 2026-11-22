@@ -1,6 +1,14 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Schritt 2 Teil A Diagramme (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Schritt 2 Umbau Teil A: Diagramme auf Chart.js (22.11.2026, `?v=20261122f`) — Sichtkontrolle iPhone offen
+- Chart.js 4.6.1 (MIT, npm-Prüfsumme sha512 geprüft) unter `vendor/`, SRI, im SW-Precache. Baustein `fpChartLib/fpChartBase/fpChart/fpTokRgba/fpEurAxis/fpEur0`.
+- Cashflow: Achse Tsd. €, laufender Monat grau ohne Netto-Punkt, Antippen. Gehalt: Reallohn (Balken/Linie) ohne überlappende Jahre, Token `--chart-real` statt Hex;
+  Jahrestabelle letzte 5 Jahre + „Alle anzeigen“, ganze Euro. Vermögensverlauf: Achse ab 0, Antippen mit größten Anlagen. Home: Betrag eigene Zeile (Linie überdeckte ihn).
+- Offen Teil B: drei Rente-Diagramme + Rente-Tabelle (jedes 5. Jahr, „Depot bei Rente“ einmal). Dunkelmodus nur über Token-Lesen, nicht gerendert geprüft.
 
 ---
 

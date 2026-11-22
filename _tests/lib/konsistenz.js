@@ -11,7 +11,7 @@
   function txtEur(id) { var t = (document.getElementById(id) || {}).textContent || ''; return cent(parseFloat(t.replace(/[^\d,−-]/g, '').replace('−', '-').replace(',', '.'))); }
   function check(name, ok, detail) { info.push(name + (ok ? ' ok' : ' FEHLER')); if (!ok) errs.push(name + (detail ? ': ' + detail : '')); }
 
-  window.addEventListener('load', function () {
+  window.addEventListener('load', function () { (window.fpChartLib || function (f) { f(); })(function () {
     try {
       var S = FP.Store.get(), y = new Date().getFullYear();
       // 1) Ø/Monat: Reports = Kategorie-Detail (eine Nenner-Regel). Kategorie wählen, die NICHT in jedem
@@ -139,5 +139,5 @@
     var pre = document.createElement('pre'); pre.id = 'out';
     pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join(', '), errors: errs });
     document.body.appendChild(pre);
-  });
+  }); });
 })();
