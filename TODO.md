@@ -1,6 +1,20 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-22 — Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Vermögen-Kopf neu (22.11.2026, `?v=20261122k`) — Abnahme offen
+Anlass: Nutzer-Screenshot (breiter PC) — Ring/Legende in schmaler Spalte mit winziger Schrift, Diagramm sehr breit und halb leer,
+„Auswahl“ unerklärt, Balkenliste zeigte ausgeblendete Anlagen wie mitgezählt. Sicherung: Tag `vor-vermoegen-kopf`.
+- **Balkenliste „Anlagen im Überblick“ BLEIBT** (Nutzer-Entscheidung, zweimal: Okt. + 22.11.; Entfernung 877abc1 vor Veröffentlichung
+  per cebe97e zurückgenommen). Ausgeblendete Anlagen dort blass + durchgestrichen (`vm-bar-off`) wie in der Historie.
+- Kopf: eine Hauptzahl (28 px) = Summe der Auswahl + Zeile „+X € Gewinn (+Y %) auf Z € eingezahlt“; bei Auswahl
+  „Auswahl · N Anlagen ausgeblendet / Enes + …“ mit „alle zeigen“ (= Taste „Alle“). Ring nur Aufteilung (Mitte „Aufteilung · N Arten“,
+  beim Zeigen das Stück), Legende daneben in 14 px. Verlauf-Titel mit Veränderung im Zeitraum (enthält auch neu angelegte Konten).
+- `.vm-wrap` Höchstbreite 1.200 px mittig; Layout-CSS aus JS (`_vm-layout-css`) nach style.css verschoben.
+- Prüfung in `farben.js` (Kopf, Auswahl, Titel, Höchstbreite, Balkenliste blass), Gegenprobe gegen `vor-vermoegen-kopf`: rot.
+- Noch offen aus dem Konzept: `vmDrawTrend` (alter Eigenbau ohne Aufrufer) aufräumen.
 
 ---
 

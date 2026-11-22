@@ -65,6 +65,28 @@
           }
           info.push(cards.length + ' Kacheln, ' + nVal + ' Beträge neutral, ' + nSpark + ' Verläufe blau, ' + nGain + ' Gewinn-Zeilen');
         } catch (e) { errs.push('Kacheln: ' + e.message); }
+        // Kopf (22.11.2026): eine Hauptzahl = Summe der Auswahl, Auswahl erklärt + „alle zeigen“, Veränderung im Verlauf-Titel,
+        // Höchstbreite 1.200 px; Balkenliste bleibt vollständig, Ausgeblendete blass (vm-bar-off)
+        try {
+          var hv = function () { return (document.querySelector('#vm-total .vm-head-val') || {}).textContent; };
+          var hl = function () { return (document.querySelector('#vm-total .vm-head-lbl') || {}).textContent || ''; };
+          if (hv() !== eur(FP.Calculator.getAssetSummary(vmInclude).total)) errs.push('Kopf: Hauptzahl ' + hv() + ' ≠ Summe');
+          if (!/Gesamtvermögen/.test(hl())) errs.push('Kopf ohne Auswahl: „' + hl() + '“');
+          if (getComputedStyle(document.querySelector('#p-vermoegen .vm-wrap')).maxWidth !== '1200px') errs.push('Vermögen-Seite ohne Höchstbreite 1.200 px');
+          var tt = document.querySelector('#vm-total .vm-trend-ttl');
+          if (!tt || !/[+\-−]?[\d.]+ € \([+\-−]?[\d,]+ %\)/.test(tt.textContent)) errs.push('Verlauf-Titel ohne Veränderung: „' + (tt && tt.textContent) + '“');
+          var bigA = FP.Calculator.getAssetSummary().items.slice().sort(function (a, b) { return b.value - a.value; })[0];
+          vmToggleAsset(bigA.id);
+          if (!/1 Anlage ausgeblendet/.test(hl()) || !document.querySelector('#vm-total .vm-head-reset')) errs.push('Kopf mit Auswahl: „' + hl() + '“');
+          if (hv() !== eur(FP.Calculator.getAssetSummary(vmInclude).total)) errs.push('Kopf mit Auswahl: Hauptzahl ≠ Summe der Auswahl');
+          var rows = [].slice.call(document.querySelectorAll('#vm-charts .vm-bar-row'));
+          var offRows = rows.filter(function (r) { return r.classList.contains('vm-bar-off'); }).map(function (r) { return r.textContent; });
+          if (!rows.some(function (r) { return r.textContent.indexOf(bigA.name) >= 0; })) errs.push('Balkenliste: ausgeblendete Anlage fehlt (soll bleiben)');
+          if (offRows.length !== 1 || offRows[0].indexOf(bigA.name) < 0) errs.push('Balkenliste blass: ' + offRows.length + ' Zeilen statt nur „' + bigA.name + '“');
+          document.querySelector('#vm-total .vm-head-reset').click();
+          if (!/Gesamtvermögen/.test(hl())) errs.push('„alle zeigen“ hebt die Auswahl nicht auf');
+          info.push('Kopf: Hauptzahl, Auswahl, Verlauf-Titel ok');
+        } catch (e) { errs.push('Kopf: ' + e.message); }
         var pre = document.createElement('pre'); pre.id = 'out';
         pre.textContent = JSON.stringify({ pass: errs.length === 0, info: info.join('; '), errors: errs });
         document.body.appendChild(pre);
