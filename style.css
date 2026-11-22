@@ -1627,7 +1627,7 @@ button { cursor: pointer; border: none; background: none; }
 .tbl-scroll th,.tbl-scroll td{white-space:nowrap}
 /* Bei border-collapse malen Browser die Linien der feststehenden Spalte nicht (iPhone: Zeilenlinien fehlten unter „Monat“) */
 .tbl-scroll table{border-collapse:separate;border-spacing:0}
-.tbl-scroll th:first-child,.tbl-scroll td:first-child{position:sticky;left:0;z-index:1;background:var(--surf)}
+.tbl-scroll th:first-child,.tbl-scroll td:first-child{position:sticky;left:0;z-index:1;background:var(--surf);box-shadow:inset -1px 0 0 var(--brd),4px 0 6px -4px var(--tbl-shade)}
 .tbl-scroll .cf-tbl th:first-child,.tbl-scroll .gh-rw-table th:first-child{background:var(--surf2)}
 .tbl-scroll tr.hl td:first-child{background:var(--blue-lt)}
 .tbl-scroll>.rp-dt{display:table;max-width:none;overflow:visible}
