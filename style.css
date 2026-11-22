@@ -1604,6 +1604,8 @@ button { cursor: pointer; border: none; background: none; }
 .cf-net-badge.cf-net-neg{background:var(--red-lt);color:var(--red)}
 .cf-net-badge.cf-net-nil{color:var(--tx3)}
 .cf-trend{font-size:13px}
+/* Netto rechtsbündig unter seiner Überschrift, Pfeil-Spalte nur so breit wie der Pfeil (22.11.2026: war links, wirkte am PC verschoben) */
+.cf-tbl td.cf-trend-cell,.cf-tbl th:last-child{width:1%;padding-left:4px;text-align:center}
 .cf-trend-up{color:var(--green)}
 .cf-trend-dn{color:var(--red)}
 .cf-empty{color:var(--tx3);font-size:13px;padding:20px 0;text-align:center}

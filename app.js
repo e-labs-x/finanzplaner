@@ -8561,8 +8561,8 @@ function cfRenderTable(months) {
       '<td>' + MON[i] + '</td>' +
       '<td>' + (mo.inc > 0 ? eur(mo.inc) : '–') + '</td>' +
       '<td>' + (mo.exp > 0 ? eur(mo.exp) : '–') + '</td>' +
-      '<td style="text-align:left;padding-left:10px">' + netCell + '</td>' +
-      '<td>' + trend + '</td>' +
+      '<td>' + netCell + '</td>' +
+      '<td class="cf-trend-cell">' + trend + '</td>' +
       '</tr>';
   });
 
