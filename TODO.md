@@ -4,7 +4,7 @@ Letzte Aktualisierung: 2026-11-22 — Schritt 1 Design-Grundlage (`?v=20261122e`
 
 ---
 
-## 👀 Schritt 1 Umbau: Design-Grundlage (22.11.2026, `?v=20261122e`) — Sichtkontrolle iPhone offen
+## ✅ Schritt 1 Umbau: Design-Grundlage (22.11.2026, `?v=20261122e`) — vom Nutzer auf dem iPhone abgenommen („passt so“)
 Sicherung vorher: Tag `vor-design-schritt1`, `files\*_2026-11-22_vor-design.*`. Umbau per Skript (gleiche Regel überall):
 - Systemschrift statt Inter/Google Fonts (index.html, CSP `style-src`/`font-src` ohne Google, sw.js nur noch eigene Dateien, Canvas/SVG-Schrift).
 - Schriftgrößen auf 12 · 14 · 16 · 20 · 28 px (396 Stellen in CSS/Code), Stärken 300/500→400, 700→600, 800→700 (173), Ecken 5–30 px → Tokens (111).
@@ -13,7 +13,7 @@ Sicherung vorher: Tag `vor-design-schritt1`, `files\*_2026-11-22_vor-design.*`. 
 
 ---
 
-## 👀 Schritt 0 Umbau: iPhone-Tabellen + Kategorien-Dialog (22.11.2026, `?v=20261122a`–`d`) — Cashflow auf iPhone abgenommen
+## ✅ Schritt 0 Umbau: iPhone-Tabellen + Kategorien-Dialog (22.11.2026, `?v=20261122a`–`d`) — auf dem iPhone abgenommen
 Gesamtplan (Umbau in 5 Bereiche, Design, Diagramme, Fixkosten, Vermögen) steht außerhalb des Repos im
 Konzept `Finanzen App\konzept_umbau_2026-11-22.md` (Repo ist öffentlich).
 - **Abgeschnitten bei 390 px (gemessen):** Cashflow-Kacheln (Netto über dem Rand), Cashflow-Tabelle (Karte
