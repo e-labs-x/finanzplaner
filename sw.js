@@ -4,7 +4,7 @@
 const NET_TIMEOUT_MS = 3000;
 
 // ── Version hier bei jedem Deploy auf die neue ?v=... anpassen ──
-const CACHE_NAME = 'fp-20261122d';
+const CACHE_NAME = 'fp-20261122e';
 
 // Bewusst OHNE ?v-Marker: Für JS/CSS gilt unten Network-First (echte Version kommt immer
 // frisch aus dem Netz + wird unter ihrer ?v-URL gecacht). Der SHELL-Precache ist nur der
@@ -42,7 +42,7 @@ self.addEventListener('fetch', evt => {
   // eigene Dateien und Google Fonts. Alles andere — Azure-Blob (Finanzdaten), Kurs-APIs,
   // Alpha Vantage (Key in der URL) — geht immer direkt ans Netz und landet nie im Cache.
   const host = new URL(url).host;
-  if (host !== self.location.host && host !== 'fonts.googleapis.com' && host !== 'fonts.gstatic.com') return;
+  if (host !== self.location.host) return;
 
   // App-Shell (HTML/JS/CSS + Navigation): NETWORK-FIRST — online immer frischer Code,
   // Cache nur als Offline-Fallback. Verhindert, dass alte Versionen "kleben bleiben".

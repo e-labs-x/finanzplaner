@@ -1,6 +1,15 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Schritt 0 des Umbau-Konzepts: Tabellen fürs iPhone + zwei Kategorien-Fehler (`?v=20261122a`)
+Letzte Aktualisierung: 2026-11-22 — Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Schritt 1 Umbau: Design-Grundlage (22.11.2026, `?v=20261122e`) — Sichtkontrolle iPhone offen
+Sicherung vorher: Tag `vor-design-schritt1`, `files\*_2026-11-22_vor-design.*`. Umbau per Skript (gleiche Regel überall):
+- Systemschrift statt Inter/Google Fonts (index.html, CSP `style-src`/`font-src` ohne Google, sw.js nur noch eigene Dateien, Canvas/SVG-Schrift).
+- Schriftgrößen auf 12 · 14 · 16 · 20 · 28 px (396 Stellen in CSS/Code), Stärken 300/500→400, 700→600, 800→700 (173), Ecken 5–30 px → Tokens (111).
+- Emoji → Linien-Symbole über `ic()` (Fixkosten-Knöpfe, Rente-Reiter, Einstellungen, Eingabe, Warnungen); Text-Glyphen ↩ ↕ ↺ ✓ bleiben.
+- Gemessen: 390 px und 820 px nichts über dem Rand; Prüfungen 20/20. Diagramm-Beschriftungen (Canvas-Größen) bleiben für Schritt 2.
 
 ---
 

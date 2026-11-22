@@ -129,7 +129,7 @@ var AzureSync = (function() {
     if (!_authErrShown) {
       _authErrShown = true;
       FP.Store.appLog('SYNC', 'Sync gestoppt: SAS-Token abgelaufen/ungültig (' + r.status + ')');
-      toast('⚠ Azure SAS-Token abgelaufen — bitte in den Einstellungen erneuern');
+      toast('Azure SAS-Token abgelaufen — bitte in den Einstellungen erneuern');
     }
     return true;
   }
@@ -249,7 +249,7 @@ var AzureSync = (function() {
         _busy = false;
         _setBusy(false);
         setSyncStatus('error', 'Token abgelaufen');
-        toast('⚠ Azure SAS-Token abgelaufen — bitte erneuern');
+        toast('Azure SAS-Token abgelaufen — bitte erneuern');
         FP.Store.appLog('SYNC', 'Push fehlgeschlagen: Token abgelaufen (403)');
       } else {
         throw new Error('HTTP ' + r.status);
@@ -696,7 +696,7 @@ function updateSasReminder() {
   if (days == null) { bar.style.display = 'none'; return; }
   if (days < 0) {
     bar.className = 'sas-bar danger';
-    bar.textContent = '⚠ Cloud-Zugang abgelaufen — Sync gestoppt. Bitte einen neuen SAS-Token erzeugen und in den Einstellungen einfügen. (Tippen für Einstellungen)';
+    bar.textContent = 'Cloud-Zugang abgelaufen — Sync gestoppt. Bitte einen neuen SAS-Token erzeugen und in den Einstellungen einfügen. (Tippen für Einstellungen)';
   } else if (days <= 14) {
     var ds = AzureSync.sasExpiry().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'});
     bar.className = 'sas-bar warn';
@@ -1081,7 +1081,7 @@ function buildCats() {
         var addBtn = document.createElement('button');
         addBtn.className = 'cat-btn';
         addBtn.style.cssText = 'border-style:dashed;color:var(--tx3)';
-        addBtn.innerHTML = '<span class="cat-ico" style="font-size:18px">＋</span><span>Neu</span>';
+        addBtn.innerHTML = '<span class="cat-ico" style="font-size:20px">＋</span><span>Neu</span>';
         addBtn.onclick = openKatModal;
         grid.appendChild(addBtn);
       }
@@ -1133,7 +1133,7 @@ function buildCats() {
       var addBtn = document.createElement('button');
       addBtn.className = 'cat-btn cat-sub-btn';
       addBtn.style.cssText = 'border-style:dashed;color:var(--tx3)';
-      addBtn.innerHTML = '<span class="cat-ico" style="font-size:18px">＋</span><span>Neu</span>';
+      addBtn.innerHTML = '<span class="cat-ico" style="font-size:20px">＋</span><span>Neu</span>';
       addBtn.onclick = openKatModal;
       addGrid.appendChild(addBtn);
       addWrap.appendChild(addGrid);
@@ -1376,7 +1376,7 @@ function renderEntries() {
   var oMap = {}; FP.Store.Objects.getAll().forEach(function(o) { oMap[o.id] = o; });
   document.getElementById('e-cnt').textContent = shown.length + ' von ' + all.length;
   var list = document.getElementById('e-list');
-  if (!all.length) { list.innerHTML = '<div style="padding:28px 16px;text-align:center"><div style="font-size:32px;margin-bottom:8px;opacity:.4">✏️</div><div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">Noch nichts erfasst</div><div style="font-size:12px;color:var(--tx3)">Kategorie wählen, Betrag eingeben, speichern.</div></div>'; return; }
+  if (!all.length) { list.innerHTML = '<div style="padding:28px 16px;text-align:center"><div style="margin-bottom:8px;opacity:.4">'+ic('pencil',32)+'</div><div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">Noch nichts erfasst</div><div style="font-size:12px;color:var(--tx3)">Kategorie wählen, Betrag eingeben, speichern.</div></div>'; return; }
   var rowsHtml = shown.map(function(tx) {
     var cat = cMap[tx.categoryId]; var obj = oMap[tx.objectId];
     var dateTx = fmtTxDate(tx);
@@ -1388,7 +1388,7 @@ function renderEntries() {
       + '<div class="e-cat">' + (cat ? esc(cat.name) : '?') + txPersonTag(tx) + '</div>'
       + (tx.source === 'import' ? '<div class="e-note">' + esc(tx.rawName || tx.note) + '</div>'   // Bankname statt Verwendungszweck
          : tx.note ? '<div class="e-note">' + esc(tx.note) + '</div>' : '')
-      + '<div class="e-meta"><span style="font-size:11px;color:var(--tx3)">' + dateTx + '</span>'
+      + '<div class="e-meta"><span style="font-size:12px;color:var(--tx3)">' + dateTx + '</span>'
       + '<span class="pill ' + (grp === 'fixkosten' ? 'pill-fix' : 'pill-frei') + '">' + (grp === 'fixkosten' ? 'Fix' : 'Frei') + '</span>'
       + objTag + '</div></div>'
       + '<div class="e-amt" style="color:' + (tx.amount < 0 ? 'var(--green)' : 'inherit') + '">' + (tx.amount < 0 ? '↩\u2009' : '') + eur(Math.abs(tx.amount)) + '</div>'
@@ -1396,7 +1396,7 @@ function renderEntries() {
       + '</div>';
   }).join('');
   var moreBtn = hasMore
-    ? '<div style="padding:10px 12px;text-align:center"><button class="btn" style="font-size:13px" onclick="eToggleMore()">' + (eShowMore ? 'Weniger anzeigen' : 'Mehr anzeigen (letzte 2 Monate)') + '</button></div>'
+    ? '<div style="padding:10px 12px;text-align:center"><button class="btn" style="font-size:14px" onclick="eToggleMore()">' + (eShowMore ? 'Weniger anzeigen' : 'Mehr anzeigen (letzte 2 Monate)') + '</button></div>'
     : '';
   list.innerHTML = rowsHtml + moreBtn;
 }
@@ -1735,6 +1735,10 @@ function confirmDialog(msg, label, onOk){
 
 /* ── Toast ── */
 var toastT;
+// Linien-Symbole statt Emoji (Design-Grundlage 22.11.2026) — gleiche Strichstärke wie die Navigation
+var IC_PATHS={"pencil":"<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>","trash":"<path d=\"M3 6h18\"/><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"/><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\"/>","stop":"<rect x=\"5\" y=\"5\" width=\"14\" height=\"14\" rx=\"2\"/>","chart":"<path d=\"M3 3v18h18\"/><path d=\"M18 17V9\"/><path d=\"M13 17V5\"/><path d=\"M8 17v-3\"/>","calendar":"<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4\"/><path d=\"M8 2v4\"/><path d=\"M3 10h18\"/>","landmark":"<path d=\"M3 22h18\"/><path d=\"M6 18v-7\"/><path d=\"M10 18v-7\"/><path d=\"M14 18v-7\"/><path d=\"M18 18v-7\"/><path d=\"m12 2 8 5H4z\"/>","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/>","target":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"6\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/>","zap":"<path d=\"M13 2 3 14h9l-1 8 10-12h-9l1-8z\"/>","link":"<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>","alert":"<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/>","minus":"<path d=\"M5 12h14\"/>","user":"<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/>","clipboard":"<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/>","download":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m7 10 5 5 5-5\"/><path d=\"M12 15V3\"/>","upload":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m17 8-5-5-5 5\"/><path d=\"M12 3v12\"/>"};
+function ic(n,s){s=s||14;return '<svg class="ic" width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC_PATHS[n]+'</svg>';}
+
 function toast(msg) {
   var el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
@@ -1764,7 +1768,7 @@ function _renderLog(el) {
   if(!log.length){ el.textContent='(noch keine Einträge)'; return; }
   el.innerHTML = log.slice(0,200).map(function(e){
     var col = e.level==='ERROR'?'var(--red)':e.level==='WARN'?'var(--amber)':e.level==='SYNC'?'var(--green)':e.level==='KATEGORIE'?'var(--purple)':e.level==='INFO'?'var(--tx2)':'var(--blue)';
-    return '<div style="margin-bottom:4px"><span style="color:var(--tx3);font-size:11px">'+_fmtLogTs(e.ts)+'</span> '
+    return '<div style="margin-bottom:4px"><span style="color:var(--tx3);font-size:12px">'+_fmtLogTs(e.ts)+'</span> '
       +'<span style="color:'+col+';font-weight:600">'+esc(e.level)+'</span> '
       +'<span style="word-break:break-all">'+esc(e.msg)+'</span></div>';
   }).join('');
@@ -1973,7 +1977,7 @@ function avRenderKat(bc){
   // Standard: Kategorien
   var items=avSorted(bc);var total=Math.abs(avTotal(bc))||1;
   var el=document.getElementById('av-kat-list');if(!el)return;
-  if(!items.length){el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:13px">Keine Daten.</div>';return;}
+  if(!items.length){el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:14px">Keine Daten.</div>';return;}
   el.innerHTML=items.map(function(d){
     var pct=(Math.abs(d.total)/total*100).toFixed(1);
     var color=d.cat.color||'#6B7280';
@@ -2015,7 +2019,7 @@ function avRenderKatGruppen(bc){
   var total=Math.abs(avTotal(bc))||1;
   var items=Object.values(groups).filter(function(g){return g.total!==0;});
   items.sort(function(a,b){return Math.abs(b.total)-Math.abs(a.total);});
-  if(!items.length){el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:13px">Keine Daten.</div>';return;}
+  if(!items.length){el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:14px">Keine Daten.</div>';return;}
   var html=items.map(function(g){
     var pct=(Math.abs(g.total)/total*100).toFixed(1);
     var color=g.cat.color||'#6B7280';
@@ -2089,7 +2093,7 @@ function avRenderKatObjekte(){
   var items=Object.values(bo).filter(function(d){return d.total!==0;});
   items.sort(function(a,b){return Math.abs(b.total)-Math.abs(a.total);});
   if(!items.length){
-    el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:13px">Keine Ausgaben mit Objekt-Zuordnung.</div>';
+    el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:14px">Keine Ausgaben mit Objekt-Zuordnung.</div>';
     return;
   }
   var grandTotal=items.reduce(function(s,d){return s+Math.abs(d.total);},0)||1;
@@ -2151,8 +2155,8 @@ function avRenderViz(bc){
     var dtx=dcs.getPropertyValue('--tx').trim()||'#1C1C1E';
     var dtx3=dcs.getPropertyValue('--tx3').trim()||'#AEAEB2';
     // Center: Label oben, Betrag groß darunter
-    svg+='<text x="90" y="93" text-anchor="middle" font-size="9" fill="'+dtx3+'" font-family="Inter,sans-serif" letter-spacing="0.5">'+midN.toUpperCase()+'</text>';
-    svg+='<text x="90" y="112" text-anchor="middle" font-size="15" font-weight="800" fill="'+dtx+'" font-family="Inter,sans-serif" letter-spacing="-0.5">'+eur(midT)+'</text>';
+    svg+='<text x="90" y="93" text-anchor="middle" font-size="9" fill="'+dtx3+'" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif" letter-spacing="0.5">'+midN.toUpperCase()+'</text>';
+    svg+='<text x="90" y="112" text-anchor="middle" font-size="15" font-weight="800" fill="'+dtx+'" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif" letter-spacing="-0.5">'+eur(midT)+'</text>';
     svg+='</svg>';
     el.innerHTML=svg;
   } else {
@@ -2251,14 +2255,14 @@ function avRenderDetail(){
       return '<div class="av-cd-tx" onclick="editTx(\''+tx.id+'\')">'+
         '<div class="av-cd-tx-day">'+day+'</div>'+
         '<div class="av-cd-tx-lbl">'+
-          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+txPersonTag(tx)+'</div>'+
+          '<div class="av-cd-tx-name">'+(isRefund?'<span style="color:var(--green);font-size:12px;font-weight:600;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+txPersonTag(tx)+'</div>'+
           (noteParts.length?'<div class="av-cd-tx-note">'+esc(noteParts.join(' · '))+'</div>':'')+
         '</div>'+
         '<div class="av-cd-tx-amt" style="color:'+(isRefund?'var(--green)':'var(--tx)')+'">'+(isRefund?'+ ':'')+eur(Math.abs(tx.amount))+'</div>'+
       '</div>';
     }).join('');
-    return '<div class="av-cd-mo-hdr"><span style="font-weight:700;color:var(--tx)">'+MON[parseInt(p[0])-1]+' '+p[1]+'</span>'+
-      '<span style="font-weight:700;color:var(--tx)">'+eur(Math.abs(sumOf(m.txs)))+'</span></div>'+rows;
+    return '<div class="av-cd-mo-hdr"><span style="font-weight:600;color:var(--tx)">'+MON[parseInt(p[0])-1]+' '+p[1]+'</span>'+
+      '<span style="font-weight:600;color:var(--tx)">'+eur(Math.abs(sumOf(m.txs)))+'</span></div>'+rows;
   }).join('');
 
   var hasSubs=FP.Store.Categories.getAll().some(function(c){return c.parentId===d.id;});
@@ -2278,8 +2282,8 @@ function avRenderDetail(){
       '</div>'+
     '</div>'+
     '<div class="av-cd-card av-cd-tx-card">'+
-      '<div class="av-cd-sec-lbl" style="padding:14px 16px 10px">Buchungen <span style="font-weight:500;text-transform:none;letter-spacing:0">· antippen zum Bearbeiten</span></div>'+
-      (txHtml||'<div style="padding:0 16px 14px;color:var(--tx3);font-size:13px">Keine Buchungen in '+avLabel()+'.</div>')+
+      '<div class="av-cd-sec-lbl" style="padding:14px 16px 10px">Buchungen <span style="font-weight:400;text-transform:none;letter-spacing:0">· antippen zum Bearbeiten</span></div>'+
+      (txHtml||'<div style="padding:0 16px 14px;color:var(--tx3);font-size:14px">Keine Buchungen in '+avLabel()+'.</div>')+
     '</div>';
   return true;
 }
@@ -2502,13 +2506,13 @@ function obRenderDetail(id){
       var ref=tx.amount<0;
       return '<div class="av-cd-tx">'+
         '<div class="av-cd-tx-lbl">'+
-          '<div class="av-cd-tx-name">'+(ref?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+'</div>'+
+          '<div class="av-cd-tx-name">'+(ref?'<span style="color:var(--green);font-size:12px;font-weight:600;margin-right:4px">ERSTATTUNG</span>':'')+esc(lbl)+'</div>'+
           (subP.length?'<div class="av-cd-tx-note">'+esc(subP.join(' · '))+'</div>':'')+
         '</div>'+
         '<div class="av-cd-tx-amt" style="color:'+(ref?'var(--green)':'var(--tx)')+'">'+(ref?'+ ':'')+eur(Math.abs(tx.amount))+'</div>'+
       '</div>';
     }).join('');
-    return '<div class="av-cd-mo-hdr"><span style="font-weight:700;color:var(--tx)">'+moLbl+'</span><span style="font-weight:700;color:var(--tx)">'+eur(Math.abs(moTot))+'</span></div>'+rws;
+    return '<div class="av-cd-mo-hdr"><span style="font-weight:600;color:var(--tx)">'+moLbl+'</span><span style="font-weight:600;color:var(--tx)">'+eur(Math.abs(moTot))+'</span></div>'+rws;
   }).join('');
 
   var isArch=o.status==='archiviert';
@@ -2532,7 +2536,7 @@ function obRenderDetail(id){
     (cats.length?'<div class="ob-section"><div class="ob-section-hdr">Nach Kategorie</div>'+catRows+'</div>':'') +
     (years.length?'<div class="ob-section"><div class="ob-section-hdr">Nach Jahr</div>'+yearRows+'</div>':'') +
     (obTxHtml?'<div class="ob-section"><div class="ob-section-hdr">Buchungen</div>'+obTxHtml+'</div>':'') +
-    (!cats.length&&!years.length?'<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Noch keine Buchungen für dieses Objekt.</div>':'');
+    (!cats.length&&!years.length?'<div style="padding:20px;text-align:center;color:var(--tx3);font-size:14px">Noch keine Buchungen für dieses Objekt.</div>':'');
 }
 
 /* ════════════════════════════════════════
@@ -2569,14 +2573,14 @@ function stRenderInflation(){
   el.innerHTML=years.map(function(yr){
     var isPrognose=yr>INFL_REF_CONFIRMED_UNTIL;
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--brd)">'+
-      '<span style="font-size:13px;font-weight:600;color:var(--tx);width:48px">'+yr+'</span>'+
-      (isPrognose?'<span style="font-size:10px;background:var(--blue-lt);color:var(--blue);border-radius:4px;padding:1px 5px;flex-shrink:0">Prognose</span>':
-                  '<span style="font-size:10px;background:var(--surf2);color:var(--tx3);border-radius:4px;padding:1px 5px;flex-shrink:0">Destatis</span>')+
+      '<span style="font-size:14px;font-weight:600;color:var(--tx);width:48px">'+yr+'</span>'+
+      (isPrognose?'<span style="font-size:12px;background:var(--blue-lt);color:var(--blue);border-radius:4px;padding:1px 5px;flex-shrink:0">Prognose</span>':
+                  '<span style="font-size:12px;background:var(--surf2);color:var(--tx3);border-radius:4px;padding:1px 5px;flex-shrink:0">Destatis</span>')+
       '<input class="fi" type="number" min="-5" max="30" step="0.1" inputmode="decimal"'+
-        ' style="flex:1;padding:4px 8px;font-size:13px"'+
+        ' style="flex:1;padding:4px 8px;font-size:14px"'+
         ' value="'+infl[yr]+'"'+
         ' onchange="stInflSave('+yr+',this.value)">'+
-      '<span style="font-size:13px;color:var(--tx3);flex-shrink:0">%</span>'+
+      '<span style="font-size:14px;color:var(--tx3);flex-shrink:0">%</span>'+
       (isPrognose?'<button onclick="stInflDelete('+yr+')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:0 4px;line-height:1" title="Löschen">×</button>':'<span style="width:24px"></span>')+
     '</div>';
   }).join('');
@@ -2782,7 +2786,7 @@ function stRenderApiKey(){
     status.textContent='✓ API-Key gespeichert · Kursabruf aktiv';
   } else {
     status.style.color='var(--amber)';
-    status.textContent='⚠ Kein API-Key — Kursabruf nicht möglich';
+    status.textContent='Kein API-Key — Kursabruf nicht möglich';
   }
 }
 
@@ -2797,7 +2801,7 @@ function stSaveApiKey(){
 function stTestApiKey(){
   var key=document.getElementById('st-av-key').value.trim()||FP.Store.Settings.getApiKey('alphavantage');
   var status=document.getElementById('st-av-status');
-  if(!key){status.style.color='var(--amber)';status.textContent='⚠ Bitte zuerst API-Key eingeben';return;}
+  if(!key){status.style.color='var(--amber)';status.textContent='Bitte zuerst API-Key eingeben';return;}
 
   // Verbindungstest + Kursabruf für alle hinterlegten Ticker
   status.style.color='var(--tx3)'; status.textContent='Teste Verbindung …';
@@ -2913,7 +2917,7 @@ function stRenderCats(){
         '<span class="st-cat-sub">'+nTx(s.id)+(s.hidden?' · ausgeblendet':'')+'</span></span>'+dots(s.id)+'</div>';
     });
   });
-  el.innerHTML=html||'<div style="padding:14px 0;color:var(--tx3);font-size:13px">Keine Kategorien.</div>';
+  el.innerHTML=html||'<div style="padding:14px 0;color:var(--tx3);font-size:14px">Keine Kategorien.</div>';
 }
 // Aktionen einer Kategorie im Bestätigungsdialog (Bearbeiten · Aus-/Einblenden · Löschen)
 function stCatActions(id){
@@ -3023,7 +3027,7 @@ function stRenderTrash(){
   if(!el)return;
   var items=FP.Trash.getAll();
   if(!items.length){
-    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Papierkorb ist leer.</div>';
+    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:14px">Papierkorb ist leer.</div>';
     return;
   }
   var typeLabel={category:'Kategorie',object:'Objekt',recurring:'Fixkost',transaction:'Buchung',asset:'Anlage',fsa:'Freistellungsauftrag',income:'Einnahme'};
@@ -3086,7 +3090,7 @@ function stRenderObjs(){
   if(!el)return;
   var objs=FP.Store.Objects.getAll();
   if(!objs.length){
-    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Noch keine Objekte vorhanden.</div>';
+    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:14px">Noch keine Objekte vorhanden.</div>';
     return;
   }
   var typeLabel={fahrzeug:'Fahrzeug',reise:'Reise',projekt:'Projekt',person:'Person',geraet:'Gerät',sonstiges:'Sonstiges'};
@@ -3179,7 +3183,7 @@ function stRenderCurrencies(){
   if(!el)return;
   var all=FP.Store.Currencies.getAll();
   if(!all.length){
-    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:13px">Keine Währungen vorhanden.</div>';
+    el.innerHTML='<div style="padding:14px 0;color:var(--tx3);font-size:14px">Keine Währungen vorhanden.</div>';
     return;
   }
   el.innerHTML=all.map(function(c){
@@ -3376,7 +3380,7 @@ function _showIosRatesHint(){
   var extra=document.getElementById('mconf-extra');
   extra.style.display='block';
   extra.innerHTML=
-    '<div style="background:var(--bg);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.6">'+
+    '<div style="background:var(--bg);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;line-height:1.6">'+
     '<b>Option 1 – In Safari öffnen:</b><br>'+
     'Files-App → Datei gedrückt halten → Teilen → <i>In Safari öffnen</i><br><br>'+
     '<b>Option 2 – Am PC aktualisieren:</b><br>'+
@@ -3433,8 +3437,8 @@ function stExportExcel(btn) {
   if (typeof XLSX === 'undefined') {
     if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
     _loadXLSX(
-      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } stExportExcel(btn); },
-      function() { if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; } toast('Fehler: Excel-Bibliothek konnte nicht geladen werden'); }
+      function() { if (btn) { btn.disabled = false; btn.innerHTML = ic('chart') + ' Excel'; } stExportExcel(btn); },
+      function() { if (btn) { btn.disabled = false; btn.innerHTML = ic('chart') + ' Excel'; } toast('Fehler: Excel-Bibliothek konnte nicht geladen werden'); }
     );
     return;
   }
@@ -3707,10 +3711,10 @@ function esppRender(){
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Aktueller Kurs USD</span>'+
     '<div style="display:flex;gap:6px;align-items:center">'+
     '<input class="vm-espp-sinp" id="espp-aktkurs" type="number" step="0.01" value="'+(s.aktuellerKursUsd||'')+'" placeholder="manuell" onchange="esppSaveSettings()">'+
-    (apiKey?'<button onclick="esppFetchAktKurs()" style="background:var(--blue);border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;color:var(--on-accent);cursor:pointer;white-space:nowrap" id="espp-aktkurs-btn">↻</button>':'<span style="font-size:10px;color:var(--tx3)">kein API-Key</span>')+
+    (apiKey?'<button onclick="esppFetchAktKurs()" style="background:var(--blue);border:none;border-radius:var(--r-sm);padding:4px 8px;font-size:12px;font-weight:600;color:var(--on-accent);cursor:pointer;white-space:nowrap" id="espp-aktkurs-btn">↻</button>':'<span style="font-size:12px;color:var(--tx3)">kein API-Key</span>')+
     '</div></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">EUR/USD</span>'+
-    '<span style="font-size:13px;font-family:var(--mono);color:var(--tx2);padding:4px 8px;background:var(--surf2);border:1px solid var(--brd);border-radius:6px;white-space:nowrap">'+s.eurUsdKurs.toFixed(4)+' <span style="font-size:10px;color:var(--tx3);font-family:inherit">aus Währungen</span></span></div>'+
+    '<span style="font-size:14px;font-family:var(--mono);color:var(--tx2);padding:4px 8px;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);white-space:nowrap">'+s.eurUsdKurs.toFixed(4)+' <span style="font-size:12px;color:var(--tx3);font-family:inherit">aus Währungen</span></span></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Rabatt %</span>'+
     '<input class="vm-espp-sinp" id="espp-rabatt" type="number" step="1" value="'+s.rabatt+'" onchange="esppSaveSettings()"></div>'+
     '<div class="vm-espp-sf"><span class="vm-espp-slbl">Grenzsteuer %</span>'+
@@ -3723,7 +3727,7 @@ function esppRender(){
 
   var tblHtml;
   if(!zyklen.length){
-    tblHtml='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Noch keine Zyklen erfasst.</div>';
+    tblHtml='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:14px">Noch keine Zyklen erfasst.</div>';
   } else {
     var rows=esppZyklen(store).map(function(e){
       var z=e.z, c=e.c, status=e.status;
@@ -3750,8 +3754,8 @@ function esppRender(){
         '<td>'+nettoStr+'</td>'+
         '<td><span class="vm-espp-badge '+status+'">'+statusLbl+'</span></td>'+
         '<td style="white-space:nowrap">'+
-          '<button onclick="esppEditZyklus(\''+z.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--tx3);cursor:pointer;margin-right:2px">✎</button>'+
-          '<button onclick="esppDelZyklus(\''+z.id+'\')" style="background:none;border:none;padding:2px 4px;font-size:13px;color:var(--tx3);cursor:pointer">✕</button>'+
+          '<button onclick="esppEditZyklus(\''+z.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:var(--r-sm);padding:2px 7px;font-size:12px;color:var(--tx3);cursor:pointer;margin-right:2px">✎</button>'+
+          '<button onclick="esppDelZyklus(\''+z.id+'\')" style="background:none;border:none;padding:2px 4px;font-size:14px;color:var(--tx3);cursor:pointer">✕</button>'+
         '</td>'+
       '</tr>';
     }).join('');
@@ -3762,7 +3766,7 @@ function esppRender(){
 
   el.innerHTML=
     '<div class="vm-espp-hdr">'+
-    '<span class="vm-espp-title">📊 ESPP — Employee Stock Purchase Plan (Fidelity)</span>'+
+    '<span class="vm-espp-title">'+ic('chart')+' ESPP — Employee Stock Purchase Plan (Fidelity)</span>'+
     '<button class="av-heute" onclick="esppOpenNew()" style="font-size:12px;padding:5px 10px">+ Zyklus</button>'+
     '</div>'+
     settHtml+tblHtml+
@@ -3909,7 +3913,7 @@ function fkSortHdrHtml(s){
   function h(col,lbl){ return '<div class="av-tbl-h h-'+(col==='name'?'name':'amt')+(s.by===col?' '+s.dir:'')+'" onclick="fkSort(\''+col+'\')">'+lbl+'</div>'; }
   // unsichtbare Knopfleiste hält „Betrag“ genau über der Betragsspalte
   return '<div class="fk-row fk-tbl-hdr">'+h('name','Name')+h('amount','Betrag')+
-    '<div class="fk-row-actions" aria-hidden="true" style="visibility:hidden"><span class="fk-row-btn">↕</span><span class="fk-row-btn">✏️</span><span class="fk-row-btn">⏹</span><span class="fk-row-btn">🗑</span></div></div>';
+    '<div class="fk-row-actions" aria-hidden="true" style="visibility:hidden"><span class="fk-row-btn">↕</span><span class="fk-row-btn">'+ic('pencil')+'</span><span class="fk-row-btn">'+ic('stop')+'</span><span class="fk-row-btn">'+ic('trash')+'</span></div></div>';
 }
 
 function _fkYearFromStr(mmyyyy){
@@ -4057,7 +4061,7 @@ function fkRenderList(){
   var objMap={};objs.forEach(function(o){objMap[o.id]=o;});
 
   if(!items.length){
-    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Einträge für '+year+'. Tippe auf "Kopieren →" oder "+ Hinzufügen".</div></div>';
+    el.innerHTML='<div class="fk-group"><div style="padding:20px;text-align:center;color:var(--tx3);font-size:14px">Keine Einträge für '+year+'. Tippe auf "Kopieren →" oder "+ Hinzufügen".</div></div>';
     return;
   }
 
@@ -4098,9 +4102,9 @@ function fkRenderList(){
         '<div class="fk-row-amt" style="color:'+g.color+'">'+eur(fc.amount)+'</div>'+
         '<div class="fk-row-actions">'+
           (canSplit?'<button class="fk-row-btn" onclick="fkOpenSplit(\''+fc.id+'\')" title="Betrag ändern">↕</button>':'')+
-          '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">✏️</button>'+
-          '<button class="fk-row-btn" onclick="fkOpenEnd(\''+fc.id+'\')" title="Beenden (letzter Monat mit Zahlung)">⏹</button>'+
-          '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">🗑</button>'+
+          '<button class="fk-row-btn" onclick="fkOpenEdit(\''+fc.id+'\')">'+ic('pencil')+'</button>'+
+          '<button class="fk-row-btn" onclick="fkOpenEnd(\''+fc.id+'\')" title="Beenden (letzter Monat mit Zahlung)">'+ic('stop')+'</button>'+
+          '<button class="fk-row-btn del" onclick="fkDelete(\''+fc.id+'\')">'+ic('trash')+'</button>'+
         '</div>'+
       '</div>';
     }).join('');
@@ -4124,7 +4128,7 @@ function fkEndedHtml(list,year,catMap,objMap){
       '<div class="fk-row-amt">'+eur(fc.amount)+'</div>'+
       '<div class="fk-row-actions">'+
         '<button class="fk-row-btn" onclick="fkResume(\x27'+fc.id+'\x27)" title="Ende aufheben">↺</button>'+
-        '<button class="fk-row-btn del" onclick="fkDelete(\x27'+fc.id+'\x27)">🗑</button>'+
+        '<button class="fk-row-btn del" onclick="fkDelete(\x27'+fc.id+'\x27)">'+ic('trash')+'</button>'+
       '</div></div>';
   }).join('');
   return '<div class="fk-group fk-ended'+(_fkEndedOpen?' open':'')+'" id="fk-ended">'+
@@ -4251,7 +4255,7 @@ function fkSave(){
 function fkDelete(id){
   var fc=FP.Store.Recurring.getAll().find(function(r){return r.id===id;});
   if(!fc)return;
-  confirmDialog('Vorlage „'+fc.name+'“ löschen? Ihre Buchungen ab diesem Monat werden entfernt, frühere bleiben. Die Vorlage liegt 30 Tage im Papierkorb. Für ein Vertragsende besser ⏹ Beenden nutzen — dann bleibt sie in der Historie.','Löschen',function(){
+  confirmDialog('Vorlage „'+fc.name+'“ löschen? Ihre Buchungen ab diesem Monat werden entfernt, frühere bleiben. Die Vorlage liegt 30 Tage im Papierkorb. Für ein Vertragsende besser „Beenden“ (Quadrat-Symbol) nutzen — dann bleibt sie in der Historie.','Löschen',function(){
     FP.Store.Recurring.delete(id);
     fkRender();
     toast('Gelöscht');
@@ -4379,7 +4383,7 @@ function rpRenderWarnings(store,r1,r2){
     x[0].warnings.forEach(function(w){ lines.push('<b>'+rpPersonName(x[1],store)+':</b> '+esc(w)); });
   });
   el.hidden=!lines.length;
-  el.innerHTML=lines.length?'⚠ Bitte Eingaben prüfen — das Ergebnis ist sonst nicht verlässlich.<br>'+lines.join('<br>'):'';
+  el.innerHTML=lines.length?ic('alert')+' Bitte Eingaben prüfen — das Ergebnis ist sonst nicht verlässlich.<br>'+lines.join('<br>'):'';
 }
 
 function rpRenderMain(){
@@ -4428,7 +4432,7 @@ function rpRenderMain(){
   if(rpGeldModus()==='nominal'){ r1=rpToNominal(r1); if(r2) r2=rpToNominal(r2); }
   var result=(rpS.person==='person_2'?r2:r1)||r1;
   if(!result){
-    document.getElementById('rp-kpi-grid').innerHTML='<div style="padding:20px;color:var(--tx3);font-size:13px">Kein Rentenprofil vorhanden.</div>';
+    document.getElementById('rp-kpi-grid').innerHTML='<div style="padding:20px;color:var(--tx3);font-size:14px">Kein Rentenprofil vorhanden.</div>';
     return;
   }
   rpRenderKpi(r1,r2,store);
@@ -4455,7 +4459,7 @@ function rpRenderPersonToggle(){
   el.style.marginBottom='12px';
   el.innerHTML=persons.map(function(p){
     var isActive=rpS.person===p.id;
-    return '<button class="rp-sz-btn'+(isActive?' active':'')+'" style="flex:1;padding:8px 12px;border-radius:9px" onclick="rpSelectPerson(\''+p.id+'\')">'+esc(p.name)+(isActive?' ✎':'')+'</button>';
+    return '<button class="rp-sz-btn'+(isActive?' active':'')+'" style="flex:1;padding:8px 12px;border-radius:var(--r-sm)" onclick="rpSelectPerson(\''+p.id+'\')">'+esc(p.name)+(isActive?' ✎':'')+'</button>';
   }).join('');
 }
 
@@ -4492,11 +4496,11 @@ function rpRenderPartnerCompare(r1, r2, store) { return; // Waisenfunktion — I
   var witwe1 = r1 ? Math.round(r1.gesetzlicheMonatsrenteBrutto * 0.55) : 0;
   var witwe2 = r2 ? Math.round(r2.gesetzlicheMonatsrenteBrutto * 0.55) : 0;
   var witweRow = (r1 && r2 && (witwe1>0||witwe2>0)) ?
-    '<div style="margin-top:10px;padding:10px;background:var(--surf2);border-radius:8px;border:1px solid var(--brd)">'+
-      '<div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:6px">WITWENRENTE §46 SGB VI (große, 55 %)</div>'+
+    '<div style="margin-top:10px;padding:10px;background:var(--surf2);border-radius:var(--r-sm);border:1px solid var(--brd)">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--tx3);margin-bottom:6px">WITWENRENTE §46 SGB VI (große, 55 %)</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-        '<div><div style="font-size:11px;color:var(--tx3)">'+n2+' verstirbt → '+n1+' erhält</div><div style="font-size:14px;font-weight:700;color:var(--blue)">'+eur(witwe2)+'/Mo</div><div style="font-size:10px;color:var(--tx3)">Brutto · zzgl. eigener Rente · steuerpflichtig</div></div>'+
-        '<div><div style="font-size:11px;color:var(--tx3)">'+n1+' verstirbt → '+n2+' erhält</div><div style="font-size:14px;font-weight:700;color:var(--blue)">'+eur(witwe1)+'/Mo</div><div style="font-size:10px;color:var(--tx3)">Brutto · zzgl. eigener Rente · steuerpflichtig</div></div>'+
+        '<div><div style="font-size:12px;color:var(--tx3)">'+n2+' verstirbt → '+n1+' erhält</div><div style="font-size:14px;font-weight:600;color:var(--blue)">'+eur(witwe2)+'/Mo</div><div style="font-size:12px;color:var(--tx3)">Brutto · zzgl. eigener Rente · steuerpflichtig</div></div>'+
+        '<div><div style="font-size:12px;color:var(--tx3)">'+n1+' verstirbt → '+n2+' erhält</div><div style="font-size:14px;font-weight:600;color:var(--blue)">'+eur(witwe1)+'/Mo</div><div style="font-size:12px;color:var(--tx3)">Brutto · zzgl. eigener Rente · steuerpflichtig</div></div>'+
       '</div>'+
     '</div>' : '';
   el.style.display='block';
@@ -4514,12 +4518,12 @@ function rpRenderHousehold(r1, r2, store) { return; // Waisenfunktion — Inhalt
   var lueckeCls   = hhLuecke > 0 ? 'var(--red)' : 'var(--green)';
   el.style.display = 'block';
   el.innerHTML = '<div class="rp-hh-card">'+
-    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:10px">Haushalt Gesamt</div>'+
+    '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-bottom:10px">Haushalt Gesamt</div>'+
     '<div class="rp-hh-row"><span class="rp-hh-lbl">HH-Gesamteinkommen</span><span class="rp-hh-val">'+eur(hhEinkommen)+'/Mo</span></div>'+
     '<div class="rp-hh-row"><span class="rp-hh-lbl">Gesamte Ausgaben</span><span class="rp-hh-val">'+eur(hhAusgaben)+'/Mo</span></div>'+
     '<div class="rp-hh-row"><span class="rp-hh-lbl">HH-Depot gesamt</span><span class="rp-hh-val">'+eur(hhDepot)+'</span></div>'+
     '<div class="rp-hh-row"><span class="rp-hh-lbl">Depot-Entnahme Netto</span><span class="rp-hh-val">'+eur(hhSwrNetto)+'/Mo</span></div>'+
-    '<div class="rp-hh-row" style="margin-top:4px"><span class="rp-hh-lbl" style="font-weight:800">HH-Rentenlücke</span><span class="rp-hh-val" style="color:'+lueckeCls+'">'+(hhLuecke>0?eur(hhLuecke):'Kein Defizit')+'</span></div>'+
+    '<div class="rp-hh-row" style="margin-top:4px"><span class="rp-hh-lbl" style="font-weight:700">HH-Rentenlücke</span><span class="rp-hh-val" style="color:'+lueckeCls+'">'+(hhLuecke>0?eur(hhLuecke):'Kein Defizit')+'</span></div>'+
     ((r1&&r1.splittingVorteil)||(r2&&r2.splittingVorteil)?'<div class="rp-hh-row" style="margin-top:4px"><span class="rp-hh-lbl" style="color:var(--green)">Splitting-Vorteil/Mo</span><span class="rp-hh-val" style="color:var(--green)">+'+eur((r1&&r1.splittingVorteil||0)+(r2&&r2.splittingVorteil||0))+'</span></div>':'')+
     '</div>';
 }
@@ -4780,7 +4784,7 @@ function rpRenderIncome(r){ return; // Waisenfunktion — DOM-Element rp-income 
     if(w.netto>0) sources.push({key:'weitere_'+i,lbl:esc(w.name),val:w.netto,brutto:w.brutto,aktiv:w.aktiv,startAge:w.startAge});
   });
   if(!sources.length){
-    el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:13px">Noch keine Renteneinkommen erfasst.</div>';
+    el.innerHTML='<div style="padding:16px;color:var(--tx3);font-size:14px">Noch keine Renteneinkommen erfasst.</div>';
     return;
   }
   // Bar basiert auf Volleinkommen (damit deferred sichtbar aber transparent)
@@ -4793,14 +4797,14 @@ function rpRenderIncome(r){ return; // Waisenfunktion — DOM-Element rp-income 
   var nr = r.netResult || {};
   var legHtml=sources.map(function(s){
     var col=colors[s.key]||colors['weitere'];
-    var ageSub=!s.aktiv?' <span style="color:var(--amber);font-size:11px">ab Alter '+s.startAge+'</span>':'';
+    var ageSub=!s.aktiv?' <span style="color:var(--amber);font-size:12px">ab Alter '+s.startAge+'</span>':'';
     var abzSub='';
     if(s.brutto && s.brutto !== s.val){
       var abzArr=['Brutto: '+eur(s.brutto)];
       if(s.key==='gesetzlich'&&nr.gKV) abzArr.push('KV: '+eur(nr.gKV),'PV: '+eur(nr.gPV));
       if(s.key==='direkt'&&nr.dKV!=null) abzArr.push('KV: '+eur(nr.dKV),'PV: '+eur(nr.dPV));
       if(nr.estMonat){var share=r.gesamtBrutto>0?(s.brutto/r.gesamtBrutto):0;abzArr.push('ESt: ~'+eur(Math.round(nr.estMonat*share)));}
-      abzSub=' <span style="color:var(--tx3);font-size:11px">('+abzArr.join(' · ')+')</span>';
+      abzSub=' <span style="color:var(--tx3);font-size:12px">('+abzArr.join(' · ')+')</span>';
     }
     return '<div class="rp-income-leg" style="opacity:'+(s.aktiv?'1':'0.6')+'"><div class="rp-income-dot" style="background:'+col+'"></div>'+s.lbl+' — '+eur(s.val)+' Netto'+abzSub+ageSub+'</div>';
   }).join('');
@@ -4824,7 +4828,7 @@ function rpRenderDepot(r){ return; // Waisenfunktion — DOM-Element rp-depot ex
   ];
   el.innerHTML=rows.map(function(row){
     return '<div class="rp-proj-row"><span class="rp-proj-lbl">'+row.lbl+'</span><span class="rp-proj-val">'+row.val+'</span></div>'+
-      (row.sub?'<div style="font-size:11px;color:var(--tx3);padding:0 0 6px 0;margin-top:-2px">'+row.sub+'</div>':'');
+      (row.sub?'<div style="font-size:12px;color:var(--tx3);padding:0 0 6px 0;margin-top:-2px">'+row.sub+'</div>':'');
   }).join('');
 }
 
@@ -4961,23 +4965,23 @@ function rpRenderWeitere(){
     var startAge=w.startAge||67;
     // Warnung: monatliche Rente startet nach Rentenbeginn
     var warn=(!isE&&startAge>targetAge)
-      ?'<div style="color:var(--amber,var(--amber));font-size:11px;margin-top:5px">⚠ Beginnt erst ab Alter '+startAge+' — zählt nicht sofort ab Rentenbeginn.</div>'
+      ?'<div style="color:var(--amber,var(--amber));font-size:12px;margin-top:5px">'+ic('alert')+' Beginnt erst ab Alter '+startAge+' — zählt nicht sofort ab Rentenbeginn.</div>'
       :'';
     // Ertragsanteil-Info für monatliche private RV
     var eaInfo='';
     if(!isE&&t==='privat'){
       var ea=rpGetErtragsanteil(startAge);
-      eaInfo='<div style="color:var(--tx3);font-size:11px;margin-top:5px">Ertragsanteil §22 EStG ab Alter '+startAge+': <strong>'+ea+'%</strong> steuerpflichtig · Rest steuerfrei</div>';
+      eaInfo='<div style="color:var(--tx3);font-size:12px;margin-top:5px">Ertragsanteil §22 EStG ab Alter '+startAge+': <strong>'+ea+'%</strong> steuerpflichtig · Rest steuerfrei</div>';
     }
     // Steuer-Zeile für einmalig
     var taxRow='';
     if(isE){
       // bAV einmalig: §22 Nr. 5 EStG — volle Versteuerung, kein Wahlrecht
       if(t==='bav'){
-        taxRow='<div style="background:var(--surf,rgba(0,0,0,.03));border-radius:7px;padding:8px 10px;margin-top:6px">'+
-          '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Steuer §22 Nr. 5 EStG — volle Versteuerung als Einkommen</div>'+
+        taxRow='<div style="background:var(--surf,rgba(0,0,0,.03));border-radius:var(--r-sm);padding:8px 10px;margin-top:6px">'+
+          '<div style="font-size:12px;color:var(--tx3);margin-bottom:6px">Steuer §22 Nr. 5 EStG — volle Versteuerung als Einkommen</div>'+
           '<div style="display:flex;align-items:center;gap:6px">'+
-            '<span style="font-size:11px;color:var(--tx3)">Pers. Steuersatz</span>'+
+            '<span style="font-size:12px;color:var(--tx3)">Pers. Steuersatz</span>'+
             '<input class="fi rp-w-steuersatz" type="number" min="1" max="55" step="1" placeholder="42" value="'+(w.persSteuersatz||42)+'" style="width:56px;background:var(--surf);border-color:var(--brd)"> %'+
           '</div>'+
           '<input type="hidden" class="rp-w-steuer" value="halbeinkuenfte">'+
@@ -4987,16 +4991,16 @@ function rpRenderWeitere(){
           ?'<input class="fi rp-w-steuersatz" type="number" min="1" max="55" step="1" placeholder="25" value="'+(w.persSteuersatz||25)+'" style="width:56px;background:var(--surf);border-color:var(--brd)"> %'
           :'';
         var hint=stm==='steuerfrei'
-          ?'<div style="font-size:11px;color:var(--green,var(--green));margin-top:4px">✓ Steuerfrei gem. §20 EStG a.F. — gilt für Verträge vor 01.01.2005 mit Laufzeit ≥12 J. und Todesfallschutz ≥60% der Beitragssumme.</div>'
+          ?'<div style="font-size:12px;color:var(--green,var(--green));margin-top:4px">✓ Steuerfrei gem. §20 EStG a.F. — gilt für Verträge vor 01.01.2005 mit Laufzeit ≥12 J. und Todesfallschutz ≥60% der Beitragssumme.</div>'
           :'';
-        taxRow='<div style="background:var(--surf,rgba(0,0,0,.03));border-radius:7px;padding:8px 10px;margin-top:6px">'+
+        taxRow='<div style="background:var(--surf,rgba(0,0,0,.03));border-radius:var(--r-sm);padding:8px 10px;margin-top:6px">'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">'+
             '<div>'+
-              '<div style="font-size:11px;color:var(--tx3);margin-bottom:3px">Eigenbeiträge gesamt</div>'+
+              '<div style="font-size:12px;color:var(--tx3);margin-bottom:3px">Eigenbeiträge gesamt</div>'+
               '<input class="fi rp-w-eigenb" type="number" min="0" step="1000" placeholder="0 €" value="'+(w.eigenbeitraege||'')+'" style="width:100%;box-sizing:border-box;background:var(--surf);border-color:var(--brd)">'+
             '</div>'+
             '<div>'+
-              '<div style="font-size:11px;color:var(--tx3);margin-bottom:3px">Steuermodell</div>'+
+              '<div style="font-size:12px;color:var(--tx3);margin-bottom:3px">Steuermodell</div>'+
               '<select class="fi rp-w-steuer" style="width:100%;font-size:12px;padding:6px 4px;box-sizing:border-box;background:var(--surf);border-color:var(--brd)">'+
                 '<option value="steuerfrei"'+(stm==='steuerfrei'?' selected':'')+'>Steuerfrei (vor 2005)</option>'+
                 '<option value="halbeinkuenfte"'+(stm==='halbeinkuenfte'?' selected':'')+'>Halbeinkünfte 50%</option>'+
@@ -5005,34 +5009,34 @@ function rpRenderWeitere(){
             '</div>'+
           '</div>'+
           (stm==='halbeinkuenfte'
-            ?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--tx3)">Pers. Steuersatz</span>'+stzFeld+'</div>'
+            ?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--tx3)">Pers. Steuersatz</span>'+stzFeld+'</div>'
             :'')+
           hint+
         '</div>';
       }
     }
     var inpSt='background:var(--surf);border-color:var(--brd);';
-    return '<div class="rp-w-row" style="padding:10px 12px;background:var(--surf2);border:1px solid var(--brd);border-radius:10px;margin-bottom:8px">'+
+    return '<div class="rp-w-row" style="padding:10px 12px;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);margin-bottom:8px">'+
       // Zeile 1: Name (volle Breite)
       '<input class="fi rp-w-name" type="text" placeholder="z.B. Allianz Private Rentenversicherung" value="'+esc(w.name)+'" style="width:100%;box-sizing:border-box;margin-bottom:6px;'+inpSt+'">'+
       // Zeile 2: Betrag | Ab Alter | Typ | Modus | ×
       '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'+
         (isE
-          ?'<input class="fi rp-w-einmal" type="number" min="0" step="1000" inputmode="decimal" placeholder="Auszahlbetrag €" value="'+(w.einmalbetrag||'')+'" style="flex:2;min-width:110px;padding:8px 10px;font-size:13px;'+inpSt+'">'
-          :'<input class="fi rp-w-amt" type="number" min="0" step="10" inputmode="decimal" placeholder="€ / Monat" value="'+(w.monthlyAmountAtStart||'')+'" style="flex:2;min-width:110px;padding:8px 10px;font-size:13px;'+inpSt+'">'
+          ?'<input class="fi rp-w-einmal" type="number" min="0" step="1000" inputmode="decimal" placeholder="Auszahlbetrag €" value="'+(w.einmalbetrag||'')+'" style="flex:2;min-width:110px;padding:8px 10px;font-size:14px;'+inpSt+'">'
+          :'<input class="fi rp-w-amt" type="number" min="0" step="10" inputmode="decimal" placeholder="€ / Monat" value="'+(w.monthlyAmountAtStart||'')+'" style="flex:2;min-width:110px;padding:8px 10px;font-size:14px;'+inpSt+'">'
         )+
-        '<input class="fi rp-w-age" type="number" min="50" max="90" step="1" inputmode="numeric" placeholder="Alter" value="'+startAge+'" '+(w.linkedRetAge?'disabled ':'')+'style="flex:0 0 66px;width:66px;padding:8px 6px;font-size:13px;'+inpSt+'">'+
-        '<span onclick="rpWeitereToggleAge('+i+')" style="cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0;opacity:'+(w.linkedRetAge?1:0.4)+'" title="'+(w.linkedRetAge?'Mit Rentenalter verknüpft – klicken zum Entkoppeln':'Manuell – klicken zum Verknüpfen')+'">🔗</span>'+
+        '<input class="fi rp-w-age" type="number" min="50" max="90" step="1" inputmode="numeric" placeholder="Alter" value="'+startAge+'" '+(w.linkedRetAge?'disabled ':'')+'style="flex:0 0 66px;width:66px;padding:8px 6px;font-size:14px;'+inpSt+'">'+
+        '<span onclick="rpWeitereToggleAge('+i+')" style="cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0;opacity:'+(w.linkedRetAge?1:0.4)+'" title="'+(w.linkedRetAge?'Mit Rentenalter verknüpft – klicken zum Entkoppeln':'Manuell – klicken zum Verknüpfen')+'">'+ic('link',12)+'</span>'+
         '<input type="hidden" class="rp-w-linked-age" value="'+(w.linkedRetAge?'1':'0')+'">'+
-        '<select class="fi rp-w-type" style="flex:0 0 74px;width:74px;padding:8px 4px;font-size:13px;'+inpSt+'">'+
+        '<select class="fi rp-w-type" style="flex:0 0 74px;width:74px;padding:8px 4px;font-size:14px;'+inpSt+'">'+
           '<option value="bav"'+(t==='bav'?' selected':'')+'>bAV</option>'+
           '<option value="privat"'+(t==='privat'?' selected':'')+'>Privat</option>'+
         '</select>'+
-        '<select class="fi rp-w-modus" style="flex:0 0 86px;width:86px;padding:8px 4px;font-size:13px;'+inpSt+'">'+
+        '<select class="fi rp-w-modus" style="flex:0 0 86px;width:86px;padding:8px 4px;font-size:14px;'+inpSt+'">'+
           '<option value="monatlich"'+(m==='monatlich'?' selected':'')+'>Monatl.</option>'+
           '<option value="einmalig"'+(m==='einmalig'?' selected':'')+'>Einmalig</option>'+
         '</select>'+
-        '<button onclick="rpRemoveWeitere('+i+')" style="color:var(--red);font-size:18px;line-height:1;padding:0 2px;background:none;border:none;cursor:pointer;flex-shrink:0">×</button>'+
+        '<button onclick="rpRemoveWeitere('+i+')" style="color:var(--red);font-size:20px;line-height:1;padding:0 2px;background:none;border:none;cursor:pointer;flex-shrink:0">×</button>'+
       '</div>'+
       taxRow+eaInfo+warn+
       '</div>';
@@ -5414,7 +5418,7 @@ function rpUpdateSidebarLiveInfo() {
       .filter(function(a){return(a.ownerId||'person_1')===personId||a.ownerId==='joint';})
       .reduce(function(s,a){return s+a.monthlyPlan*(a.ownerId==='joint'?0.5:1);},0);
   var depInfo=document.getElementById('rp-depot-live-info');
-  if(depInfo) depInfo.innerHTML='<strong>Vorsorge-Depot (Anteil):</strong> '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Monat<br><span style="opacity:.7;font-size:11px">= eigene Anlagen + ½ gemeinsame, ohne Immobilien/Sonstiges</span>';
+  if(depInfo) depInfo.innerHTML='<strong>Vorsorge-Depot (Anteil):</strong> '+eur(depotVal)+' · Sparrate: '+eur(sp)+'/Monat<br><span style="opacity:.7;font-size:12px">= eigene Anlagen + ½ gemeinsame, ohne Immobilien/Sonstiges</span>';
   var hdrInfo=document.getElementById('rp-depot-hdr-info');
   if(hdrInfo) hdrInfo.textContent=sp>0?eur(sp)+'/Monat':'';
   // Kinder info
@@ -5492,8 +5496,8 @@ function rpRenderKpi(r1,r2,store) {
     var p2 = store.persons.find(function(p){return p.id==='person_2';});
     if (!p2 || !p2.birthDate) warnings.push('Partner aktiv, aber kein Geburtsdatum für Person 2 eingetragen (Einstellungen → Stammdaten).');
   }
-  var warnHtml = warnings.length ? '<div style="grid-column:1/-1;background:var(--amber-lt,var(--amber-lt));border:1px solid var(--amber,var(--amber));border-radius:10px;padding:10px 14px;font-size:12px;color:var(--amber,var(--amber));line-height:1.6;margin-bottom:4px">'+
-    '⚠️ '+warnings.join('<br>⚠️ ')+'</div>' : '';
+  var warnHtml = warnings.length ? '<div style="grid-column:1/-1;background:var(--amber-lt,var(--amber-lt));border:1px solid var(--amber,var(--amber));border-radius:var(--r-sm);padding:10px 14px;font-size:12px;color:var(--amber,var(--amber));line-height:1.6;margin-bottom:4px">'+
+    ic('alert')+' '+warnings.join('<br>'+ic('alert')+' ')+'</div>' : '';
   // Haushalt-Werte
   var hhEink=(r1?r1.gesamtEinkommen:0)+(r2?r2.gesamtEinkommen:0)+(r1&&r1.erbMieteMonatlich?r1.erbMieteMonatlich:0)+(r2&&r2.erbMieteMonatlich?r2.erbMieteMonatlich:0);
   var hhAusg=(r1?r1.ausgaben:0)+(r2&&r2.ausgaben&&partnerOn?r2.ausgaben:0);
@@ -5505,16 +5509,16 @@ function rpRenderKpi(r1,r2,store) {
   var cards=[
     {lbl:'Rentenlücke',val:hhLuecke>0?eur(hhLuecke):'Kein Defizit',sub:hhLuecke>0?'nach Entnahme':'Einkommen reicht',cls:(hhLuecke>0?'luecke':'ok')+' primary'},
     {lbl:'Depot bei Rente',val:eur(hhDepot),sub:partnerOn?'Person 1 + Person 2':'ab Alter '+r.targetRetirementAge,cls:'primary'},
-    {lbl:'Depot reicht',val:(r1&&!r1.hatLuecke)?'∞':depJahre>=60?'60+ Jahre':depJahre>0?depJahre.toFixed(0)+' Jahre':'< 1 Jahr',sub:(r1&&!r1.hatLuecke)?'Kein Depot-Verzehr nötig':depJahre>0&&depJahre<10?'⚠️ < 10 Jahre':yearsNote,cls:((r1&&!r1.hatLuecke)||depJahre>=20?'ok':(depJahre>0?'luecke':''))+' primary'},
+    {lbl:'Depot reicht',val:(r1&&!r1.hatLuecke)?'∞':depJahre>=60?'60+ Jahre':depJahre>0?depJahre.toFixed(0)+' Jahre':'< 1 Jahr',sub:(r1&&!r1.hatLuecke)?'Kein Depot-Verzehr nötig':depJahre>0&&depJahre<10?'Achtung: < 10 Jahre':yearsNote,cls:((r1&&!r1.hatLuecke)||depJahre>=20?'ok':(depJahre>0?'luecke':''))+' primary'},
     {lbl:'Renteneinkommen (Netto)',val:eur(partnerOn?hhEink:r.gesamtEinkommen+r.erbMieteMonatlich),sub:'Brutto: '+eur(partnerOn?(r1?r1.gesamtBrutto:0)+(r2?r2.gesamtBrutto:0):r.gesamtBrutto),cls:''},
     {lbl:'Ausgaben/Monat',val:eur(partnerOn?hhAusg:r.ausgaben),sub:partnerOn?'Beide':'Ruhestand',cls:''},
   ];
   var _gm=rpGeldModus();
-  var geldToggle='<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surf2);border-radius:10px;padding:5px;margin-bottom:4px">'
-    +'<span style="font-size:11px;color:var(--tx3);padding:0 6px">Anzeige:</span>'
-    +'<button class="rp-sz-btn'+(_gm!=='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:8px;font-size:12px" onclick="rpSetGeldModus(\'heute\')">Heutiges Geld</button>'
-    +'<button class="rp-sz-btn'+(_gm==='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:8px;font-size:12px" onclick="rpSetGeldModus(\'nominal\')">Zukünftiges Geld</button>'
-    +'<span style="font-size:11px;color:var(--tx3);padding:0 6px">'+(_gm==='nominal'?'nominal, ab Renteneintritt':'heutige Kaufkraft')+'</span>'
+  var geldToggle='<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surf2);border-radius:var(--r-sm);padding:5px;margin-bottom:4px">'
+    +'<span style="font-size:12px;color:var(--tx3);padding:0 6px">Anzeige:</span>'
+    +'<button class="rp-sz-btn'+(_gm!=='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:var(--r-sm);font-size:12px" onclick="rpSetGeldModus(\'heute\')">Heutiges Geld</button>'
+    +'<button class="rp-sz-btn'+(_gm==='nominal'?' active':'')+'" style="padding:6px 12px;border-radius:var(--r-sm);font-size:12px" onclick="rpSetGeldModus(\'nominal\')">Zukünftiges Geld</button>'
+    +'<span style="font-size:12px;color:var(--tx3);padding:0 6px">'+(_gm==='nominal'?'nominal, ab Renteneintritt':'heutige Kaufkraft')+'</span>'
     +'</div>';
   el.innerHTML=geldToggle+warnHtml+cards.map(function(c){
     return '<div class="rp-kpi '+c.cls+'"><div class="rp-kpi-lbl">'+c.lbl+'</div><div class="rp-kpi-val">'+c.val+'</div><div class="rp-kpi-sub">'+c.sub+'</div></div>';
@@ -5529,8 +5533,8 @@ function rpRenderTabs(r1,r2,store) {
   var tabBar=document.getElementById('rp-tabs');
   var tabContent=document.getElementById('rp-tc');
   if(!tabBar||!tabContent)return;
-  var tabs=[{id:'verlauf',lbl:'📊 Verlauf'},{id:'stichtag',lbl:'📅 Stichtag'},{id:'rente',lbl:'🏛️ Rente'}];
-  if(partnerOn) tabs.push({id:'haushalt',lbl:'👨‍👩‍👧 Haushalt'});
+  var tabs=[{id:'verlauf',lbl:ic('chart')+' Verlauf'},{id:'stichtag',lbl:ic('calendar')+' Stichtag'},{id:'rente',lbl:ic('landmark')+' Rente'}];
+  if(partnerOn) tabs.push({id:'haushalt',lbl:ic('users')+' Haushalt'});
   if(!partnerOn && rpActiveTab==='haushalt') rpActiveTab='verlauf';
   tabBar.innerHTML=tabs.map(function(t){
     return '<button class="rp-tab'+(t.id===rpActiveTab?' act':'')+'" onclick="rpSelectTab(\''+t.id+'\')" >'+t.lbl+'</button>';
@@ -5545,11 +5549,11 @@ function rpSelectTab(id){rpActiveTab=id;rpRenderMain();}
 /* ── Tab: Verlauf + Entnahme (zusammengeführt) ── */
 var rpVerlaufHov=-1;
 function rpRenderTabVerlauf(r1,r2,store,el) {
-  if(!r1){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:13px">Kein Profil vorhanden.</div>';return;}
+  if(!r1){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:14px">Kein Profil vorhanden.</div>';return;}
   var r=(rpS.person==='person_2'&&r2)?r2:r1;
   var rOther=(rpS.person==='person_2')?r1:(r2||null);
   var data=r.verlaufData||[];
-  if(!data.length){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:13px">Keine Daten.</div>';return;}
+  if(!data.length){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:14px">Keine Daten.</div>';return;}
   var retAge=r.retirementAge||r.targetRetirementAge;
   var partnerOn=store.settings.partnerEnabled;
   var ret2Age=(partnerOn&&rOther)?(rOther.retirementAge||rOther.targetRetirementAge):null;
@@ -5567,13 +5571,13 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
   }).filter(function(p){return p.end>curAge;});
   var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
   var tableRows=ep.slice(0,30).map(function(w){
-    var grIco=w.guardrailAktiv?' <span style="font-size:10px;color:var(--amber)" title="Guardrail">⚠</span>':'';
+    var grIco=w.guardrailAktiv?' <span style="font-size:12px;color:var(--amber)" title="Guardrail">'+ic('alert',11)+'</span>':'';
     return '<tr class="'+(w.alter===retAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
   }).join('');
   var pName=rpPersonName(rpS.person||'person_1',store);
   var oName=rpPersonName(rpS.person==='person_2'?'person_1':'person_2',store);
   // Legende
-  var legendHtml='<div style="display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 14px;font-size:11px;color:var(--tx3)">'+
+  var legendHtml='<div style="display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 14px;font-size:12px;color:var(--tx3)">'+
     '<span><span style="display:inline-block;width:12px;height:3px;background:var(--blue);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Ansparphase</span>'+
     '<span><span style="display:inline-block;width:12px;height:3px;background:var(--amber);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Entnahmephase</span>'+
     '<span><span style="display:inline-block;width:12px;height:3px;border-top:2px dashed var(--red);vertical-align:middle;margin-right:4px"></span>Worst-Case (−30%)</span>'+
@@ -5585,18 +5589,18 @@ function rpRenderTabVerlauf(r1,r2,store,el) {
     '<div class="rp-chart-wrap"><canvas id="rp-verlauf-canvas" style="display:block;width:100%;cursor:crosshair"></canvas></div>'+
     legendHtml+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:8px">'+
-      '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
-      '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
-      '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ Jahre':r.depotJahre>0?r.depotJahre.toFixed(0)+' Jahre':'< 1 Jahr')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:10px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ Jahre':r.wcDepotJahre.toFixed(0)+' Jahre')+' (−30% Schock)</div>':'')+'</div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:12px;color:var(--tx3)">'+stratLbl+'</div></div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:12px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
+      '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ Jahre':r.depotJahre>0?r.depotJahre.toFixed(0)+' Jahre':'< 1 Jahr')+'</div><div style="font-size:12px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+retAge)+'</div>'+(r.wcDepotJahre>0?'<div style="font-size:12px;color:var(--red);margin-top:2px">Worst-Case: '+(r.wcDepotJahre>=60?'60+ Jahre':r.wcDepotJahre.toFixed(0)+' Jahre')+' (−30% Schock)</div>':'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px">'+
-      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Vorsorge-Depot (Anteil)</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:9px;color:var(--tx3)">ohne Immobilien/Sonstiges</div></div>'+
-      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Sparrate/Monat</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
-      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:10px">Ø Rendite</div><div style="font-size:15px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
+      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:12px">Vorsorge-Depot (Anteil)</div><div style="font-size:16px;font-weight:600;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:12px;color:var(--tx3)">ohne Immobilien/Sonstiges</div></div>'+
+      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:12px">Sparrate/Monat</div><div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div></div>'+
+      '<div class="rp-rc" style="padding:10px 12px"><div class="rp-rc-title" style="font-size:12px">Ø Rendite</div><div style="font-size:16px;font-weight:600;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div></div>'+
     '</div>'+
-    (hasGuardrail?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:8px">⚠ Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
+    (hasGuardrail?'<div style="font-size:12px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:var(--r-sm)">'+ic('alert')+' Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
     '<div class="tbl-scroll"><table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/Jahr</th><th>Rendite</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>'+
-    '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--tx3);line-height:1.5">'+
+    '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:var(--r-sm);font-size:12px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten.'+
     '</div>';
   rpVerlaufHov=-1;
@@ -5655,7 +5659,7 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
       ctx.strokeStyle='rgba(124,58,237,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
       ctx.beginPath();ctx.moveTo(x1,PAD.t);ctx.lineTo(x1,PAD.t+cH);ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle=cPurple;ctx.font='bold 10px Inter,system-ui,sans-serif';ctx.textAlign='center';
+      ctx.fillStyle=cPurple;ctx.font='bold 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
       ctx.fillText('Ausbildung',(x1+x2)/2,PAD.t+cH-5);
     });
   }
@@ -5664,13 +5668,13 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
     var v=maxY*s,y=toY(v);
     ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
     ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-    ctx.fillStyle=cTx3;ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='right';
+    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
     ctx.fillText(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':'0',PAD.l-5,y+4);
   });
   // X-Achse
   for(var a=Math.ceil(minAlter/5)*5;a<=maxAlter;a+=5){
     var x=toX(a);
-    ctx.fillStyle=cTx3;ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
     ctx.fillText(a,x,H-PAD.b+14);
     ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
     ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t+cH);ctx.stroke();
@@ -5682,7 +5686,7 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
     ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
     ctx.beginPath();ctx.moveTo(rx,PAD.t);ctx.lineTo(rx,PAD.t+cH);ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle=color;ctx.font='bold 11px Inter,system-ui,sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=color;ctx.font='bold 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
     ctx.fillText(''+age,rx,labelY);
   }
   var _csRp=getComputedStyle(document.documentElement);
@@ -5736,14 +5740,14 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
     ctx.fillStyle=ptColor;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.stroke();
     var depotStr=hd.depot>=1e6?(hd.depot/1e6).toFixed(2)+' M €':hd.depot>=1e3?(hd.depot/1000).toFixed(0)+' K €':'0 €';
-    var line1='Alter '+hd.alter+(hd.alter===retAge?' 🎯':'');
+    var line1='Alter '+hd.alter+(hd.alter===retAge?' · Rentenbeginn':'');
     var line2=depotStr;
     var line3='';
     if(entnahmePlan&&hd.alter>=retAge){
       var ep=entnahmePlan.find(function(e){return e.alter===hd.alter;});
       if(ep&&ep.entnahme>0)line3='Entnahme: '+eur(ep.entnahme/12)+'/Monat';
     }
-    ctx.font='bold 12px Inter,system-ui,sans-serif';
+    ctx.font='bold 12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
     var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width,line3?ctx.measureText(line3).width:0);
     var tp=8,th=line3?62:44,tx=hx+14,ty=PAD.t+8;
     if(tx+tw+tp*2>W-4)tx=hx-tw-tp*2-14;
@@ -5752,7 +5756,7 @@ function rpDrawVerlaufChart(canvas,data,retAge,hovIdx,ausbildungPeriods,entnahme
     ctx.beginPath();ctx.rect(tx-tp,ty-tp,tw+tp*2,th);ctx.fill();
     ctx.fillStyle='#fff';ctx.textAlign='left';
     ctx.fillText(line1,tx,ty+12);
-    ctx.font='12px Inter,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
+    ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
     ctx.fillText(line2,tx,ty+30);
     if(line3)ctx.fillText(line3,tx,ty+48);
   }
@@ -5787,7 +5791,7 @@ function rpDrawStichtagChart(canvas,rows,retAge,hovIdx){
     var v=maxY*s,y=PAD.t+cH-(v/maxY)*cH;
     ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
     ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-    ctx.fillStyle=cTx3;ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='right';
+    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
     ctx.fillText(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':'0',PAD.l-5,y+4);
   });
   rows.forEach(function(r,i){
@@ -5807,18 +5811,18 @@ function rpDrawStichtagChart(canvas,rows,retAge,hovIdx){
     ctx.closePath();ctx.fill();
     ctx.globalAlpha=1.0;
     ctx.fillStyle=r.isRet?cGreen:cTx3;
-    ctx.font=(r.isRet?'bold ':'')+' 11px Inter,system-ui,sans-serif';
+    ctx.font=(r.isRet?'bold ':'')+' 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
     ctx.textAlign='center';
     ctx.fillText(r.alter,bx+barW/2,H-PAD.b+14);
     if(barH>18){
       var valStr=r.depot>=1e6?(r.depot/1e6).toFixed(1)+'M':r.depot>=1e3?(r.depot/1e3).toFixed(0)+'K':'';
-      if(valStr){ctx.fillStyle=color;ctx.font='10px Inter,system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(valStr,bx+barW/2,by-4);}
+      if(valStr){ctx.fillStyle=color;ctx.font='10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(valStr,bx+barW/2,by-4);}
     }
     if(isHov){
       var depStr=r.depot>=1e6?(r.depot/1e6).toFixed(2)+' M €':r.depot>=1e3?(r.depot/1e3).toFixed(0)+' K €':'0 €';
-      var line1='Alter '+r.alter+(r.isRet?' 🎯':'');
+      var line1='Alter '+r.alter+(r.isRet?' · Rentenbeginn':'');
       var line2=depStr;
-      ctx.font='bold 12px Inter,system-ui,sans-serif';
+      ctx.font='bold 12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width);
       var tp=8,th=44,tx=bx+barW/2+6,ty=by-52;
       if(tx+tw+tp*2>W-4)tx=bx+barW/2-tw-tp*2-6;
@@ -5827,7 +5831,7 @@ function rpDrawStichtagChart(canvas,rows,retAge,hovIdx){
       ctx.beginPath();ctx.rect(tx-tp,ty,tw+tp*2,th);ctx.fill();
       ctx.fillStyle='#fff';ctx.textAlign='left';
       ctx.fillText(line1,tx,ty+14);
-      ctx.font='12px Inter,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
       ctx.fillText(line2,tx,ty+32);
     }
   });
@@ -5861,12 +5865,12 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
     var v=maxY*s,y=toY(v);
     ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
     ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-    ctx.fillStyle=cTx3;ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='right';
+    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
     ctx.fillText(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':'0',PAD.l-5,y+4);
   });
   for(var a=Math.ceil(minAlter/5)*5;a<=maxAlter;a+=5){
     var x=toX(a);
-    ctx.fillStyle=cTx3;ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=cTx3;ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
     ctx.fillText(a,x,H-PAD.b+14);
     ctx.strokeStyle=cBrd;ctx.lineWidth=0.5;
     ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t+cH);ctx.stroke();
@@ -5900,7 +5904,7 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
     var line1='Alter '+hd.alter;
     var line2='Depot: '+depStr;
     var line3='Entnahme: '+entStr;
-    ctx.font='bold 12px Inter,system-ui,sans-serif';
+    ctx.font='bold 12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
     var tw=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width,ctx.measureText(line3).width);
     var tp=8,th=62,tx=hx+14,ty=PAD.t+8;
     if(tx+tw+tp*2>W-4)tx=hx-tw-tp*2-14;
@@ -5909,7 +5913,7 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
     ctx.beginPath();ctx.rect(tx-tp,ty-tp,tw+tp*2,th);ctx.fill();
     ctx.fillStyle='#fff';ctx.textAlign='left';
     ctx.fillText(line1,tx,ty+12);
-    ctx.font='12px Inter,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
+    ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';
     ctx.fillText(line2,tx,ty+30);
     ctx.fillText(line3,tx,ty+48);
   }
@@ -5917,7 +5921,7 @@ function rpDrawEntnahmeChart(canvas,data,retAge,hovIdx){
 
 /* ── Tab: Stichtag ── */
 function rpRenderTabStichtag(r1,r2,store,el) {
-  if(!r1){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:13px">Kein Profil vorhanden.</div>';return;}
+  if(!r1){el.innerHTML='<div style="padding:20px;color:var(--tx3);font-size:14px">Kein Profil vorhanden.</div>';return;}
   var r=(rpS.person==='person_2'&&r2)?r2:r1;
   var data=r.verlaufData||[];
   var ep=r.entnahmePlan||[];
@@ -5944,7 +5948,7 @@ function rpRenderTabStichtag(r1,r2,store,el) {
       '<div style="flex:1;height:6px;background:var(--brd);border-radius:3px;overflow:hidden">'+
         '<div style="width:'+pct+'%;height:100%;background:var(--blue);border-radius:3px;transition:width .3s"></div>'+
       '</div>'+
-      '<span style="font-variant-numeric:tabular-nums;font-size:13px;min-width:76px;text-align:right">'+eur(v)+'</span>'+
+      '<span style="font-variant-numeric:tabular-nums;font-size:14px;min-width:76px;text-align:right">'+eur(v)+'</span>'+
     '</div>';
   }
   var tbody=rows.map(function(r){
@@ -5952,15 +5956,15 @@ function rpRenderTabStichtag(r1,r2,store,el) {
     var phaseColor=r.phase==='Anspar'?'var(--blue)':r.isRet?'var(--green)':'var(--amber)';
     return '<tr style="border-bottom:1px solid var(--brd);'+retCls+'">'+
       '<td style="padding:10px 12px;white-space:nowrap">'+
-        '<span style="font-size:15px;font-weight:600">'+r.alter+'</span>'+
-        (r.isRet?'<span style="margin-left:5px;font-size:11px;color:var(--blue)">← Rente</span>':'')+
+        '<span style="font-size:16px;font-weight:600">'+r.alter+'</span>'+
+        (r.isRet?'<span style="margin-left:5px;font-size:12px;color:var(--blue)">← Rente</span>':'')+
       '</td>'+
       '<td style="padding:10px 12px;min-width:180px">'+depotBar(r.depot)+'</td>'+
       '<td style="padding:10px 12px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--tx3)">'+
         (r.entnahme>0?eur(r.entnahme/12)+'/Monat':r.rendite>0?'+'+eur(r.rendite/12):'-')+
       '</td>'+
       '<td style="padding:10px 12px">'+
-        '<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:'+phaseColor+';color:var(--on-accent);opacity:.85">'+r.phase+'</span>'+
+        '<span style="font-size:12px;padding:2px 7px;border-radius:4px;background:'+phaseColor+';color:var(--on-accent);opacity:.85">'+r.phase+'</span>'+
       '</td>'+
     '</tr>';
   }).join('');
@@ -5968,14 +5972,14 @@ function rpRenderTabStichtag(r1,r2,store,el) {
   var closedRows=rows;
   el.innerHTML=
     '<div class="rp-chart-wrap"><canvas id="rp-stichtag-canvas" style="display:block;width:100%;cursor:crosshair"></canvas></div>'+
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 14px;font-size:11px;color:var(--tx3)">'+
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 14px;font-size:12px;color:var(--tx3)">'+
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--blue);vertical-align:middle;margin-right:4px"></span>Anspar</span>'+
-      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);vertical-align:middle;margin-right:4px"></span>Renteneintritt 🎯</span>'+
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);vertical-align:middle;margin-right:4px"></span>Renteneintritt</span>'+
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--amber);vertical-align:middle;margin-right:4px"></span>Entnahme</span>'+
     '</div>'+
     '<div style="overflow-x:auto">'+
     '<table style="width:100%;border-collapse:collapse;min-width:360px">'+
-      '<thead><tr style="border-bottom:2px solid var(--brd);font-size:11px;color:var(--tx3)">'+
+      '<thead><tr style="border-bottom:2px solid var(--brd);font-size:12px;color:var(--tx3)">'+
         '<th style="padding:6px 12px;text-align:left;font-weight:600">Alter</th>'+
         '<th style="padding:6px 12px;text-align:left;font-weight:600">Depot</th>'+
         '<th style="padding:6px 12px;text-align:right;font-weight:600">'+(hasEntnahme?'Entnahme/Monat':'Rendite/Monat')+'</th>'+
@@ -6035,25 +6039,25 @@ function rpRenderTabRente(r1,r2,store,el) {
     var kvHtml='';
     if(r.kvLueckeJahre>0){
       if(r.kvLueckeStatus==='freiwillig'){
-        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--amber-lt,rgba(245,158,11,.08));border:1px solid var(--amber,#F59E0B);font-size:11px;color:var(--tx2)">'+
-          '<span style="color:var(--amber);font-weight:600">⚠ Krankenversicherungs-Lücke ('+r.kvLueckeJahre+' Jahre)</span> '+
+        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:var(--r-sm);background:var(--amber-lt,rgba(245,158,11,.08));border:1px solid var(--amber,#F59E0B);font-size:12px;color:var(--tx2)">'+
+          '<span style="color:var(--amber);font-weight:600">'+ic('alert')+' Krankenversicherungs-Lücke ('+r.kvLueckeJahre+' Jahre)</span> '+
           'Freiwillige gesetzliche Krankenversicherung geschätzt: <strong>'+eur(r.kvFreiwilligKosten)+'/Monat</strong> · '+
           'Gewinn-Entnahme ~'+eur(r.kvGainMonatlich)+'/Monat überschreitet Familienversicherungsgrenze (505 €)'+
           '</div>';
       } else if(r.kvLueckeStatus==='familienversicherung'){
-        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:11px;color:var(--tx2)">'+
+        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:var(--r-sm);background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:12px;color:var(--tx2)">'+
           '<span style="color:var(--green);font-weight:600">✓ Krankenversicherungs-Lücke ('+r.kvLueckeJahre+' Jahre)</span> '+
           'Familienversicherung möglich · Gewinnanteil ~'+eur(r.kvGainMonatlich)+'/Monat &lt; 505 €'+
           '</div>';
       } else if(r.kvLueckeStatus==='pkv'){
-        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--surf2);border:1px solid var(--brd);font-size:11px;color:var(--tx2)">'+
+        kvHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:var(--r-sm);background:var(--surf2);border:1px solid var(--brd);font-size:12px;color:var(--tx2)">'+
           '<span style="font-weight:600">Private Krankenversicherung ('+r.kvLueckeJahre+' Jahre)</span> · Beiträge bitte in monatlichen Ausgaben erfassen</div>';
       }
     }
     var deferredHtml='';
     if(r.hatLuecke&&!r.hatLueckeVoll&&r.deferredSources&&r.deferredSources.length){
       var deferredNote=r.deferredSources.map(function(d){return esc(d.name)+' ab '+d.startAge;}).join(', ');
-      deferredHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:11px;color:var(--tx2)">'+
+      deferredHtml='<div style="margin-top:6px;padding:6px 8px;border-radius:var(--r-sm);background:var(--green-lt,rgba(5,150,105,.08));border:1px solid var(--green-bd,rgba(5,150,105,.2));font-size:12px;color:var(--tx2)">'+
         '<span style="color:var(--green);font-weight:600">Kein Defizit</span> sobald aktiv: '+deferredNote+'</div>';
     }
     return '<div class="rp-rc"><div class="rp-rc-title">'+name+' · ab '+r.targetRetirementAge+'</div>'+
@@ -6072,24 +6076,24 @@ function rpRenderTabRente(r1,r2,store,el) {
     var hhDepot=(r1.depotAtRetire||0)+(r2.depotAtRetire||0);
     var hhLuecke=Math.max(0,hhAusg-(hhEink+hhEntn));
     hhHtml='<div style="margin-top:14px;border-top:1px solid var(--brd);padding-top:14px">'+
-      '<div style="font-size:11px;font-weight:600;color:var(--tx3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Haushalt gesamt</div>'+
+      '<div style="font-size:12px;font-weight:600;color:var(--tx3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Haushalt gesamt</div>'+
       '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Einkommen</div>'+
-          '<div style="font-size:16px;font-weight:700;font-family:var(--mono)">'+eur(hhEink+hhEntn)+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">Rente + Entnahme</div>'+
+          '<div class="rp-rc-title" style="font-size:12px">Haushalt-Einkommen</div>'+
+          '<div style="font-size:16px;font-weight:600;font-family:var(--mono)">'+eur(hhEink+hhEntn)+'</div>'+
+          '<div style="font-size:12px;color:var(--tx3)">Rente + Entnahme</div>'+
         '</div>'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Ausgaben</div>'+
-          '<div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--red)">'+eur(hhAusg)+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">Beide zusammen</div>'+
+          '<div class="rp-rc-title" style="font-size:12px">Haushalt-Ausgaben</div>'+
+          '<div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--red)">'+eur(hhAusg)+'</div>'+
+          '<div style="font-size:12px;color:var(--tx3)">Beide zusammen</div>'+
         '</div>'+
         '<div class="rp-rc" style="padding:10px 12px">'+
-          '<div class="rp-rc-title" style="font-size:10px">Haushalt-Depot</div>'+
-          '<div style="font-size:16px;font-weight:700;font-family:var(--mono)">'+eur(hhDepot)+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">Person 1 + Person 2</div>'+
+          '<div class="rp-rc-title" style="font-size:12px">Haushalt-Depot</div>'+
+          '<div style="font-size:16px;font-weight:600;font-family:var(--mono)">'+eur(hhDepot)+'</div>'+
+          '<div style="font-size:12px;color:var(--tx3)">Person 1 + Person 2</div>'+
         '</div>'+
-        '<div class="rp-al '+(hhLuecke>0?'luecke':'ok')+'" style="margin:0;border-radius:10px">'+
+        '<div class="rp-al '+(hhLuecke>0?'luecke':'ok')+'" style="margin:0;border-radius:var(--r-sm)">'+
           '<div class="rp-al-lbl">'+(hhLuecke>0?'Haushalt-Rentenlücke':'Kein Haushalt-Defizit')+'</div>'+
           '<div class="rp-al-val">'+(hhLuecke>0?eur(hhLuecke):'✓')+'</div>'+
         '</div>'+
@@ -6126,24 +6130,24 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
   var hasGuardrail=r.entnahmePlan.some(function(w){return w.guardrailAktiv;});
   var chartData=r.entnahmePlan.slice(0,30);
   var rows=chartData.map(function(w){
-    var grIco=w.guardrailAktiv?' <span style="font-size:10px;color:var(--amber)" title="Guardrail aktiv">⚠</span>':'';
+    var grIco=w.guardrailAktiv?' <span style="font-size:12px;color:var(--amber)" title="Guardrail aktiv">'+ic('alert',11)+'</span>':'';
     return '<tr class="'+(w.alter===r.targetRetirementAge?'hl':'')+'"><td>'+w.alter+'</td><td>'+eur(w.depot)+'</td><td style="color:var(--red)">'+eur(w.entnahme)+grIco+'</td><td style="color:var(--green)">'+eur(w.rendite)+'</td></tr>';
   }).join('');
   var stratLbl=r.entnahmeStrat==='luecke'?'Rentenlücke':r.entnahmeStrat==='swr'?(r.swrRate+'% Sichere Entnahmerate'+(r.guardrails?' + Guardrails':'')):('Fest '+eur(r.entnahmeMonatlich));
   el.innerHTML='<div style="margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'+
-    '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:11px;color:var(--tx3)">'+stratLbl+'</div></div>'+
-    '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:11px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
-    '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:11px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+r.targetRetirementAge)+'</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Entnahme/Monat</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.entnahmeMonatlich)+'</div><div style="font-size:12px;color:var(--tx3)">'+stratLbl+'</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Depot bei Rente</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+eur(r.depotAtRetire)+'</div><div style="font-size:12px;color:var(--tx3)">Kinder-Abzug: '+eur(r.kinderGesamtkosten)+'</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Depot reicht</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(!r.hatLuecke?'var(--green)':r.depotJahre>=20?'var(--green)':'var(--amber)')+'">'+(!r.hatLuecke?'∞':r.depotJahre>=60?'60+ J.':r.depotJahre>0?r.depotJahre.toFixed(0)+' J.':'< 1 J.')+'</div><div style="font-size:12px;color:var(--tx3)">'+(!r.hatLuecke?'Kein Depot-Verzehr nötig':'ab Alter '+r.targetRetirementAge)+'</div></div>'+
     '</div></div>'+
     '<div style="font-size:12px;color:var(--tx3);margin-bottom:6px">Depot-Verlauf im Ruhestand</div>'+
     '<div class="rp-chart-wrap"><canvas id="rp-entnahme-canvas" style="display:block;width:100%;cursor:crosshair"></canvas></div>'+
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 14px;font-size:11px;color:var(--tx3)">'+
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 14px;font-size:12px;color:var(--tx3)">'+
       '<span><span style="display:inline-block;width:12px;height:3px;background:var(--amber);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Depot-Verlauf</span>'+
       (hasGuardrail?'<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);vertical-align:middle;margin-right:4px"></span>Guardrail aktiv</span>':'')+
     '</div>'+
-    (hasGuardrail?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:8px">⚠ Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
+    (hasGuardrail?'<div style="font-size:12px;color:var(--amber);margin-bottom:8px;padding:6px 10px;background:var(--surf2);border-radius:var(--r-sm)">'+ic('alert')+' Guardrail hat angesprochen: Entnahme wurde in markierten Jahren auf 90% reduziert</div>':'')+
     '<div class="tbl-scroll"><table class="rp-dt"><thead><tr><th style="text-align:left">Alter</th><th>Depot</th><th>Entnahme/J.</th><th>Rendite</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:8px;font-size:11px;color:var(--tx3);line-height:1.5">'+
+    '<div style="margin-top:10px;padding:8px 12px;background:var(--surf2);border-radius:var(--r-sm);font-size:12px;color:var(--tx3);line-height:1.5">'+
     '<strong style="color:var(--tx2)">Hinweis: Rendite-Reihenfolge (Sequence-of-Returns)</strong> — Diese Tabelle rechnet mit gleichmäßiger Jahresrendite. In der Realität können starke Verluste in den ersten Rentenjahren das Depot dauerhaft belasten, selbst wenn die Durchschnittsrendite stimmt. Tipp: Etwas mehr Puffer einplanen oder Guardrails aktivieren.'+
     '</div>';
   rpEntnahmeHov=-1;
@@ -6171,10 +6175,10 @@ function rpRenderTabEntnahme(r1,r2,store,el) {
 function rpRenderTabDepot(r1,r2,store,el) {
   var r=(rpS.person==='person_2'&&r2)?r2:r1;if(!r){el.innerHTML='';return;}
   el.innerHTML='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">'+
-    '<div class="rp-rc"><div class="rp-rc-title">Vorsorge-Depot (Anteil)</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:11px;color:var(--tx3)">eigene + ½ gemeinsame · ohne Immobilien/Sonstiges</div></div>'+
-    '<div class="rp-rc"><div class="rp-rc-title">Sparrate/Mo</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div><div style="font-size:11px;color:var(--tx3)">Sparpläne + Asset-Monatspläne</div></div>'+
-    '<div class="rp-rc"><div class="rp-rc-title">Ø Rendite (gewichtet)</div><div style="font-size:20px;font-weight:800;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div><div style="font-size:11px;color:var(--tx3)">Nach Portfolio-Komposition</div></div>'+
-    '<div class="rp-rc"><div class="rp-rc-title">Abzug Kinder</div><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--amber)">'+eur(r.kinderGesamtkosten)+'</div><div style="font-size:11px;color:var(--tx3)">Ausbildungskosten gesamt</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Vorsorge-Depot (Anteil)</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+eur(r.depotStart)+'</div><div style="font-size:12px;color:var(--tx3)">eigene + ½ gemeinsame · ohne Immobilien/Sonstiges</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Sparrate/Mo</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eur(r.monthlySavings)+'</div><div style="font-size:12px;color:var(--tx3)">Sparpläne + Asset-Monatspläne</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Ø Rendite (gewichtet)</div><div style="font-size:20px;font-weight:700;font-family:var(--mono)">'+r.weightedReturn.toFixed(1)+'%</div><div style="font-size:12px;color:var(--tx3)">Nach Portfolio-Komposition</div></div>'+
+    '<div class="rp-rc"><div class="rp-rc-title">Abzug Kinder</div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--amber)">'+eur(r.kinderGesamtkosten)+'</div><div style="font-size:12px;color:var(--tx3)">Ausbildungskosten gesamt</div></div>'+
     '</div>'+
     '<div class="rp-rc" style="padding:12px 14px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="rp-rc-title">Abzüge (berechnet)</span></div>'+
@@ -6204,7 +6208,7 @@ function rpRenderTabHaushalt(r1,r2,store,el) {
       '<div class="rp-row"><span class="rl">Anteil '+n1+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil1)+'/Monat</span></div>'+
       '<div class="rp-row"><span class="rl">Anteil '+n2+'</span><span class="rv" style="color:var(--green)">'+eur(splVorteil2)+'/Monat</span></div>'+
       '<div class="rp-row total"><span>Steuerersparnis gesamt</span><span style="font-family:var(--mono);color:var(--green)">'+eur(splVorteilGes)+'/Monat · '+eur(splVorteilGes*12)+'/Jahr</span></div>'+
-      '<div style="font-size:11px;color:var(--tx3);margin-top:6px">Das Splitting-Verfahren teilt das gemeinsame zu versteuernde Einkommen durch 2, berechnet die Steuer und verdoppelt sie — günstig bei unterschiedlichen Einkommen.</div>'+
+      '<div style="font-size:12px;color:var(--tx3);margin-top:6px">Das Splitting-Verfahren teilt das gemeinsame zu versteuernde Einkommen durch 2, berechnet die Steuer und verdoppelt sie — günstig bei unterschiedlichen Einkommen.</div>'+
     '</div>';
   } else if(r2){
     splHtml='<div class="rp-rc" style="margin-top:10px">'+
@@ -6221,7 +6225,7 @@ function rpRenderTabHaushalt(r1,r2,store,el) {
       '<div class="rp-rc-title">Witwenrente §46 SGB VI (Große Witwenrente)</div>'+
       '<div class="rp-row"><span class="rl">'+n2+' erhält bei Tod von '+n1+'</span><span class="rv">'+eur(witwe1)+'/Monat</span></div>'+
       '<div class="rp-row"><span class="rl">'+n1+' erhält bei Tod von '+n2+'</span><span class="rv">'+eur(witwe2)+'/Monat</span></div>'+
-      '<div style="font-size:11px;color:var(--tx3);margin-top:6px">55% der gesetzlichen Brutto-Rente des Verstorbenen (§46 Abs. 2 SGB VI). Brutto-Betrag vor Steuern und KV-Abzügen.</div>'+
+      '<div style="font-size:12px;color:var(--tx3);margin-top:6px">55% der gesetzlichen Brutto-Rente des Verstorbenen (§46 Abs. 2 SGB VI). Brutto-Betrag vor Steuern und KV-Abzügen.</div>'+
     '</div>';
   }
   el.innerHTML='<div class="rp-rg">'+
@@ -6695,7 +6699,7 @@ function vmDrawTrend(canvas, pts){
 
   // Punkte + Labels X-Achse (jeden 2. oder 3. anzeigen)
   var step=Math.ceil(pts.length/6);
-  ctx.font='11px Inter,system-ui,sans-serif';
+  ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
   ctx.fillStyle=cTx3;
   ctx.textAlign='center';
   pts.forEach(function(p,i){
@@ -6714,7 +6718,7 @@ function vmDrawTrend(canvas, pts){
   // Y-Achse: min + max
   ctx.textAlign='right';
   ctx.fillStyle='#8E8E93';
-  ctx.font='11px Inter,system-ui,sans-serif';
+  ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
   ctx.fillText(eur(maxV),PAD.l-6,PAD.t+8);
   ctx.fillText(eur(minV),PAD.l-6,PAD.t+cH+4);
 
@@ -6771,9 +6775,9 @@ function vmRenderTotal(){
   var legHtml=segs.map(function(sg,i){
     return '<div class="vm-dleg" data-i="'+i+'" onmouseenter="vmDonutHighlight('+i+')" onmouseleave="vmDonutHighlight(-1)">'+
       '<div style="width:9px;height:9px;border-radius:3px;background:'+sg.color+';flex-shrink:0"></div>'+
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx2)">'+sg.label+'</span>'+
-      '<span style="font-size:11px;font-weight:700;color:var(--tx);font-family:var(--mono);white-space:nowrap">'+eur(sg.value)+'</span>'+
-      '<span style="font-size:10px;color:var(--tx3);min-width:28px;text-align:right;flex-shrink:0">'+sg.pct.toFixed(1)+'%</span>'+
+      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--tx2)">'+sg.label+'</span>'+
+      '<span style="font-size:12px;font-weight:600;color:var(--tx);font-family:var(--mono);white-space:nowrap">'+eur(sg.value)+'</span>'+
+      '<span style="font-size:12px;color:var(--tx3);min-width:28px;text-align:right;flex-shrink:0">'+sg.pct.toFixed(1)+'%</span>'+
     '</div>';
   }).join('');
 
@@ -6785,7 +6789,7 @@ function vmRenderTotal(){
       '.vm-ti{display:flex;gap:20px;align-items:flex-start}'+
       '.vm-dc{flex-shrink:0;width:196px}'+
       '.vm-tc{flex:1;min-width:0}'+
-      '.vm-dleg{display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:6px;cursor:default;transition:background .1s,opacity .1s}'+
+      '.vm-dleg{display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:var(--r-sm);cursor:default;transition:background .1s,opacity .1s}'+
       '@media(max-width:560px){.vm-ti{flex-direction:column}.vm-dc,.vm-tc{width:100%!important}}';
     document.head.appendChild(_s);
   }
@@ -6804,12 +6808,12 @@ function vmRenderTotal(){
           :'')+
       '</div>'+
       '<div class="vm-tc" id="vm-trend-col">'+
-        '<div style="font-size:11px;font-weight:600;color:var(--tx3);margin-bottom:4px;padding-left:52px">Vermögensentwicklung</div>'+
+        '<div style="font-size:12px;font-weight:600;color:var(--tx3);margin-bottom:4px;padding-left:52px">Vermögensentwicklung</div>'+
         (hasTrend
           ?'<canvas id="vm-trend-canvas-r" style="display:block;width:100%"></canvas>'
-          :'<div style="height:250px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1.5px dashed var(--brd);border-radius:10px;color:var(--tx3)">'+
+          :'<div style="height:250px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1.5px dashed var(--brd);border-radius:var(--r-sm);color:var(--tx3)">'+
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;opacity:0.4"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>'+
-            '<div style="font-size:11px;text-align:center;line-height:1.6">Verlauf erscheint nach dem<br>ersten monatlichen Kurs-Update</div>'+
+            '<div style="font-size:12px;text-align:center;line-height:1.6">Verlauf erscheint nach dem<br>ersten monatlichen Kurs-Update</div>'+
             '</div>')+
       '</div>'+
     '</div>';
@@ -6868,11 +6872,11 @@ function vmRenderTotal(){
       var lbl,val,valColor;
       if(hi>=0&&segs[hi]){lbl=segs[hi].label;val=eur(segs[hi].value);valColor=segs[hi].color;}
       else{lbl=selOn?'Auswahl':'Gesamtvermögen';val=eur(total);valColor=tx;}
-      ctx.font='700 '+fs2+'px Inter,system-ui,sans-serif';
-      while(ctx.measureText(val).width>ri*1.75&&fs2>10){fs2--;ctx.font='700 '+fs2+'px Inter,system-ui,sans-serif';}
-      ctx.fillStyle=tx3;ctx.font='500 '+fs1+'px Inter,system-ui,sans-serif';
+      ctx.font='700 '+fs2+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
+      while(ctx.measureText(val).width>ri*1.75&&fs2>10){fs2--;ctx.font='700 '+fs2+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';}
+      ctx.fillStyle=tx3;ctx.font='500 '+fs1+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.fillText(lbl,cx,cy-Math.round(W*0.105));
-      ctx.fillStyle=valColor;ctx.font='700 '+fs2+'px Inter,system-ui,sans-serif';
+      ctx.fillStyle=valColor;ctx.font='700 '+fs2+'px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.fillText(val,cx,cy+Math.round(W*0.028));
     }
 
@@ -6954,7 +6958,7 @@ function vmDrawTrendRight(canvas,pts,costBasis){
       var gv=minV+(g/4)*vRange,gy=vy(gv);
       ctx.strokeStyle=brd;ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(W-pR,gy);ctx.stroke();
-      ctx.fillStyle=tx3;ctx.font='500 10px Inter,system-ui,sans-serif';
+      ctx.fillStyle=tx3;ctx.font='500 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.textAlign='right';ctx.textBaseline='middle';
       ctx.fillText(vmFmtK(gv),pL-5,gy);
     }
@@ -6963,7 +6967,7 @@ function vmDrawTrendRight(canvas,pts,costBasis){
       var cy=vy(costBasis);
       ctx.strokeStyle=tx3;ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
       ctx.beginPath();ctx.moveTo(pL,cy);ctx.lineTo(W-pR,cy);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle=tx3;ctx.font='500 9px Inter,system-ui,sans-serif';
+      ctx.fillStyle=tx3;ctx.font='500 9px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.textAlign='left';ctx.textBaseline='bottom';
       ctx.fillText('Einstand '+vmFmtK(costBasis),pL+3,cy-2);
     }
@@ -6986,7 +6990,7 @@ function vmDrawTrendRight(canvas,pts,costBasis){
       if(hov===i){ctx.strokeStyle=surf;ctx.lineWidth=2;ctx.stroke();}
     });
     // X-Beschriftung kurz („Mai 26") und nur so viele, wie nebeneinander passen (iPhone)
-    ctx.font='500 10px Inter,system-ui,sans-serif';ctx.fillStyle=tx3;ctx.textBaseline='top';
+    ctx.font='500 10px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.fillStyle=tx3;ctx.textBaseline='top';
     var maxLbl=Math.max(2,Math.floor(cW/52));
     var step=Math.max(1,Math.ceil(pts.length/maxLbl)),shown={};
     for(var xi=0;xi<pts.length;xi+=step){
@@ -7004,7 +7008,7 @@ function vmDrawTrendRight(canvas,pts,costBasis){
         var d=p.value-pts[hov-1].value,pp=pts[hov-1].value?d/pts[hov-1].value*100:0;
         lines.push((d>=0?'+':'')+eur(d)+' ('+(d>=0?'+':'')+pp.toFixed(1).replace('.',',')+' %)');
       }
-      ctx.font='600 11px Inter,system-ui,sans-serif';
+      ctx.font='600 11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       var tw=0;lines.forEach(function(l){tw=Math.max(tw,ctx.measureText(l).width);});
       var bw=tw+18,bh=lines.length*16+12,bx=vx(hov)+10,by=Math.max(pT,vy(p.value)-bh-6);
       if(bx+bw>W-2)bx=vx(hov)-bw-10;
@@ -7012,7 +7016,7 @@ function vmDrawTrendRight(canvas,pts,costBasis){
       ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.fill();ctx.stroke();
       ctx.textAlign='left';ctx.textBaseline='top';
       lines.forEach(function(l,i){
-        ctx.font=(i===1?'700 12px ':'500 10px ')+'Inter,system-ui,sans-serif';
+        ctx.font=(i===1?'700 12px ':'500 10px ')+'-apple-system,BlinkMacSystemFont,system-ui,sans-serif';
         ctx.fillStyle=i===0?tx3:(i===1?tx:tx2);
         ctx.fillText(l,bx+9,by+6+i*16);
       });
@@ -7057,7 +7061,7 @@ function vmRenderAssets(){
   if(!el)return;
   var s=FP.Calculator.getAssetSummary();
   if(!s.items.length){
-    el.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--tx3);font-size:13px">Keine Anlagen vorhanden.</div>';
+    el.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--tx3);font-size:14px">Keine Anlagen vorhanden.</div>';
     return;
   }
   var esppVal=s.byType['espp']||0;
@@ -7072,11 +7076,11 @@ function vmRenderAssets(){
     (esppVal>0
       ? '<div class="vm-asset-val" style="color:'+ec+'">'+eur(esppVal)+'</div>'+
         '<div class="vm-asset-meta">Gehaltene Zyklen · Details unten</div>'
-      : '<div class="vm-asset-val" style="color:var(--tx3);font-size:15px">–</div>'+
+      : '<div class="vm-asset-val" style="color:var(--tx3);font-size:16px">–</div>'+
         '<div class="vm-asset-meta">Noch keine Zyklen erfasst</div>')+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
       '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL['person_1']||'Person 1')+'</div>'+
-      '<button onclick="event.stopPropagation();document.getElementById(\'vm-espp\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="background:var(--surf2);border:1px solid var(--brd);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--tx2);cursor:pointer">Details ↓</button>'+
+      '<button onclick="event.stopPropagation();document.getElementById(\'vm-espp\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:4px 10px;font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer">Details ↓</button>'+
     '</div>'+
   '</div>';
   el.innerHTML=s.items.map(function(item){
@@ -7084,7 +7088,7 @@ function vmRenderAssets(){
     var alpha=color+'22';
     var hasVal=item.value>0;
     var asset=FP.Store.Assets.getById(item.id);
-    var isinHint=asset&&asset.isin?'<span style="font-size:10px;color:var(--tx3);font-family:var(--mono)">'+esc(asset.isin)+'</span>':'';
+    var isinHint=asset&&asset.isin?'<span style="font-size:12px;color:var(--tx3);font-family:var(--mono)">'+esc(asset.isin)+'</span>':'';
 
     // Performance badge
     var perfHtml='';
@@ -7093,7 +7097,7 @@ function vmRenderAssets(){
       var gainPct=(gain/asset.costBasis*100);
       var gc=gain>=0?'var(--green)':'var(--red)';
       var gs=gain>=0?'+':'';
-      perfHtml='<div style="font-size:11px;font-weight:600;color:'+gc+';margin-top:4px">'+
+      perfHtml='<div style="font-size:12px;font-weight:600;color:'+gc+';margin-top:4px">'+
         gs+eur(gain)+' ('+gs+gainPct.toFixed(1)+'%) · Einstand '+eur(asset.costBasis)+'</div>';
     }
 
@@ -7130,11 +7134,11 @@ function vmRenderAssets(){
         '</div>'+
         '<div style="display:flex;align-items:center;gap:6px">'+
           '<div class="vm-asset-type" style="color:'+color+';background:'+alpha+'">'+(VM_TYPE_LABEL[item.type]||item.type)+'</div>'+
-          '<button onclick="vmEditAsset(\''+item.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--tx3);cursor:pointer">✎</button>'+
-          '<button onclick="vmDelAsset(event,\''+item.id+'\')" style="background:none;border:none;padding:2px 5px;font-size:13px;color:var(--tx3);cursor:pointer" title="Anlage löschen">✕</button>'+
+          '<button onclick="vmEditAsset(\''+item.id+'\')" style="background:none;border:1px solid var(--brd);border-radius:var(--r-sm);padding:2px 7px;font-size:12px;color:var(--tx3);cursor:pointer">✎</button>'+
+          '<button onclick="vmDelAsset(event,\''+item.id+'\')" style="background:none;border:none;padding:2px 5px;font-size:14px;color:var(--tx3);cursor:pointer" title="Anlage löschen">✕</button>'+
         '</div>'+
       '</div>'+
-      '<div class="vm-asset-val" style="color:'+(hasVal?color:'var(--tx3);font-size:15px')+'">'+eur(item.value)+'</div>'+
+      '<div class="vm-asset-val" style="color:'+(hasVal?color:'var(--tx3);font-size:16px')+'">'+eur(item.value)+'</div>'+
       '<div class="vm-asset-meta">'+(item.date?'Stand: '+item.date:'Noch kein Wert erfasst')+'</div>'+
       perfHtml+
       sparkHtml+
@@ -7142,10 +7146,10 @@ function vmRenderAssets(){
         '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
           '<div class="vm-asset-owner">'+esc(VM_OWNER_LABEL[item.ownerId]||item.ownerId)+'</div>'+
           (asset&&asset.monthlyPlan
-            ?'<div onclick="vmEditAsset(\''+item.id+'\')" style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;background:rgba(124,58,237,0.12);color:var(--purple);cursor:pointer" title="Sparplan bearbeiten">€'+asset.monthlyPlan+'/Mo</div>'
+            ?'<div onclick="vmEditAsset(\''+item.id+'\')" style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:12px;font-weight:600;background:rgba(124,58,237,0.12);color:var(--purple);cursor:pointer" title="Sparplan bearbeiten">€'+asset.monthlyPlan+'/Mo</div>'
             :'')+
         '</div>'+
-        '<button onclick="vmOpenSnapshot(\''+item.id+'\')" style="background:var(--blue);border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--on-accent);cursor:pointer">+ Wert eintragen</button>'+
+        '<button onclick="vmOpenSnapshot(\''+item.id+'\')" style="background:var(--blue);border:none;border-radius:var(--r-sm);padding:4px 10px;font-size:12px;font-weight:600;color:var(--on-accent);cursor:pointer">+ Wert eintragen</button>'+
       '</div>'+
     '</div>';
   }).join('')+esppTile;
@@ -7173,12 +7177,12 @@ function vmRenderFsa(){
     var pl=VM_OWNER_LABEL[f.personId]||f.personId;
     return '<div class="vm-fsa-row">'+
       '<div class="vm-fsa-inst">'+esc(f.institution)+
-        '<span style="font-size:10px;color:var(--tx3);margin-left:6px">'+esc(pl)+'</span>'+
+        '<span style="font-size:12px;color:var(--tx3);margin-left:6px">'+esc(pl)+'</span>'+
       '</div>'+
       '<div class="vm-fsa-amt">'+eur(f.betrag)+'</div>'+
-      '<button class="vm-fsa-del" onclick="vmDelFsa(event,\''+f.id+'\')">🗑</button>'+
+      '<button class="vm-fsa-del" onclick="vmDelFsa(event,\''+f.id+'\')">'+ic('trash')+'</button>'+
       '</div>';
-  }).join('')+'</div>':'<div style="padding:12px 16px;color:var(--tx3);font-size:13px">Noch keine Aufträge erfasst.</div>';
+  }).join('')+'</div>':'<div style="padding:12px 16px;color:var(--tx3);font-size:14px">Noch keine Aufträge erfasst.</div>';
   el.innerHTML='<div class="vm-fsa-bar-wrap">'+
     '<div class="vm-fsa-bar-track"><div class="vm-fsa-bar-fill'+(over?' over':'')+'" style="width:'+pct.toFixed(1)+'%"></div></div>'+
     '<div class="vm-fsa-nums"><span>'+eur(s.gesamt)+' vergeben</span><span style="color:'+(over?'var(--red)':'var(--tx3)')+'">'+eur(s.verfuegbar)+' verfügbar</span><span>Max. '+eur(s.freibetrag)+'</span></div>'+
@@ -7591,7 +7595,7 @@ function ghRenderRealWage(){
 
   if(!history||history.length<2){
     if(canvas)canvas.style.display='none';
-    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--tx3);font-size:13px">Noch keine Daten. Bitte Gehaltsdaten für mindestens 2 Jahre erfassen.</div>';
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--tx3);font-size:14px">Noch keine Daten. Bitte Gehaltsdaten für mindestens 2 Jahre erfassen.</div>';
     return;
   }
   if(canvas)canvas.style.display='block';
@@ -7652,7 +7656,7 @@ function ghRenderRealWage(){
       var rcCls=r.realYoY>0?'gh-chg-pos':r.realYoY<0?'gh-chg-neg':'';
       var b=bruttoMap[r.year]||{gross:0,bonus:0,total:0};
       return '<tr>'+
-        '<td style="font-weight:700">'+r.year+'</td>'+
+        '<td style="font-weight:600">'+r.year+'</td>'+
         '<td>'+eur(b.gross)+'</td>'+
         '<td>'+(b.bonus?eur(b.bonus):'—')+'</td>'+
         '<td style="font-weight:600">'+eur(b.total)+'</td>'+
@@ -7666,7 +7670,7 @@ function ghRenderRealWage(){
     (function(){
       var b0=bruttoMap[history[0].year]||{gross:0,bonus:0,total:0};
       return '<tr style="color:var(--tx3)">'+
-        '<td style="font-weight:700">'+history[0].year+'</td>'+
+        '<td style="font-weight:600">'+history[0].year+'</td>'+
         '<td>'+eur(b0.gross)+'</td>'+
         '<td>'+(b0.bonus?eur(b0.bonus):'—')+'</td>'+
         '<td>'+eur(b0.total)+'</td>'+
@@ -7727,7 +7731,7 @@ function ghDrawChart(canvas, pts){
       var y=toY(v);
       ctx.strokeStyle=cBrd;
       ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-      ctx.fillStyle=cTx3;ctx.font='12px Inter,system-ui,sans-serif';
+      ctx.fillStyle=cTx3;ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.textAlign='right';
       ctx.fillText((v>0?'+':'')+v.toFixed(0)+'%',PAD.l-5,y+4);
     });
@@ -7759,7 +7763,7 @@ function ghDrawChart(canvas, pts){
 
       ctx.globalAlpha=1;
       ctx.fillStyle=isHov?cTx:cTx3;
-      ctx.font=(isHov?'bold ':'')+'13px Inter,system-ui,sans-serif';
+      ctx.font=(isHov?'bold ':'')+'13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       ctx.textAlign='center';
       ctx.fillText(String(p.year),x,H-PAD.b+14);
     });
@@ -7785,7 +7789,7 @@ function ghDrawChart(canvas, pts){
       var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
               '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
               '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
-      ctx.font='13px Inter,system-ui,sans-serif';
+      ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       var tw=ctx.measureText(txt).width+20;
       ctx.fillStyle=cs.getPropertyValue('--surf').trim()||'#fff';
       ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD.l,2,tw,22,4):ctx.rect(PAD.l,2,tw,22);
@@ -7796,7 +7800,7 @@ function ghDrawChart(canvas, pts){
 
     // Legende (im Canvas — exakt gleiche Farben + Alpha wie die Balken)
     var lgY=H-8;
-    ctx.font='11px Inter,system-ui,sans-serif';
+    ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
     ctx.textAlign='left';
     var lgX=PAD.l;
 
@@ -7888,7 +7892,7 @@ function ghDrawLineChart(canvas, pts){
       var y=toY(v);
       ctx.strokeStyle=cBrd;
       ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
-      ctx.fillStyle=cTx3;ctx.font='12px Inter,system-ui,sans-serif';ctx.textAlign='right';
+      ctx.fillStyle=cTx3;ctx.font='12px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='right';
       ctx.fillText((v>0?'+':'')+v.toFixed(0)+'%',PAD.l-5,y+4);
     });
     ctx.strokeStyle=cTx3;ctx.lineWidth=1.5;
@@ -7916,7 +7920,7 @@ function ghDrawLineChart(canvas, pts){
     });
 
     // X-Achse: jedes 2. Jahr
-    ctx.fillStyle=cTx3;ctx.font='13px Inter,system-ui,sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=cTx3;ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='center';
     pts.forEach(function(p,i){
       if(n<=12||i%2===0||i===n-1)
         ctx.fillText(String(p.year),xOf(i),H-PAD.b+14);
@@ -7928,7 +7932,7 @@ function ghDrawLineChart(canvas, pts){
       var txt=p.year+'  |  Nominal: '+(p.nomYoY>0?'+':'')+p.nomYoY.toFixed(1)+'%'+
               '  |  Real: '+(p.realYoY>0?'+':'')+p.realYoY.toFixed(1)+'%'+
               '  |  Inflation: '+p.inflRate.toFixed(1)+'%';
-      ctx.font='13px Inter,system-ui,sans-serif';
+      ctx.font='13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';
       var tw=ctx.measureText(txt).width+20;
       ctx.fillStyle=cSurf;
       ctx.beginPath();ctx.roundRect?ctx.roundRect(PAD.l,2,tw,22,4):ctx.rect(PAD.l,2,tw,22);ctx.fill();
@@ -7938,7 +7942,7 @@ function ghDrawLineChart(canvas, pts){
 
     // Legende
     var lgY=H-8;
-    ctx.font='11px Inter,system-ui,sans-serif';ctx.textAlign='left';
+    ctx.font='11px -apple-system,BlinkMacSystemFont,system-ui,sans-serif';ctx.textAlign='left';
     var lgX=PAD.l;
     [[cBlue,'Nominal Δ p.a.',[]],[cRealPos,'Reallohn Δ p.a.',[]],[cAmber,'Inflation p.a.',[4,3]]].forEach(function(e){
       ctx.strokeStyle=e[0];ctx.lineWidth=2;ctx.setLineDash(e[2]);
@@ -8256,7 +8260,7 @@ function bgtRender() {
       var stTxt  = over
         ? '▲ ' + eur(b.spent - b.limit) + ' überzogen'
         : warn
-        ? '⚡ ' + eur(b.limit - b.spent) + ' verbleibend'
+        ? ic('zap',12) + ' ' + eur(b.limit - b.spent) + ' verbleibend'
         : '✓ ' + eur(b.limit - b.spent) + ' verbleibend';
 
       var editRow = bgtState.editingCat === b.catId

@@ -5,7 +5,7 @@
 <meta name="referrer" content="no-referrer">
 <!-- CSP (Paket 4): Daten dürfen nur an diese Server gehen. Neue Fremdadresse = hier eintragen.
      'unsafe-inline' bleibt nötig (Inline-Handler) — die Sperre wirkt gegen das Ausleiten, nicht gegen Injection. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://finanzplanersync.blob.core.windows.net https://www.alphavantage.co https://cdn.jsdelivr.net https://api.frankfurter.dev https://open.er-api.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://finanzplanersync.blob.core.windows.net https://www.alphavantage.co https://cdn.jsdelivr.net https://api.frankfurter.dev https://open.er-api.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <script>(function(){var u=navigator.userAgent;if(/iPad|iPhone|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))document.documentElement.classList.add('ios');})();</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -17,10 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
 <title>Finanzplaner v12.2</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<!-- Schrift blockiert den Start nicht (media=print → all nach dem Laden); ohne Netz gilt die Systemschrift -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=20261122d">
+<link rel="stylesheet" href="style.css?v=20261122e">
 </head>
 <body>
 
@@ -40,7 +37,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.2 · build 1122d</div>
+      <div class="sb-ver">v12.2 · build 1122e</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -140,7 +137,7 @@
             </div>
 
             <div class="np-seg">
-              <button class="np-seg-btn active" id="np-seg-aus" onclick="setTyp('ausgabe')">➖ Ausgabe</button>
+              <button class="np-seg-btn active" id="np-seg-aus" onclick="setTyp('ausgabe')"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg> Ausgabe</button>
               <button class="np-seg-btn erstattung" id="np-seg-ers" onclick="setTyp('erstattung')" title="Für Geldtransfers, Korrekturen oder Kostenrückerstattungen">↩ Rückbuchung</button>
             </div>
             <button class="np-notiz-toggle" id="np-notiz-toggle" onclick="npToggleNotiz()" type="button">
@@ -196,9 +193,9 @@
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="av-heute" onclick="ghHeute()">Heute</button>
               <button class="av-heute" onclick="ghCopyYear()" style="background:var(--surf2);border-color:var(--brd);color:var(--tx2)">Jahr kopieren</button>
-              <div id="gh-person-sw" style="display:none;background:var(--surf2);border:1px solid var(--brd);border-radius:10px;padding:2px;display:flex;gap:2px">
-                <button id="gh-sw-p1" class="av-heute" onclick="ghSetPerson('person_1')" style="border-radius:8px;padding:4px 10px;font-size:12px">Person 1</button>
-                <button id="gh-sw-p2" class="av-heute" onclick="ghSetPerson('person_2')" style="border-radius:8px;padding:4px 10px;font-size:12px">Person 2</button>
+              <div id="gh-person-sw" style="display:none;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:2px;display:flex;gap:2px">
+                <button id="gh-sw-p1" class="av-heute" onclick="ghSetPerson('person_1')" style="border-radius:var(--r-sm);padding:4px 10px;font-size:12px">Person 1</button>
+                <button id="gh-sw-p2" class="av-heute" onclick="ghSetPerson('person_2')" style="border-radius:var(--r-sm);padding:4px 10px;font-size:12px">Person 2</button>
               </div>
             </div>
           </div>
@@ -206,14 +203,14 @@
           <div class="gh-card">
             <div class="gh-card-hdr">
               <span class="gh-card-title">Monatliche Erfassung</span>
-              <span style="font-size:11px;color:var(--tx3)">Monat antippen zum Bearbeiten</span>
+              <span style="font-size:12px;color:var(--tx3)">Monat antippen zum Bearbeiten</span>
             </div>
             <div class="gh-months" id="gh-months"></div>
           </div>
           <div class="gh-card">
             <div class="gh-card-hdr">
               <span class="gh-card-title">Weitere Einnahmen</span>
-              <span style="font-size:11px;color:var(--tx3)">Kindergeld, Steuererstattung …</span>
+              <span style="font-size:12px;color:var(--tx3)">Kindergeld, Steuererstattung …</span>
             </div>
             <div id="gh-inc"></div>
           </div>
@@ -221,10 +218,10 @@
             <div class="gh-card-hdr">
               <span class="gh-card-title">Reallohn vs. Inflation</span>
               <div style="display:flex;gap:6px;align-items:center">
-                <button id="gh-showall-btn" onclick="ghToggleShowAll()" style="display:none;padding:4px 10px;border-radius:7px;border:1px solid var(--brd);background:var(--surf2);font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;transition:all .15s">Letzte 10</button>
-                <div style="display:flex;background:var(--bg);border-radius:8px;padding:2px;gap:2px;border:1px solid var(--brd)">
-                  <button id="gh-mode-bar" onclick="ghSetMode('bar')" style="padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--blue);color:var(--on-accent)">Balken</button>
-                  <button id="gh-mode-line" onclick="ghSetMode('line')" style="padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:none;color:var(--tx2)">Linie</button>
+                <button id="gh-showall-btn" onclick="ghToggleShowAll()" style="display:none;padding:4px 10px;border-radius:var(--r-sm);border:1px solid var(--brd);background:var(--surf2);font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;transition:all .15s">Letzte 10</button>
+                <div style="display:flex;background:var(--bg);border-radius:var(--r-sm);padding:2px;gap:2px;border:1px solid var(--brd)">
+                  <button id="gh-mode-bar" onclick="ghSetMode('bar')" style="padding:4px 10px;border-radius:var(--r-sm);border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--blue);color:var(--on-accent)">Balken</button>
+                  <button id="gh-mode-line" onclick="ghSetMode('line')" style="padding:4px 10px;border-radius:var(--r-sm);border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:none;color:var(--tx2)">Linie</button>
                 </div>
               </div>
             </div>
@@ -289,7 +286,7 @@
                 <div class="rp-f">
                   <div class="rp-fl"><span>Regelrentenalter</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-regular-age" type="number" min="60" max="70" step="1" placeholder="67" onchange="rpQuickSave()"><span class="rp-ni-unit">Jahre</span></div>
-                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">§235 SGB VI: Jahrgang 1964+ = 67 · Jahrgang 1947–1963 = gestaffelt (z.B. Jahrgang 1960 = 66 Jahre 8 Monate)</div>
+                  <div style="font-size:12px;color:var(--tx3);margin-top:3px">§235 SGB VI: Jahrgang 1964+ = 67 · Jahrgang 1947–1963 = gestaffelt (z.B. Jahrgang 1960 = 66 Jahre 8 Monate)</div>
                 </div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Krankenversicherung</span></div>
@@ -297,7 +294,7 @@
                     <option value="gkv">Gesetzliche Krankenversicherung</option>
                     <option value="pkv">Private Krankenversicherung</option>
                   </select>
-                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">Relevant für Familienversicherung bei Frühverrentung</div>
+                  <div style="font-size:12px;color:var(--tx3);margin-top:3px">Relevant für Familienversicherung bei Frühverrentung</div>
                 </div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Gehaltssteigerung pro Jahr</span><span class="rp-fv" id="rp-gehaltssteig-sv">2.0 %</span></div>
@@ -314,9 +311,9 @@
                 <span class="rp-sec-arr open" id="rp-sarr-rente">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-rente">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Werte aus der <strong>Renteninformation der DRV</strong> übernehmen.</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Werte aus der <strong>Renteninformation der DRV</strong> übernehmen.</div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Rentenpunkte</span><span style="font-size:10px;color:var(--tx3)">laut Renteninformation</span></div>
+                  <div class="rp-fl"><span>Rentenpunkte</span><span style="font-size:12px;color:var(--tx3)">laut Renteninformation</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-punkte" type="number" min="0" step="0.1" inputmode="decimal" placeholder="z.B. 32.5" onchange="rpQuickSave()"><span class="rp-ni-unit">Punkte</span></div>
                 </div>
                 <div class="rp-f">
@@ -325,35 +322,35 @@
                 </div>
                 <div class="rp-f" id="rp-py-wrap">
                   <div class="rp-fl"><span>Neue Punkte/Jahr</span><span class="rp-fv" id="rp-punkte-year-sv"></span></div>
-                  <div id="rp-py-auto" style="display:none;background:var(--surf2);border:1px solid var(--brd);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--tx2);display:flex;align-items:center;justify-content:space-between;gap:8px">
-                    <span>⚡ Auto: <strong id="rp-py-auto-val">–</strong> Punkte/Jahr</span>
-                    <button onclick="rpSetEpMode('manuell')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer">Manuell</button>
+                  <div id="rp-py-auto" style="display:none;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:6px 10px;font-size:12px;color:var(--tx2);display:flex;align-items:center;justify-content:space-between;gap:8px">
+                    <span><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg> Auto: <strong id="rp-py-auto-val">–</strong> Punkte/Jahr</span>
+                    <button onclick="rpSetEpMode('manuell')" style="font-size:12px;padding:2px 8px;border-radius:var(--r-sm);border:1px solid var(--brd);background:var(--surf);color:var(--tx2);cursor:pointer">Manuell</button>
                   </div>
                   <div id="rp-py-manual" style="display:none">
                     <input type="range" class="rp-sl-range" id="rp-punkte-year-sl" min="0" max="2.5" step="0.05" oninput="rpSyncSlider('punkte-year',this.value);rpQuickSave()">
-                    <div style="margin-top:4px;text-align:right"><button onclick="rpSetEpMode('auto')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--brd);background:var(--surf);color:var(--blue);cursor:pointer">⚡ Auto verwenden</button></div>
+                    <div style="margin-top:4px;text-align:right"><button onclick="rpSetEpMode('auto')" style="font-size:12px;padding:2px 8px;border-radius:var(--r-sm);border:1px solid var(--brd);background:var(--surf);color:var(--blue);cursor:pointer"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg> Auto verwenden</button></div>
                   </div>
-                  <div id="rp-py-nodata" style="display:none;font-size:11px;color:var(--tx3)">
+                  <div id="rp-py-nodata" style="display:none;font-size:12px;color:var(--tx3)">
                     Kein Gehalt im Gehalt-Tab — bitte manuell eingeben
                     <input type="range" class="rp-sl-range" id="rp-punkte-year-sl-nd" min="0" max="2.5" step="0.05" oninput="rpSyncSliderNd(this.value);rpQuickSave()" style="margin-top:4px">
                   </div>
                   <input type="hidden" id="rp-punkte-year">
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Rentenwert West (€)</span><span style="font-size:10px;color:var(--tx3)">ab Juli 2026: 42,52</span></div>
+                  <div class="rp-fl"><span>Rentenwert West (€)</span><span style="font-size:12px;color:var(--tx3)">ab Juli 2026: 42,52</span></div>
                   <input class="rp-ni" id="rp-rentenwert" type="number" min="0" step="0.01" placeholder="40.79" onchange="rpQuickSave()">
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Krankenversicherungs-Zusatzbeitrag</span><span style="font-size:10px;color:var(--tx3)">deiner Krankenkasse</span></div>
+                  <div class="rp-fl"><span>Krankenversicherungs-Zusatzbeitrag</span><span style="font-size:12px;color:var(--tx3)">deiner Krankenkasse</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-kv-zusatz" type="number" min="0" max="5" step="0.01" placeholder="2.99" onchange="rpSaveKvZusatz(this.value)"><span class="rp-ni-unit">%</span></div>
-                  <div style="font-size:11px;color:var(--tx3);margin-top:3px" id="rp-kv-info">Krankenversicherungs-Satz Rentner: <span id="rp-kv-satz-anzeige">8,80</span> % (= (14,6 + Zusatzbeitrag) / 2)</div>
+                  <div style="font-size:12px;color:var(--tx3);margin-top:3px" id="rp-kv-info">Krankenversicherungs-Satz Rentner: <span id="rp-kv-satz-anzeige">8,80</span> % (= (14,6 + Zusatzbeitrag) / 2)</div>
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Familienversicherungsgrenze</span><span style="font-size:10px;color:var(--tx3)">§ 10 SGB V · jährlich prüfen</span></div>
+                  <div class="rp-fl"><span>Familienversicherungsgrenze</span><span style="font-size:12px;color:var(--tx3)">§ 10 SGB V · jährlich prüfen</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-fv-grenze" type="number" min="0" step="1" placeholder="505" onchange="rpSaveFvGrenze(this.value)"><span class="rp-ni-unit">€/Monat</span></div>
                 </div>
                 <div class="rp-f">
-                  <div class="rp-fl"><span>Mindestbemessungsgrundlage gesetzliche Krankenversicherung</span><span style="font-size:10px;color:var(--tx3)">§ 240 SGB V · jährlich prüfen</span></div>
+                  <div class="rp-fl"><span>Mindestbemessungsgrundlage gesetzliche Krankenversicherung</span><span style="font-size:12px;color:var(--tx3)">§ 240 SGB V · jährlich prüfen</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-gkv-mindest" type="number" min="0" step="0.01" placeholder="1131.67" onchange="rpSaveGkvMindest(this.value)"><span class="rp-ni-unit">€/Monat</span></div>
                 </div>
               </div>
@@ -366,11 +363,11 @@
                 <span class="rp-sec-arr open" id="rp-sarr-rendite">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-rendite">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Rendite pro Asset-Klasse für das <strong>aktive Szenario</strong>. Nur Klassen aus deinem Portfolio werden angezeigt.</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Rendite pro Asset-Klasse für das <strong>aktive Szenario</strong>. Nur Klassen aus deinem Portfolio werden angezeigt.</div>
                 <div id="rp-rendite-sliders"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                   <span style="font-size:12px;color:var(--tx2);font-weight:600" id="rp-rendite-weighted"></span>
-                  <button onclick="rpResetClassReturns()" style="font-size:11px;color:var(--tx3);padding:4px 8px;border:1px solid var(--brd);border-radius:6px;background:none;cursor:pointer">↺ Reset</button>
+                  <button onclick="rpResetClassReturns()" style="font-size:12px;color:var(--tx3);padding:4px 8px;border:1px solid var(--brd);border-radius:var(--r-sm);background:none;cursor:pointer">↺ Reset</button>
                 </div>
               </div>
             </div>
@@ -403,10 +400,10 @@
                 <span class="rp-sec-arr" id="rp-sarr-ruerup">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-ruerup" style="display:none">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Keine Kranken-/Pflegeversicherung — Einkommensteuer nach Kohortenbesteuerung §22 Nr. 1a EStG.</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px">Keine Kranken-/Pflegeversicherung — Einkommensteuer nach Kohortenbesteuerung §22 Nr. 1a EStG.</div>
                 <!-- Projektion aus Fondswert -->
-                <div style="background:var(--surf);border:1px solid var(--brd);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-                  <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px">Projektion aus Fondswert</div>
+                <div style="background:var(--surf);border:1px solid var(--brd);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:10px">
+                  <div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:6px">Projektion aus Fondswert</div>
                   <div class="rp-f">
                     <div class="rp-fl"><span>Fondswert (aktuell)</span></div>
                     <div class="rp-ni-row"><input class="rp-ni" id="rp-ruerup-val" type="number" min="0" step="100" placeholder="0" oninput="rpRuerupProject()" onchange="rpQuickSave()"><span class="rp-ni-unit">€</span></div>
@@ -421,18 +418,18 @@
                 <div class="rp-f">
                   <div class="rp-fl" style="display:flex;align-items:center;gap:5px">
                     <span>Brutto/Monat</span>
-                    <span id="rp-ruerup-mode" onclick="rpRuerupToggleMode()" title="Klicken zum Umschalten" style="cursor:pointer;font-size:10px;padding:1px 6px;border-radius:4px;background:var(--green,var(--green));color:#fff;white-space:nowrap">↻ auto</span>
+                    <span id="rp-ruerup-mode" onclick="rpRuerupToggleMode()" title="Klicken zum Umschalten" style="cursor:pointer;font-size:12px;padding:1px 6px;border-radius:4px;background:var(--green,var(--green));color:#fff;white-space:nowrap">↻ auto</span>
                   </div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-ruerup" type="number" min="0" step="10" placeholder="0" oninput="rpRuerupManualEdit()" onchange="rpQuickSave()"><span class="rp-ni-unit">€</span></div>
                 </div>
                 <div class="rp-f" style="margin-bottom:2px">
                   <div class="rp-fl" style="display:flex;align-items:center;gap:5px">
                     <span>Auszahlung ab Alter</span>
-                    <span id="rp-ruerup-age-lock" onclick="rpRuerupToggleAge()" style="cursor:pointer;font-size:10px;padding:1px 6px;border-radius:4px;white-space:nowrap" title="Klicken zum Entkoppeln">🔗</span>
+                    <span id="rp-ruerup-age-lock" onclick="rpRuerupToggleAge()" style="cursor:pointer;font-size:12px;padding:1px 6px;border-radius:4px;white-space:nowrap" title="Klicken zum Entkoppeln"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
                   </div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-ruerup-age" type="number" min="55" max="85" step="1" placeholder="67" oninput="rpRuerupProject()" onchange="rpQuickSave()"><span class="rp-ni-unit">Jahre</span></div>
                 </div>
-                <div id="rp-ruerup-stinfo" style="font-size:11px;color:var(--tx3);margin-bottom:6px;padding-left:2px"></div>
+                <div id="rp-ruerup-stinfo" style="font-size:12px;color:var(--tx3);margin-bottom:6px;padding-left:2px"></div>
               </div>
             </div>
 
@@ -443,10 +440,10 @@
                 <span class="rp-sec-arr" id="rp-sarr-weitere">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-weitere" style="display:none">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">z.B. Private Rentenversicherung, Zusatzversorgung öffentlicher Dienst</div>
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Name · Betrag/Monat oder Einmalzahlung · Ab Alter · Typ</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px">z.B. Private Rentenversicherung, Zusatzversorgung öffentlicher Dienst</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:6px">Name · Betrag/Monat oder Einmalzahlung · Ab Alter · Typ</div>
                 <div id="rp-weitere-list"></div>
-                <button class="av-heute" onclick="rpAddWeitere()" style="font-size:11px;padding:4px 10px;margin-top:8px;width:100%;text-align:center">+ Hinzufügen</button>
+                <button class="av-heute" onclick="rpAddWeitere()" style="font-size:12px;padding:4px 10px;margin-top:8px;width:100%;text-align:center">+ Hinzufügen</button>
               </div>
             </div>
 
@@ -476,7 +473,7 @@
             <!-- ── ETF & Depot ── -->
             <div class="rp-sec">
               <div class="rp-sec-hdr" onclick="rpToggleSec('depot')">
-                <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> ETF &amp; Depot<span id="rp-depot-hdr-info" style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:6px"></span></span>
+                <span style="display:inline-flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> ETF &amp; Depot<span id="rp-depot-hdr-info" style="font-size:12px;font-weight:400;color:var(--tx3);margin-left:6px"></span></span>
                 <span class="rp-sec-arr" id="rp-sarr-depot">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-depot" style="display:none">
@@ -493,10 +490,10 @@
                   <div class="rp-fl"><span>Sichere Entnahmerate</span><span class="rp-fv" id="rp-swr-sv">3.5%</span></div>
                   <input type="range" class="rp-sl-range" id="rp-swr-sl" min="1" max="6" step="0.1" oninput="rpSyncSlider('swr',this.value);rpQuickSave()">
                   <input type="hidden" id="rp-swr">
-                  <div style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.4">Die US-basierte 4%-Regel gilt für 30 Jahre. Für deutsche Verhältnisse (Abzüge für Kranken- und Pflegeversicherung, längerer Horizont) empfehlen sich 3–3,5%.</div>
+                  <div style="font-size:12px;color:var(--tx3);margin-top:4px;line-height:1.4">Die US-basierte 4%-Regel gilt für 30 Jahre. Für deutsche Verhältnisse (Abzüge für Kranken- und Pflegeversicherung, längerer Horizont) empfehlen sich 3–3,5%.</div>
                   <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
                     <input type="checkbox" id="rp-guardrails" onchange="rpQuickSave()">
-                    <span style="font-size:12px;color:var(--tx2);font-weight:500">Guardrails: Rate sinkt bei −20% Depot-Einbruch</span>
+                    <span style="font-size:12px;color:var(--tx2);font-weight:400">Guardrails: Rate sinkt bei −20% Depot-Einbruch</span>
                   </label>
                 </div>
                 <div class="rp-f" id="rp-fest-field" style="display:none">
@@ -513,7 +510,7 @@
                 <span class="rp-sec-arr" id="rp-sarr-kinder">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-kinder" style="display:none">
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Ausbildungskosten reduzieren den Depot-Aufbau. Stammdaten unter Einstellungen → Stammdaten.</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;line-height:1.4">Ausbildungskosten reduzieren den Depot-Aufbau. Stammdaten unter Einstellungen → Stammdaten.</div>
                 <div id="rp-kinder-info" class="rp-info blue" style="margin-bottom:8px">Keine Kinder erfasst.</div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Ausbildungskosten/Kind/Monat</span></div>
@@ -568,8 +565,8 @@
                 <span class="rp-sec-arr" id="rp-sarr-abzuege">▼</span>
               </div>
               <div class="rp-sec-body" id="rp-sb-abzuege" style="display:none">
-                <div id="rp-abzuege-calc" class="rp-abz-calc" style="font-size:11px;line-height:1.7;margin-bottom:10px">Wird nach Dateneingabe berechnet.</div>
-                <div style="font-size:11px;color:var(--tx3);margin-bottom:8px"><strong>Manuelle Überschreibung</strong> — leer = automatisch (gesetzliche Krankenversicherung, 2026)</div>
+                <div id="rp-abzuege-calc" class="rp-abz-calc" style="font-size:12px;line-height:1.7;margin-bottom:10px">Wird nach Dateneingabe berechnet.</div>
+                <div style="font-size:12px;color:var(--tx3);margin-bottom:8px"><strong>Manuelle Überschreibung</strong> — leer = automatisch (gesetzliche Krankenversicherung, 2026)</div>
                 <div class="rp-f">
                   <div class="rp-fl"><span>Netto-Faktor Gesetzliche Rente</span></div>
                   <div class="rp-ni-row"><input class="rp-ni" id="rp-nf-gesetzlich" type="number" min="50" max="100" step="1" placeholder="auto" onchange="rpQuickSave()"><span class="rp-ni-unit">%</span></div>
@@ -628,7 +625,7 @@
 
           <!-- Stammdaten & Partner -->
           <div class="st-card" data-st="personen">
-            <div class="st-card-hdr"><span class="st-card-title">👤 Stammdaten & Partner</span></div>
+            <div class="st-card-hdr"><span class="st-card-title"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Stammdaten & Partner</span></div>
             <div class="st-card-body">
               <div class="rp-sub">Person 1</div>
               <div class="st-stamm-grid">
@@ -745,7 +742,7 @@
           <div class="st-card st-card-mehr" data-st="kurs">
             <div class="st-card-hdr"><span class="st-card-title">Kursabruf (Depot-Automatik)</span></div>
             <div style="padding:0 16px 16px">
-              <div style="font-size:13px;color:var(--tx2);margin-bottom:12px;line-height:1.5">
+              <div style="font-size:14px;color:var(--tx2);margin-bottom:12px;line-height:1.5">
                 Für den automatischen Kursabruf wird ein kostenloser <strong>Alpha Vantage</strong> API-Key benötigt (25 Abfragen/Tag, CORS-unterstützt).<br>
                 Registrierung unter <strong>alphavantage.co</strong> → "Get free API key" → Key kommt sofort per E-Mail.
               </div>
@@ -789,12 +786,12 @@
             <div class="st-card-hdr">
               <span class="st-card-title">Log</span>
               <div style="display:flex;gap:6px">
-                <button class="st-btn" onclick="stCopyLog()">📋 Kopieren</button>
+                <button class="st-btn" onclick="stCopyLog()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> Kopieren</button>
                 <button class="st-btn" onclick="stClearLog()">Leeren</button>
               </div>
             </div>
             <div style="padding:0 16px 16px">
-              <div id="st-log-output" style="font-family:var(--mono);font-size:12px;line-height:1.6;max-height:300px;overflow-y:auto;background:var(--surf2);border-radius:8px;padding:10px;color:var(--tx2)">(noch keine Einträge)</div>
+              <div id="st-log-output" style="font-family:var(--mono);font-size:12px;line-height:1.6;max-height:300px;overflow-y:auto;background:var(--surf2);border-radius:var(--r-sm);padding:10px;color:var(--tx2)">(noch keine Einträge)</div>
             </div>
           </div>
 
@@ -802,7 +799,7 @@
           <div class="st-card" data-st="sync" id="st-az-card">
             <div class="st-card-hdr">
               <span class="st-card-title">Sync</span>
-              <span id="st-az-badge" style="font-size:11px;color:var(--tx3)">Nicht verbunden</span>
+              <span id="st-az-badge" style="font-size:12px;color:var(--tx3)">Nicht verbunden</span>
             </div>
             <!-- Setup-Bereich (nicht verbunden) -->
             <div id="st-az-setup" style="padding:0 16px 14px">
@@ -836,7 +833,7 @@
                 <span class="ghs-toggle-lbl" style="color:var(--tx2)">Verbindung trennen</span>
                 <button class="st-btn danger" onclick="azsDisconnect()">Trennen</button>
               </div>
-              <div id="sync-debug" style="margin-top:8px;border-top:1px solid var(--brd);padding-top:8px;font-size:10px;font-family:var(--mono);color:var(--tx3);line-height:1.8"></div>
+              <div id="sync-debug" style="margin-top:8px;border-top:1px solid var(--brd);padding-top:8px;font-size:12px;font-family:var(--mono);color:var(--tx3);line-height:1.8"></div>
             </div>
           </div>
 
@@ -846,15 +843,15 @@
             <div style="padding:0 16px" id="st-backups">
               <div class="st-backup-row">
                 <span class="st-backup-lbl">Alle Daten als .fpbackup herunterladen</span>
-                <button class="st-btn primary" onclick="stDownload()">⬇ Download</button>
+                <button class="st-btn primary" onclick="stDownload()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg> Download</button>
               </div>
               <div class="st-backup-row">
                 <span class="st-backup-lbl">Backup importieren (.fpbackup)</span>
-                <label class="st-btn primary" style="cursor:pointer">⬆ Import<input type="file" accept=".fpbackup,.json" style="display:none" onchange="stImport(this)"></label>
+                <label class="st-btn primary" style="cursor:pointer"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg> Import<input type="file" accept=".fpbackup,.json" style="display:none" onchange="stImport(this)"></label>
               </div>
               <div class="st-backup-row">
                 <span class="st-backup-lbl">Excel-Export (.xlsx) — Buchungen, Vorlagen, Vermögen, Sparpläne, Gehalt, Einnahmen, ESPP</span>
-                <button class="st-btn primary" onclick="stExportExcel(this)">📊 Excel</button>
+                <button class="st-btn primary" onclick="stExportExcel(this)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Excel</button>
               </div>
             </div>
           </div>
@@ -869,7 +866,7 @@
           <div class="st-danger-zone" data-st="technik">
             <div class="st-danger-title">Danger Zone</div>
             <div class="st-danger-sub">Alle Daten unwiderruflich löschen. Ein Backup wird vorher automatisch erstellt.</div>
-            <button class="st-btn danger" onclick="stReset()">🗑 Alle Daten zurücksetzen</button>
+            <button class="st-btn danger" onclick="stReset()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Alle Daten zurücksetzen</button>
           </div>
 
         </div>
@@ -1184,7 +1181,7 @@
       <label class="fl" id="mrate-lbl">1 EUR = ? USD</label>
       <input class="fi" id="mrate-val" type="number" step="0.0001" min="0.0001" inputmode="decimal" placeholder="z.B. 1.08">
     </div>
-    <div style="padding:0 16px 10px;font-size:11px;color:var(--tx3)">Quelle: z.B. google.com/finance oder xe.com</div>
+    <div style="padding:0 16px 10px;font-size:12px;color:var(--tx3)">Quelle: z.B. google.com/finance oder xe.com</div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-rate')">Abbrechen</button>
       <button class="btn btn-p" onclick="stSaveRate()">Speichern</button>
@@ -1208,7 +1205,7 @@
       <div class="fg"><label class="fl">Name</label><input class="fi" id="mcur-name" type="text" placeholder="US-Dollar" autocomplete="off" readonly></div>
       <div class="fg"><label class="fl">Symbol</label><input class="fi" id="mcur-sym" type="text" maxlength="6" placeholder="$" autocomplete="off" readonly></div>
       <div class="fg"><label class="fl">1 EUR = ? (Kurs)</label><input class="fi" id="mcur-rate" type="number" step="0.0001" min="0.0001" inputmode="decimal" placeholder="1.08"></div>
-      <div style="padding:0 16px 8px;font-size:11px;color:var(--tx3)">Kurs manuell eingeben oder nach dem Hinzufügen automatisch laden.</div>
+      <div style="padding:0 16px 8px;font-size:12px;color:var(--tx3)">Kurs manuell eingeben oder nach dem Hinzufügen automatisch laden.</div>
     </div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-cur')">Abbrechen</button>
@@ -1239,7 +1236,7 @@
       <span class="fl" style="margin:0">In Eingabe anzeigen</span>
       <button class="rp-tgl on" id="mc-show-input" onclick="this.classList.toggle('on')"></button>
     </div>
-    <div style="font-size:11px;color:var(--tx3);padding:0 0 8px">Deaktivieren für reine Fixkosten-Kategorien (z.B. Versicherungen)</div>
+    <div style="font-size:12px;color:var(--tx3);padding:0 0 8px">Deaktivieren für reine Fixkosten-Kategorien (z.B. Versicherungen)</div>
     <div class="modal-acts">
       <button class="btn" onclick="closeM('m-cat')">Abbrechen</button>
       <button class="btn btn-p" id="mc-save-btn" onclick="saveKat()">Erstellen</button>
@@ -1332,7 +1329,7 @@
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-ttl" id="ms-ttl">Wert erfassen</div>
-    <div id="ms-isin-info" style="display:none;margin:0 16px 12px;padding:10px 12px;background:var(--blue-lt);border-radius:8px;font-size:12px;color:var(--blue)"></div>
+    <div id="ms-isin-info" style="display:none;margin:0 16px 12px;padding:10px 12px;background:var(--blue-lt);border-radius:var(--r-sm);font-size:12px;color:var(--blue)"></div>
     <div class="fg"><label class="fl">Monat (MM.YYYY)</label><input class="fi" id="ms-date" type="text" placeholder="04.2026" maxlength="7"></div>
     <div class="fg" id="ms-value-row"><label class="fl">Aktueller Wert (€)</label><input class="fi" id="ms-value" type="number" step="0.01" min="0" placeholder="0.00" inputmode="decimal"></div>
     <div class="fg" id="ms-fetch-row" style="display:none">
@@ -1446,7 +1443,7 @@
     <div id="ma-security-fields">
       <div class="fg"><label class="fl">WKN (optional)</label><input class="fi" id="ma-wkn" type="text" placeholder="z.B. " autocomplete="off"></div>
       <div class="fg"><label class="fl">ISIN (optional)</label><input class="fi" id="ma-isin" type="text" placeholder="z.B. " autocomplete="off"></div>
-      <div class="fg"><label class="fl">Ticker für Kursabruf <span style="font-weight:400;color:var(--tx3)">(Alpha Vantage)</span></label><input class="fi" id="ma-ticker" type="text" placeholder="z.B. SPYY.DE" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><div style="font-size:11px;color:var(--tx3);margin-top:4px;padding:0 2px">Xetra-ETFs: Kürzel + .DE (z.B. SPYY.DE, VWCE.DE)</div></div>
+      <div class="fg"><label class="fl">Ticker für Kursabruf <span style="font-weight:400;color:var(--tx3)">(Alpha Vantage)</span></label><input class="fi" id="ma-ticker" type="text" placeholder="z.B. SPYY.DE" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><div style="font-size:12px;color:var(--tx3);margin-top:4px;padding:0 2px">Xetra-ETFs: Kürzel + .DE (z.B. SPYY.DE, VWCE.DE)</div></div>
       <div class="fg" id="ma-shares-row"><label class="fl">Anzahl Anteile</label><input class="fi" id="ma-shares" type="number" step="0.0001" min="0" placeholder="z.B. 42.5" inputmode="decimal"></div>
     </div>
     <div class="modal-acts">
@@ -1474,14 +1471,14 @@
       </div>
     </div>
     <div class="fg">
-      <label class="fl">Kaufkurs USD <span style="font-size:10px;color:var(--tx3);font-weight:400">— aus Fidelity-Abrechnung</span></label>
+      <label class="fl">Kaufkurs USD <span style="font-size:12px;color:var(--tx3);font-weight:400">— aus Fidelity-Abrechnung</span></label>
       <input class="fi" id="me-kaufkurs" type="number" step="0.01" min="0" placeholder="leer = noch offen">
     </div>
-    <div class="fg"><label class="fl">Anzahl Aktien <span style="font-size:10px;color:var(--tx3);font-weight:400">wird auto berechnet, oder manuell überschreiben</span></label>
+    <div class="fg"><label class="fl">Anzahl Aktien <span style="font-size:12px;color:var(--tx3);font-weight:400">wird auto berechnet, oder manuell überschreiben</span></label>
       <input class="fi" id="me-aktien" type="number" step="1" min="0" placeholder="auto">
     </div>
     <div style="border-top:1px solid var(--brd);padding-top:12px;margin-top:4px">
-      <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:10px">Verkauf <span style="font-weight:400;color:var(--tx3)">(optional — nach Verkauf eintragen)</span></div>
+      <div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:10px">Verkauf <span style="font-weight:400;color:var(--tx3)">(optional — nach Verkauf eintragen)</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="fg" style="margin:0"><label class="fl">Verkaufskurs (USD)</label>
           <input class="fi" id="me-vkurs" type="number" step="0.01" min="0" placeholder="leer = gehalten">
@@ -1535,7 +1532,7 @@
   <div class="modal-box" style="max-width:480px">
     <div class="modal-handle"></div>
     <div class="modal-ttl">Synchronisierungs-Konflikt</div>
-    <p style="font-size:13px;color:var(--tx2);margin:0 0 16px">Ein anderes Gerät hat Änderungen hochgeladen. Was soll gespeichert werden?</p>
+    <p style="font-size:14px;color:var(--tx2);margin:0 0 16px">Ein anderes Gerät hat Änderungen hochgeladen. Was soll gespeichert werden?</p>
     <div class="conf-grid">
       <div class="conf-col">
         <div class="conf-col-lbl">Deine Daten (lokal)</div>
@@ -1556,8 +1553,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261122d"></script>
-<script src="app.js?v=20261122d"></script>
+<script src="store.js?v=20261122e"></script>
+<script src="app.js?v=20261122e"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

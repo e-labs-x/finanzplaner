@@ -1,6 +1,6 @@
 # Finanzplaner — Claude Code Session Guide
 
-**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122d`
+**Aktuelle Version:** v12.2 (`FP_VERSION = '12.2.0'`, `STORE_VERSION = 6`) | **Cache-Stand:** `?v=20261122e`
 **Letzter Stand:** 18.10.2026 (Audit-Pakete 1, 3, 2: ein Schreibweg, eine Vorlagen-Regel, Sync-Garantien) — gepflegte Aufgabenliste ist `TODO.md`, nicht dieser Guide
 
 ---
@@ -201,6 +201,9 @@ Tests nutzen erfundene Bankzeilen.
 ## Design-System (niemals brechen)
 
 - **Niemals Hex hardcoden** — immer `var(--token)` verwenden
+- **Schrift (seit 22.11.2026):** Systemschrift (`--font`, kein Google Fonts, CSP ohne Google). Größen nur 12 · 14 · 16 · 20 · 28 px
+  (Ausnahme Eingabebetrag 38), nie unter 12. Stärken nur 400 · 600 · 700 (700 nur für Hauptzahlen). Ecken nur `--r-sm/--r/--r-lg/--r-xl`
+  (≤4 px und Pillen ausgenommen). **Keine Emoji** als Symbole — `ic(name, größe)` in app.js (Linien-Symbole, `IC_PATHS`).
 - **OKLCH-Tokens:** `--blue`, `--green`, `--red`, `--amber`, `--purple`, `--cat-*`
 - **Flächen:** `--surf`, `--surf2`, `--brd`, `--tx`, `--tx2`, `--tx3`
 - **Schatten:** `--sh`, `--sh-md`, `--sh-modal`, `--sh-toast`, `--sh-popup`
