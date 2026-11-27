@@ -95,6 +95,9 @@
         var hitTop = document.elementFromPoint(Math.round(innerWidth / 2), 3);
         if (!hitTop || hitTop.id !== 'ios-edge') errs.push('standalone: Treffer oben ist ' + (hitTop && (hitTop.id || hitTop.tagName)) + ' statt Randstreifen');
         if (appTop < sh) errs.push('standalone: Streifen verdeckt die App (App beginnt bei ' + appTop + ' px)');
+        // 27.11.2026: Home-Balken lag auf den Beschriftungen (iOS meldet ohne viewport-fit=cover 0 px) → mind. 18 px Luft
+        var bnPb = parseFloat(getComputedStyle($('#bot-nav')).paddingBottom);
+        if (!(bnPb >= 18)) errs.push('standalone: Leiste unten nur ' + bnPb + ' px über dem Rand (Home-Balken)');
         if (!hadSa) root.classList.remove('standalone');
         if (edge && edge.getClientRects().length && !hadSa) errs.push('Streifen auch ohne standalone (Browser/PC)');
         // 27.11.2026: Beschriftung 12 px (11 px war dem Nutzer zu klein), dafür 24 px Seitenabstand („Planung“ ragte fast in die Ecke)

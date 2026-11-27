@@ -6,6 +6,9 @@ Letzte Aktualisierung: 2026-11-27 — Randstreifen 2 + Leiste unten 12 px/24 px 
 
 ## 🧪 Randstreifen 2. Versuch + Leiste unten neu (27.11.2026, `?v=20261127d`) — Prüfung auf dem Gerät offen
 - Nutzer nach 1127c: oben weiter unscharf; Schrift 11 px zu klein, „Planung“ ragt fast noch raus.
+- iPhone-Screenshot 1127c: Kopfleiste + Reiter wirkten schärfer (nur Statusleisten-Bereich weich), ABER der iOS-Home-Balken lag auf
+  den Beschriftungen unten — ohne `viewport-fit=cover` meldet iOS `safe-area-inset-bottom` = 0. Jetzt in der Home-Bildschirm-App
+  `#bot-nav` mind. 18 px Luft unten (+ `#pages` entsprechend). Prüfung in `navigation.js`, Gegenprobe b2d366c: rot.
 - Randstreifen jetzt echtes Element `#ios-edge` (index.html), treffbar. Annahme: das System findet den Streifen per Treffer-Abfrage
   am Rand — Gegenprobe 1127c bestätigt in Chrome: Treffer oben war BODY (Pseudo-Element mit pointer-events:none wird übersprungen).
 - Einstellungen → Navigation zeigt „Home-Bildschirm-App: erkannt/nicht erkannt · Randstreifen oben: aktiv/nicht getroffen“ (Diagnose am Gerät).

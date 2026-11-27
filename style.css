@@ -1864,3 +1864,9 @@ html.standalone #ios-edge {
   background: var(--surf); z-index: 10000;
 }
 html.standalone #app { margin-top: 10px; height: calc(100% - 10px); }
+/* Home-Balken (27.11.2026, Nutzer-Screenshot 1127c): ohne viewport-fit=cover meldet iOS env(safe-area-inset-bottom)=0, der
+   schwarze Home-Balken lag mitten auf „Buchungen · Auswertung · Vermögen“. In der Home-Bildschirm-App mindestens 18 px Luft. */
+html.standalone #bot-nav { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+@media (max-width: 767px) {
+  html.standalone #pages { padding-bottom: calc(56px + max(18px, env(safe-area-inset-bottom))); }
+}
