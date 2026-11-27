@@ -333,12 +333,11 @@ button { cursor: pointer; border: none; background: none; }
 #mob-hdr {
   display: none;
   flex-direction: column;
-  background: var(--nav);
+  /* deckend, ohne Milchglas (27.11.2026): backdrop-filter ließ Text und Leiste auf dem iPhone unscharf wirken */
+  background: var(--surf);
   border-bottom: 1px solid var(--sidebar-border);
   flex-shrink: 0;
   padding-top: env(safe-area-inset-top);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
 }
 @media (max-width: 767px) {
   #mob-hdr { display: flex; }
@@ -366,30 +365,29 @@ button { cursor: pointer; border: none; background: none; }
 #bot-nav {
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0;
-  background: var(--nav);
+  /* deckend, ohne Milchglas (siehe #mob-hdr) */
+  background: var(--surf);
   border-top: 1px solid var(--sidebar-border);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 100;
 }
 @media (max-width: 767px) { #bot-nav { display: flex; } }
+/* Seitenabstand 12 px (27.11.2026): äußere Einträge lagen sonst in den runden Display-Ecken („passt grade so drauf“) */
 .bn-items {
-  display: flex; width: 100%; padding: 6px 4px 4px;
+  display: flex; width: 100%; padding: 4px max(12px, env(safe-area-inset-left)) 2px max(12px, env(safe-area-inset-right));
 }
 .bn-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 5px 1px 8px; border: none; background: none; cursor: pointer;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 4px 0 6px; border: none; background: none; cursor: pointer;
   color: var(--tx3); font-size:12px; font-weight:400; transition: color .15s;
 }
 .bn-item.active { color: var(--blue); }
-.bn-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; transition: transform .15s; }
-.bn-icon svg { width: 20px; height: 20px; }
-.bn-item.active .bn-icon { transform: scale(1.1); }
-.bn-lbl { font-size:12px; font-weight:400; white-space: nowrap; }
+.bn-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+.bn-icon svg { width: 18px; height: 18px; }
+.bn-lbl { font-size:12px; font-weight:400; white-space: nowrap; letter-spacing: -.1px; }
 
 @media (max-width: 767px) {
-  #pages { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  #pages { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
 }
 
 /* ════════════════════════════════════════
@@ -1828,7 +1826,7 @@ body.nn #sidebar .sb-grp:not(.sb-grp-nn) { display: none; }
 body.nn .nn-sub.show {
   display: flex; gap: 6px; flex-shrink: 0;
   padding: 8px 16px; overflow-x: auto; scrollbar-width: none;
-  background: var(--nav); border-bottom: 1px solid var(--sidebar-border);
+  background: var(--surf); border-bottom: 1px solid var(--sidebar-border);
 }
 body.nn .nn-sub.show::-webkit-scrollbar { display: none; }
 .nn-tab {

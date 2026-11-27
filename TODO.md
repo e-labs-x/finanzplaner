@@ -1,6 +1,18 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-22 — Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-27 — Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Leisten deckend, Leiste unten kompakter, Liste unter Auswertung (27.11.2026, `?v=20261127a`) — Abnahme offen
+Anlass: iPhone-Screenshot des Nutzers — Kopfbereich „unscharf“, Leiste unten „passt grade so drauf“, Liste soll zu Auswertung.
+Sicherung: Tag `vor-leisten`, `files\*_2026-11-27_vor-leisten.*`, Daten `files\sync_2026-11-27_vor-leisten.fpbackup` (2.544 Buchungen).
+- `#mob-hdr`, `#bot-nav`, `#nn-sub`: deckend `--surf` statt `--nav` (94 %) + `backdrop-filter` (Milchglas ließ Text/Leiste auf iOS weich wirken).
+- Leiste unten: Seitenabstand 12 px (runde Display-Ecken), Symbole 18 statt 20 px, weniger Innenabstand, Seitenende 56 statt 64 px.
+  Schrift bleibt 12 px (Untergrenze). Gilt für alte und neue Navigation.
+- `NN_AREAS`: Liste (Reports) von Buchungen nach Auswertung (letzter Reiter).
+- Prüfung in `navigation.js` (Liste unter Auswertung, kein Milchglas, deckend, Seitenabstand), Gegenprobe gegen `vor-leisten`: rot.
+- Unschärfe nur auf dem iPhone sichtbar → Abnahme dort nötig (Desktop-Chrome zeigte sie nicht).
 
 ---
 
@@ -43,7 +55,7 @@ Sicherung vorher: Tag `vor-farben`.
 Sicherung vorher: Tag `vor-navigation-schritt3`, `files\*_2026-11-22_vor-navigation.*`, Daten `files\sync_2026-11-22_vor-navigation.fpbackup` (2.530 Buchungen).
 - Einstellungen → Ansicht → Navigation: „Neue Navigation testen“ (`localStorage fp_newnav`, nur dieses Gerät, kein Store-Feld; App lädt neu).
 - Aus = **nichts** wird angefasst (keine neuen Elemente, `#nn-sub` ausgeblendet). An = `body.nn`, 5 Bereiche `NN_AREAS` (app.js):
-  Start · Buchungen [Eingabe · Liste (= Reports) · Import · Fixkosten] · Auswertung [Kategorien (= Übersicht) · Objekte · Jahr (= Cashflow)] ·
+  Start · Buchungen [Eingabe · Import · Fixkosten] · Auswertung [Kategorien (= Übersicht) · Objekte · Jahr (= Cashflow) · Liste (= Reports, seit 27.11.)] ·
   Vermögen · Planung [Gehalt · Rente · Steuern]. Zahnrad oben rechts (iPhone) bzw. unten in der Seitenleiste (PC), mit Sync-Punkt.
 - Gleiche Seiten und Renderer wie bisher, nur anders gruppiert: `nav(id)` ruft `nnSync(id)`; Import-Knopf/-Verlauf und Freistellungsaufträge
   werden beim Start in die neuen Seiten `p-import`/`p-steuern` verschoben (gleiche ids). Budget und „Mehr“ in der neuen Navigation nicht erreichbar,

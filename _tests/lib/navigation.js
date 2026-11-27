@@ -72,6 +72,18 @@
         if ($('#p-eingabe .imp-start')) errs.push('neu: Import-Knopf noch in der Eingabe');
         if (!$('#p-eingabe #e-list')) errs.push('neu: Letzte Einträge fehlen in der Eingabe');
         if (!$('#p-steuern #vm-fsa') || $('#p-vermoegen #vm-fsa')) errs.push('neu: Freistellungsaufträge nicht unter Steuern');
+        // 27.11.2026: Liste (Reports) gehört zur Auswertung, nicht zu Buchungen
+        var la = nnAreaOf('reports');
+        if (!la || la.k !== 'auswertung') errs.push('neu: Liste liegt unter ' + (la && la.t) + ' statt Auswertung');
+        // 27.11.2026: Kopf- und Fußleiste deckend ohne Milchglas (iPhone zeigte sie unscharf), Leiste unten mit Seitenabstand
+        ['#mob-hdr', '#bot-nav'].forEach(function (q) {
+          var cs = getComputedStyle($(q)), bf = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
+          if (bf !== 'none') errs.push(q + ': Milchglas (' + bf + ')');
+          var a = (cs.backgroundColor.match(/[\d.]+/g) || []).map(Number);
+          if (a.length === 4 && a[3] < 1) errs.push(q + ': Hintergrund durchsichtig (' + cs.backgroundColor + ')');
+        });
+        var bi = getComputedStyle($('.bn-items-nn'));
+        if (parseFloat(bi.paddingLeft) < 12 || parseFloat(bi.paddingRight) < 12) errs.push('Leiste unten ohne Seitenabstand (' + bi.paddingLeft + ')');
       });
       NN_AREAS.forEach(function (a) {
         s.push(function () { nnArea(a.k); });
