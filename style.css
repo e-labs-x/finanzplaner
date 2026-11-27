@@ -1846,3 +1846,17 @@ body.nn .nn-sub.show::-webkit-scrollbar { display: none; }
 .nn-page { max-width: 720px; }
 .nn-page .vm-fsa-card { margin-top: 0; }
 .nn-hint { font-size: 12px; color: var(--tx3); padding-top: 8px; line-height: 1.5; }
+
+/* ════════════════════════════════════════
+   iOS/iPadOS 26: Weichzeichner am oberen Rand (27.11.2026)
+   In der Home-Bildschirm-App legt das System einen „scroll edge“-Weichzeichner über den oberen Rand — Kopfleiste
+   und Reiter wirkten unscharf (Nutzer-Screenshots iPhone + iPad). Kein offizieller Schalter. Berichte (GitHub, nicht
+   auf Gerät bestätigt): das System lässt den Effekt weg und nimmt die Farbe, wenn ein FESTER, deckender Streifen
+   (≥ ~6–10 px hoch, fast volle Breite) ganz oben liegt. Darum: 10-px-Streifen in Kopfleisten-Farbe, die App rückt
+   10 px nach unten (nichts wird verdeckt). Nur html.standalone (navigator.standalone / display-mode), Browser + PC unberührt.
+════════════════════════════════════════ */
+html.standalone body::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: 10px;
+  background: var(--surf); z-index: 10000; pointer-events: none;
+}
+html.standalone #app { margin-top: 10px; height: calc(100% - 10px); }

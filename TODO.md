@@ -1,6 +1,17 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-27 — Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-27 — iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 🧪 iOS 26: Weichzeichner am oberen Rand (27.11.2026, `?v=20261127b`) — Versuch, nur auf dem Gerät prüfbar
+Befund nach 1127a (Nutzer-Screenshots iPhone + iPad): oben weiter unscharf → nicht unser Milchglas, sondern der „scroll edge“-
+Weichzeichner, den iOS/iPadOS 26 in Home-Bildschirm-Apps über den oberen Rand legt (kein offizieller Schalter; Statusleiste ist
+schon `default`). Laut Entwickler-Berichten (GitHub, NICHT auf Gerät bestätigt) lässt das System den Effekt weg, wenn ein fester,
+deckender Streifen ganz oben liegt. Umsetzung: `html.standalone` (navigator.standalone / display-mode, Inline-Skript in index.html),
+`body::before` 10 px fest in `--surf`, `#app` rückt 10 px nach unten. Browser/PC unberührt. Prüfung in `navigation.js`, Gegenprobe 1127a: rot.
+- [ ] Nutzer: auf iPhone + iPad (App ganz schließen, neu öffnen) prüfen, ob die Unschärfe weg ist. Falls nicht: Streifen höher
+      oder Kopfleiste `position: fixed` (größerer Umbau) — Sicherung `vor-randstreifen`.
 
 ---
 

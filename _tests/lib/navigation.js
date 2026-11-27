@@ -82,6 +82,17 @@
           var a = (cs.backgroundColor.match(/[\d.]+/g) || []).map(Number);
           if (a.length === 4 && a[3] < 1) errs.push(q + ': Hintergrund durchsichtig (' + cs.backgroundColor + ')');
         });
+        // 27.11.2026: iOS 26 zeichnet in der Home-Bildschirm-App den oberen Rand weich — fester deckender Streifen ganz oben,
+        // App rückt darunter (nichts verdeckt). Nur mit html.standalone.
+        var root = document.documentElement, hadSa = root.classList.contains('standalone');
+        root.classList.add('standalone');
+        var sb = getComputedStyle(document.body, '::before'), sbg = (sb.backgroundColor.match(/[\d.]+/g) || []).map(Number);
+        var sh = parseFloat(sb.height), appTop = $('#app').getBoundingClientRect().top;
+        if (sb.content === 'none' || sb.position !== 'fixed' || parseFloat(sb.top) !== 0 || !(sh >= 10)) errs.push('standalone: kein fester Streifen oben (' + sb.position + ', ' + sb.height + ')');
+        if (sbg.length === 4 && sbg[3] < 1) errs.push('standalone: Streifen durchsichtig');
+        if (appTop < sh) errs.push('standalone: Streifen verdeckt die App (App beginnt bei ' + appTop + ' px)');
+        if (!hadSa) root.classList.remove('standalone');
+        if (getComputedStyle(document.body, '::before').content !== 'none' && !hadSa) errs.push('Streifen auch ohne standalone (Browser/PC)');
         var bi = getComputedStyle($('.bn-items-nn'));
         if (parseFloat(bi.paddingLeft) < 12 || parseFloat(bi.paddingRight) < 12) errs.push('Leiste unten ohne Seitenabstand (' + bi.paddingLeft + ')');
       });
