@@ -4,7 +4,7 @@ Letzte Aktualisierung: 2026-11-27 — iPad-Linie oben (`?v=20261127e`), Randstre
 
 ---
 
-## 👀 iPad: Linie unter der Statusleiste (27.11.2026, `?v=20261127e`) — Abnahme offen
+## ✅ iPad: Linie unter der Statusleiste (27.11.2026, `?v=20261127e`) — vom Nutzer abgenommen („passt“)
 - Nutzer zu 1127d: „sieht gut aus, noch eine Kleinigkeit: auf dem iPad fehlt oben die Abgrenzung zum Rand, beim iPhone ist sie da“.
   Ab 768 px gibt es keine Kopfleiste → Statusleiste ging ohne Kante in Seitenleiste/Reiter über.
 - `#ios-edge` ab 768 px mit `border-bottom` (`--sidebar-border`), iPhone unverändert. Prüfung in `layout.js` (Rahmen 390 + 820 px,
