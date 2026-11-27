@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Finanzplaner">
 <title>Finanzplaner v12.2</title>
-<link rel="stylesheet" href="style.css?v=20261127c">
+<link rel="stylesheet" href="style.css?v=20261127d">
 </head>
 <body>
 
@@ -26,6 +26,7 @@
   <span id="ptr-label">Zum Laden loslassen</span>
 </div>
 
+<div id="ios-edge" aria-hidden="true"></div>
 <div id="app">
 
 <!-- ══════════════════════════════════
@@ -37,7 +38,7 @@
     <div class="sb-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg></div>
     <div>
       <div class="sb-name">Finanzplaner</div>
-      <div class="sb-ver">v12.2 · build 1127c</div>
+      <div class="sb-ver">v12.2 · build 1127d</div>
       <div id="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl"></span></div>
     </div>
   </div>
@@ -871,6 +872,7 @@
                 </label>
               </div>
               <div class="nn-hint">Fünf Bereiche statt „Mehr“: Start · Buchungen · Auswertung · Vermögen · Planung, Einstellungen über das Zahnrad oben. Gilt nur auf diesem Gerät, die Daten bleiben gleich. Die App lädt beim Umschalten neu.</div>
+              <div class="nn-hint" id="st-standalone"></div>
             </div>
           </div>
 
@@ -1569,8 +1571,8 @@
   </div>
 </div>
 
-<script src="store.js?v=20261127c"></script>
-<script src="app.js?v=20261127c"></script>
+<script src="store.js?v=20261127d"></script>
+<script src="app.js?v=20261127d"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {

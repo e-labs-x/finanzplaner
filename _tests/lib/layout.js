@@ -82,7 +82,8 @@
               var ox = fw.getComputedStyle(p).overflowX;
               if ((ox === 'auto' || ox === 'scroll') && p.getBoundingClientRect().right <= fvw + 1) return;
             }
-            var k = e.tagName + '.' + String(e.className).split(' ')[0];
+            // id + Maße mitschreiben (27.11.2026): „CANVAS.“ allein sagte nicht, welches Diagramm übersteht
+            var k = e.tagName + '.' + String(e.className).split(' ')[0] + (e.id ? '#' + e.id : '') + ' r=' + Math.round(b.right) + '/' + fvw;
             bad[k] = (bad[k] || 0) + 1;
           });
           var n = Object.keys(bad).length;

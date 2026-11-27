@@ -86,18 +86,22 @@
         // App rückt darunter (nichts verdeckt). Nur mit html.standalone.
         var root = document.documentElement, hadSa = root.classList.contains('standalone');
         root.classList.add('standalone');
-        var sb = getComputedStyle(document.body, '::before'), sbg = (sb.backgroundColor.match(/[\d.]+/g) || []).map(Number);
-        var sh = parseFloat(sb.height), appTop = $('#app').getBoundingClientRect().top;
-        if (sb.content === 'none' || sb.position !== 'fixed' || parseFloat(sb.top) !== 0 || !(sh >= 10)) errs.push('standalone: kein fester Streifen oben (' + sb.position + ', ' + sb.height + ')');
+        // 2. Versuch (1127d): echtes, TREFFBARES Element — 1127c (body::before, pointer-events:none) half auf dem Gerät nicht
+        var edge = $('#ios-edge'), sb = edge ? getComputedStyle(edge) : null;
+        var sbg = sb ? (sb.backgroundColor.match(/[\d.]+/g) || []).map(Number) : [];
+        var sh = sb ? parseFloat(sb.height) : 0, appTop = $('#app').getBoundingClientRect().top;
+        if (!sb || sb.position !== 'fixed' || parseFloat(sb.top) !== 0 || !(sh >= 10)) errs.push('standalone: kein fester Streifen oben (' + (sb && sb.position) + ', ' + (sb && sb.height) + ')');
         if (sbg.length === 4 && sbg[3] < 1) errs.push('standalone: Streifen durchsichtig');
+        var hitTop = document.elementFromPoint(Math.round(innerWidth / 2), 3);
+        if (!hitTop || hitTop.id !== 'ios-edge') errs.push('standalone: Treffer oben ist ' + (hitTop && (hitTop.id || hitTop.tagName)) + ' statt Randstreifen');
         if (appTop < sh) errs.push('standalone: Streifen verdeckt die App (App beginnt bei ' + appTop + ' px)');
         if (!hadSa) root.classList.remove('standalone');
-        if (getComputedStyle(document.body, '::before').content !== 'none' && !hadSa) errs.push('Streifen auch ohne standalone (Browser/PC)');
-        // 27.11.2026: Beschriftung der Leiste unten 11 px (Nutzer-Entscheidung, einzige Ausnahme von 12 px)
+        if (edge && edge.getClientRects().length && !hadSa) errs.push('Streifen auch ohne standalone (Browser/PC)');
+        // 27.11.2026: Beschriftung 12 px (11 px war dem Nutzer zu klein), dafür 24 px Seitenabstand („Planung“ ragte fast in die Ecke)
         var lfs = getComputedStyle($('.bn-items-nn .bn-lbl')).fontSize;
-        if (lfs !== '11px') errs.push('Leiste unten: Schrift ' + lfs + ' statt 11px');
+        if (lfs !== '12px') errs.push('Leiste unten: Schrift ' + lfs + ' statt 12px');
         var bi = getComputedStyle($('.bn-items-nn'));
-        if (parseFloat(bi.paddingLeft) < 12 || parseFloat(bi.paddingRight) < 12) errs.push('Leiste unten ohne Seitenabstand (' + bi.paddingLeft + ')');
+        if (parseFloat(bi.paddingLeft) < 24 || parseFloat(bi.paddingRight) < 24) errs.push('Leiste unten: Seitenabstand ' + bi.paddingLeft + ' statt 24px');
       });
       NN_AREAS.forEach(function (a) {
         s.push(function () { nnArea(a.k); });

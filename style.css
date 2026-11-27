@@ -372,19 +372,19 @@ button { cursor: pointer; border: none; background: none; }
   z-index: 100;
 }
 @media (max-width: 767px) { #bot-nav { display: flex; } }
-/* Seitenabstand 12 px (27.11.2026): äußere Einträge lagen sonst in den runden Display-Ecken („passt grade so drauf“) */
+/* Seitenabstand 24 px (27.11.2026, erst 12 px: „Planung“ ragte am iPhone fast noch in die Ecke): äußere Einträge lagen sonst in den runden Display-Ecken („passt grade so drauf“) */
 .bn-items {
-  display: flex; width: 100%; padding: 4px max(12px, env(safe-area-inset-left)) 2px max(12px, env(safe-area-inset-right));
+  display: flex; justify-content: space-between; width: 100%; padding: 4px max(24px, env(safe-area-inset-left)) 2px max(24px, env(safe-area-inset-right));
 }
 .bn-item {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 4px 0 6px; border: none; background: none; cursor: pointer;
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 4px 6px 6px; border: none; background: none; cursor: pointer;
   color: var(--tx3); font-size:12px; font-weight:400; transition: color .15s;
 }
 .bn-item.active { color: var(--blue); }
 .bn-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
 .bn-icon svg { width: 18px; height: 18px; }
-.bn-lbl { font-size:11px; font-weight:400; white-space: nowrap; } /* Ausnahme von der 12-px-Untergrenze, Nutzer-Entscheidung 27.11.2026 */
+.bn-lbl { font-size:12px; font-weight:400; white-space: nowrap; }
 
 @media (max-width: 767px) {
   #pages { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
@@ -1854,9 +1854,13 @@ body.nn .nn-sub.show::-webkit-scrollbar { display: none; }
    auf Gerät bestätigt): das System lässt den Effekt weg und nimmt die Farbe, wenn ein FESTER, deckender Streifen
    (≥ ~6–10 px hoch, fast volle Breite) ganz oben liegt. Darum: 10-px-Streifen in Kopfleisten-Farbe, die App rückt
    10 px nach unten (nichts wird verdeckt). Nur html.standalone (navigator.standalone / display-mode), Browser + PC unberührt.
+   2. Versuch (1127d): 1127c (body::before mit pointer-events:none) half auf dem Gerät NICHT. Annahme: das System sucht den
+   Streifen per Treffer-Abfrage am Rand — ein durchklickbares Pseudo-Element wird dabei übersprungen. Jetzt echtes Element
+   #ios-edge (index.html), treffbar, ohne Aufgabe (darunter liegt nur der 10-px-Abstand).
 ════════════════════════════════════════ */
-html.standalone body::before {
-  content: ''; position: fixed; top: 0; left: 0; right: 0; height: 10px;
-  background: var(--surf); z-index: 10000; pointer-events: none;
+#ios-edge { display: none; }
+html.standalone #ios-edge {
+  display: block; position: fixed; top: 0; left: 0; right: 0; height: 10px;
+  background: var(--surf); z-index: 10000;
 }
 html.standalone #app { margin-top: 10px; height: calc(100% - 10px); }

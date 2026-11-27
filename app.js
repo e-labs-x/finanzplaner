@@ -2786,6 +2786,14 @@ function stStatus(k){
 function stRenderMenu(){
   var el=document.getElementById('st-menu'); if(!el) return;
   var nnBox=document.getElementById('st-nn'); if(nnBox) nnBox.checked=NN_ON;
+  // Diagnose iOS-26-Unschärfe (27.11.2026): sieht man nur auf dem Gerät — hier steht, ob der Randstreifen aktiv ist
+  var saEl=document.getElementById('st-standalone');
+  if(saEl){
+    var sa=document.documentElement.classList.contains('standalone');
+    var hit=document.elementFromPoint(Math.round(window.innerWidth/2),3);
+    saEl.textContent='Home-Bildschirm-App: '+(sa?'erkannt':'nicht erkannt')+' · Randstreifen oben: '+
+      (sa?(hit&&hit.id==='ios-edge'?'aktiv':'nicht getroffen'):'aus (nur in der Home-Bildschirm-App)');
+  }
   el.innerHTML=ST_MENU.map(function(g){
     // Neue Navigation: Budget entfällt → auch die Budget-Aufteilung nicht mehr anbieten (Werte bleiben gespeichert)
     var items=g.items.filter(function(it){ return !(NN_ON&&it.k==='budget'); });

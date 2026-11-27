@@ -1,13 +1,24 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-27 — Schrift Leiste unten 11 px (`?v=20261127c`), iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-27 — Randstreifen 2 + Leiste unten 12 px/24 px (`?v=20261127d`), Schrift Leiste unten 11 px (`?v=20261127c`), iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
 
 ---
 
-## 👀 Schrift Leiste unten 11 px (27.11.2026, `?v=20261127c`) — Nutzer-Entscheidung
-- `.bn-lbl` 11 px: einzige Ausnahme von der 12-px-Untergrenze (CLAUDE.md Design-System). Prüfung in `navigation.js`, Gegenprobe 0f3c774: rot.
-- [ ] Wackelige Prüfung beobachten: „Layout Vermögen iPhone“ meldete in einer Gegenprobe (Worktree, alter Stand) einmal
-      `abgeschnitten {"CANVAS.":1}`, im Lauf davor auf demselben Stand grün → vermutlich Zeitproblem beim Diagramm-Aufbau.
+## 🧪 Randstreifen 2. Versuch + Leiste unten neu (27.11.2026, `?v=20261127d`) — Prüfung auf dem Gerät offen
+- Nutzer nach 1127c: oben weiter unscharf; Schrift 11 px zu klein, „Planung“ ragt fast noch raus.
+- Randstreifen jetzt echtes Element `#ios-edge` (index.html), treffbar. Annahme: das System findet den Streifen per Treffer-Abfrage
+  am Rand — Gegenprobe 1127c bestätigt in Chrome: Treffer oben war BODY (Pseudo-Element mit pointer-events:none wird übersprungen).
+- Einstellungen → Navigation zeigt „Home-Bildschirm-App: erkannt/nicht erkannt · Randstreifen oben: aktiv/nicht getroffen“ (Diagnose am Gerät).
+- Leiste unten: Schrift zurück auf 12 px (11-px-Ausnahme gestrichen), Seitenabstand 24 px, Einträge nach Textbreite verteilt
+  (`space-between`) statt gleich breiter Fächer — sonst rückten Buchungen/Auswertung/Vermögen zu eng zusammen. Gilt alt + neu.
+- Prüfung in `navigation.js` (Streifen getroffen, 12 px, 24 px), Gegenprobe gegen 1127c: rot.
+- [ ] Falls weiter unscharf: Diagnose-Zeile vom Nutzer erfragen; dann Kopfleiste `position: fixed` (größerer Umbau), Sicherung `vor-randstreifen2`.
+- [ ] Wackelige Prüfung „Layout Vermögen iPhone“: 2× `abgeschnitten {"CANVAS.":1}` (einmal Worktree, einmal aktueller Stand), danach
+      4 Läufe grün → Zeitproblem beim Diagramm-Aufbau. `layout.js` schreibt jetzt id + Maße mit — beim nächsten Auftreten ansehen.
+
+---
+
+## 👀 Schrift Leiste unten 11 px (27.11.2026, `?v=20261127c`) — durch 1127d ersetzt (wieder 12 px)
 
 ---
 
