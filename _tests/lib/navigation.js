@@ -95,6 +95,7 @@
         var hitTop = document.elementFromPoint(Math.round(innerWidth / 2), 3);
         if (!hitTop || hitTop.id !== 'ios-edge') errs.push('standalone: Treffer oben ist ' + (hitTop && (hitTop.id || hitTop.tagName)) + ' statt Randstreifen');
         if (appTop < sh) errs.push('standalone: Streifen verdeckt die App (App beginnt bei ' + appTop + ' px)');
+        // iPad-Linie unter dem Randstreifen: geprüft in layout.js (Rahmen 390 + 820 px; dieses Fenster ist nur ~760 px breit)
         // 27.11.2026: Home-Balken lag auf den Beschriftungen (iOS meldet ohne viewport-fit=cover 0 px) → mind. 18 px Luft
         var bnPb = parseFloat(getComputedStyle($('#bot-nav')).paddingBottom);
         if (!(bnPb >= 18)) errs.push('standalone: Leiste unten nur ' + bnPb + ' px über dem Rand (Home-Balken)');

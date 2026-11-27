@@ -56,6 +56,20 @@
       info.push('Knopf zu: Person ' + zu.person + '/Einst. ' + zu.einst + ', auf: ' + auf.person + '/' + auf.einst);
       if (!zu.person || zu.einst || !auf.person || !auf.einst) errs.push('iphone: Einklapp-Knopf ' + JSON.stringify({ zu: zu, auf: auf }));
     } catch (e) { errs.push('Einklapp-Knopf: ' + e.message); }
+    // Randstreifen-Linie (27.11.2026): iPad (820 px) als Home-Bildschirm-App → Linie unter der Statusleiste,
+    // iPhone (390 px) ohne (dort trennt die Kante unter der Kopfleiste)
+    sizes.forEach(function (s) {
+      try {
+        var d = document.getElementById(s.id).contentDocument, root = d.documentElement, had = root.classList.contains('standalone');
+        root.classList.add('standalone');
+        var e = d.getElementById('ios-edge'), bw = e ? parseFloat(d.defaultView.getComputedStyle(e).borderBottomWidth) || 0 : -1;
+        if (!had) root.classList.remove('standalone');
+        if (bw < 0) errs.push(s.id + ': Randstreifen fehlt');
+        else if (s.w >= 768 && bw < 1) errs.push(s.id + ': keine Linie unter dem Randstreifen (Abgrenzung zur Statusleiste)');
+        else if (s.w < 768 && bw > 0) errs.push(s.id + ': Linie unter dem Randstreifen (soll nur ab 768 px)');
+        info.push(s.id + ' Randlinie ' + bw + ' px');
+      } catch (x) { errs.push(s.id + ' Randlinie: ' + x.message); }
+    });
     // Breite Tabellen und Kacheln (22.11.2026): bei 390 px darf nichts abgeschnitten sein — was breiter ist als der
     // Bildschirm, muss in einem Wischbereich liegen (overflow-x auto/scroll). Alter Stand: Cashflow-Kacheln + -Tabelle
     // und Reallohn-Tabelle (8 Spalten, nur 3 sichtbar) wurden still abgeschnitten.

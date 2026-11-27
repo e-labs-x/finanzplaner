@@ -1,10 +1,18 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-27 — Randstreifen 2 + Leiste unten 12 px/24 px (`?v=20261127d`), Schrift Leiste unten 11 px (`?v=20261127c`), iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-27 — iPad-Linie oben (`?v=20261127e`), Randstreifen 2 + Leiste unten 12 px/24 px (`?v=20261127d`), Schrift Leiste unten 11 px (`?v=20261127c`), iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
 
 ---
 
-## 🧪 Randstreifen 2. Versuch + Leiste unten neu (27.11.2026, `?v=20261127d`) — Prüfung auf dem Gerät offen
+## 👀 iPad: Linie unter der Statusleiste (27.11.2026, `?v=20261127e`) — Abnahme offen
+- Nutzer zu 1127d: „sieht gut aus, noch eine Kleinigkeit: auf dem iPad fehlt oben die Abgrenzung zum Rand, beim iPhone ist sie da“.
+  Ab 768 px gibt es keine Kopfleiste → Statusleiste ging ohne Kante in Seitenleiste/Reiter über.
+- `#ios-edge` ab 768 px mit `border-bottom` (`--sidebar-border`), iPhone unverändert. Prüfung in `layout.js` (Rahmen 390 + 820 px,
+  das Prüf-Fenster von navigation.js ist nur ~760 px breit), Gegenprobe gegen `vor-ipad-linie`: rot.
+
+---
+
+## 🧪 Randstreifen 2. Versuch + Leiste unten neu (27.11.2026, `?v=20261127d`) — vom Nutzer auf beiden Geräten für gut befunden
 - Nutzer nach 1127c: oben weiter unscharf; Schrift 11 px zu klein, „Planung“ ragt fast noch raus.
 - iPhone-Screenshot 1127c: Kopfleiste + Reiter wirkten schärfer (nur Statusleisten-Bereich weich), ABER der iOS-Home-Balken lag auf
   den Beschriftungen unten — ohne `viewport-fit=cover` meldet iOS `safe-area-inset-bottom` = 0. Jetzt in der Home-Bildschirm-App

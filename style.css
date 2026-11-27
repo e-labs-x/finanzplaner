@@ -1870,3 +1870,9 @@ html.standalone #bot-nav { padding-bottom: max(18px, env(safe-area-inset-bottom)
 @media (max-width: 767px) {
   html.standalone #pages { padding-bottom: calc(56px + max(18px, env(safe-area-inset-bottom))); }
 }
+/* iPad-Linie (27.11.2026, Nutzer nach 1127d: „auf dem iPad fehlt oben die Abgrenzung zum Rand, beim iPhone ist sie da“):
+   ab 768 px gibt es keine Kopfleiste — Statusleiste ging ohne Kante in Seitenleiste/Reiter über. Linie unten am Randstreifen,
+   wie die Kante unter der iPhone-Kopfleiste. iPhone (< 768 px) unverändert. */
+@media (min-width: 768px) {
+  html.standalone #ios-edge { box-sizing: border-box; border-bottom: 1px solid var(--sidebar-border); }
+}
