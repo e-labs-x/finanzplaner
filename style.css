@@ -384,7 +384,7 @@ button { cursor: pointer; border: none; background: none; }
 .bn-item.active { color: var(--blue); }
 .bn-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
 .bn-icon svg { width: 18px; height: 18px; }
-.bn-lbl { font-size:12px; font-weight:400; white-space: nowrap; letter-spacing: -.1px; }
+.bn-lbl { font-size:11px; font-weight:400; white-space: nowrap; } /* Ausnahme von der 12-px-Untergrenze, Nutzer-Entscheidung 27.11.2026 */
 
 @media (max-width: 767px) {
   #pages { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }

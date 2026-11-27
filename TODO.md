@@ -1,6 +1,13 @@
 # Finanzplaner — To-Do Liste
 
-Letzte Aktualisierung: 2026-11-27 — iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+Letzte Aktualisierung: 2026-11-27 — Schrift Leiste unten 11 px (`?v=20261127c`), iOS-26-Randstreifen (`?v=20261127b`), Leisten deckend + Liste unter Auswertung (`?v=20261127a`), Vermögen-Kopf neu (`?v=20261122k`), Vermögen-Historie volle Breite (`?v=20261122j`), Farbregel echtes Grün + Vermögen-Kacheln (`?v=20261122i`), Schritt 3a Navigation hinter Schalter (`?v=20261122h`), Schritt 2 Teil B Rente-Diagramme (`?v=20261122g`), Teil A (`?v=20261122f`), Schritt 1 Design-Grundlage (`?v=20261122e`), davor Schritt 0 (`?v=20261122a`–`d`)
+
+---
+
+## 👀 Schrift Leiste unten 11 px (27.11.2026, `?v=20261127c`) — Nutzer-Entscheidung
+- `.bn-lbl` 11 px: einzige Ausnahme von der 12-px-Untergrenze (CLAUDE.md Design-System). Prüfung in `navigation.js`, Gegenprobe 0f3c774: rot.
+- [ ] Wackelige Prüfung beobachten: „Layout Vermögen iPhone“ meldete in einer Gegenprobe (Worktree, alter Stand) einmal
+      `abgeschnitten {"CANVAS.":1}`, im Lauf davor auf demselben Stand grün → vermutlich Zeitproblem beim Diagramm-Aufbau.
 
 ---
 

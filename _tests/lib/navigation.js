@@ -93,6 +93,9 @@
         if (appTop < sh) errs.push('standalone: Streifen verdeckt die App (App beginnt bei ' + appTop + ' px)');
         if (!hadSa) root.classList.remove('standalone');
         if (getComputedStyle(document.body, '::before').content !== 'none' && !hadSa) errs.push('Streifen auch ohne standalone (Browser/PC)');
+        // 27.11.2026: Beschriftung der Leiste unten 11 px (Nutzer-Entscheidung, einzige Ausnahme von 12 px)
+        var lfs = getComputedStyle($('.bn-items-nn .bn-lbl')).fontSize;
+        if (lfs !== '11px') errs.push('Leiste unten: Schrift ' + lfs + ' statt 11px');
         var bi = getComputedStyle($('.bn-items-nn'));
         if (parseFloat(bi.paddingLeft) < 12 || parseFloat(bi.paddingRight) < 12) errs.push('Leiste unten ohne Seitenabstand (' + bi.paddingLeft + ')');
       });
